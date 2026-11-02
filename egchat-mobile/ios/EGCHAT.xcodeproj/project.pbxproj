@@ -642,7 +642,7 @@
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_ENTITLEMENTS = EGChatShare/EGChatShareRelease.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 123;
+				CURRENT_PROJECT_VERSION = 124;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = EGChatShare/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = EGChatShare;
@@ -787,7 +787,7 @@
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_ENTITLEMENTS = EGChatShare/EGChatShareRelease.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 123;
+				CURRENT_PROJECT_VERSION = 124;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = EGChatShare/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = EGChatShare;
@@ -814,7 +814,7 @@
 			buildSettings = {
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 123;
+				CURRENT_PROJECT_VERSION = 124;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = EGChatNotifService/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = EGChatNotifService;
@@ -841,7 +841,7 @@
 			buildSettings = {
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 123;
+				CURRENT_PROJECT_VERSION = 124;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = EGChatNotifService/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = EGChatNotifService;
