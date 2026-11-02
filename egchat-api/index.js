@@ -4214,9 +4214,8 @@ const liaMovementLine = (tx, lang) => {
   return `• ${label}: ${liaMoney(tx?.amount)}${when}`;
 };
 
-const liaWeatherReply = async (message, lang, city) => {
-  const copy = LIA_COPY[lang];
-  const target = liaPickCity(message, city);
+const liaWeatherData = async (cityName, lang) => {
+  const target = (cityName && LIA_CITIES.find((item) => liaNorm(item.name) === liaNorm(cityName))) || LIA_CITIES[0];
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 6000);
   try {
@@ -4224,78 +4223,355 @@ const liaWeatherReply = async (message, lang, city) => {
       + '&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&timezone=Africa%2FMalabo';
     const response = await fetch(url, { signal: controller.signal });
     if (!response.ok) throw new Error(`weather ${response.status}`);
-    const data = await response.json();
-    const current = data?.current || {};
+    const current = (await response.json())?.current || {};
     if (typeof current.temperature_2m !== 'number') throw new Error('weather empty');
-    return liaFill(copy.weather, {
-      city: target.name,
-      temp: Math.round(current.temperature_2m),
-      desc: LIA_WEATHER_DESC[liaWeatherKey(current.weather_code)][lang],
-      wind: Math.round(Number(current.wind_speed_10m) || 0),
-      humidity: Math.round(Number(current.relative_humidity_2m) || 0),
-    });
-  } catch (e) {
-    console.warn('LIA weather error:', e?.message || e);
-    return copy.weatherError;
+    return {
+      ciudad: target.name,
+      temperatura_c: Math.round(current.temperature_2m),
+      descripcion: LIA_WEATHER_DESC[liaWeatherKey(current.weather_code)][lang],
+      viento_kmh: Math.round(Number(current.wind_speed_10m) || 0),
+      humedad_pct: Math.round(Number(current.relative_humidity_2m) || 0),
+    };
   } finally {
     clearTimeout(timer);
   }
 };
 
+const liaWeatherReply = async (message, lang, city) => {
+  const copy = LIA_COPY[lang];
+  const target = liaPickCity(message, city);
+  try {
+    const data = await liaWeatherData(target.name, lang);
+    return liaFill(copy.weather, {
+      city: data.ciudad,
+      temp: data.temperatura_c,
+      desc: data.descripcion,
+      wind: data.viento_kmh,
+      humidity: data.humedad_pct,
+    });
+  } catch (e) {
+    console.warn('LIA weather error:', e?.message || e);
+    return copy.weatherError;
+  }
+};
+
 const liaBuildSystem = (lang, profile, wallet) => [
-  `Eres Lia-25, la asistente virtual de EGCHAT, una superapp de Guinea Ecuatorial: dinero móvil en XAF, chat, MiTaxi, Salud, Supermercados, Noticias, Seguros, zona CEMAC.`,
-  `Responde SIEMPRE en ${LIA_LANG_NAMES[lang] || 'español'}, de forma breve (máximo 90 palabras), clara y amable. Puedes usar **negritas** con moderación.`,
+  `Eres Lia-25, la asistente de EGCHAT, una superapp de Guinea Ecuatorial: dinero móvil en XAF, chat, MiTaxi, Salud, Supermercados, Noticias, Seguros y zona CEMAC.`,
+  `Forma de trabajar:`,
+  `1. Antes de dar cualquier dato de la cuenta, precios, noticias o lugares, consulta la herramienta correspondiente y responde con lo que devuelva. No inventes cifras, direcciones, teléfonos, horarios ni comisiones.`,
+  `2. Si falta un dato imprescindible para resolver o ejecutar (importe, destinatario, ciudad), haz una sola pregunta corta con las opciones concretas.`,
+  `3. Si piden varias cosas, resuélvelas en orden. Si la petición es ambigua, interpreta la opción más probable dentro de EGCHAT y dilo en una frase.`,
+  `4. Para enviar dinero usa preparar_transferencia: muestra el resumen y pide confirmación con el PIN en la app. Nunca afirmes que ya enviaste, pediste o compraste algo.`,
+  `5. Para abrir una pantalla usa abrir_pantalla y dile al usuario que la tiene lista; no digas que ya está abierta.`,
+  `6. Responde solo a la última petición del usuario; si el tema cambió, ignora el anterior por completo.`,
+  `7. Sé precisa y breve (máximo 90 palabras salvo que pidan detalle). No expliques tu proceso, no menciones herramientas, JSON, errores técnicos ni el modelo.`,
   `Datos reales del usuario (no los inventes ni los cambies): saldo ${liaMoney(wallet.balance)}; nombre ${profile?.full_name || 'no indicado'}; ciudad ${profile?.city || 'no indicada'}.`,
-  `Datos de referencia de la app (puedes usarlos): tipos de cambio ${Object.entries(LIA_RATES).map(([currency, rate]) => `1 ${currency} = ${Math.round(1 / rate)} XAF`).join(', ')}, 1 XAF = 1 XOF. Tarifas MiTaxi: moto 800 XAF, básico 1 500 XAF, premium 3 500 XAF.`,
-  `Puedes explicar cómo usar Cartera (saldo, recargar, retirar, enviar), MiTaxi, Salud, Supermercados, Noticias, Seguros y CEMAC.`,
-  `Responde únicamente a la última pregunta del usuario. No continúes, repitas ni mezcles respuestas de mensajes anteriores: si el tema cambió, ignora el tema anterior por completo.`,
-  `No puedes ejecutar acciones (enviar dinero, pedir taxi): explica en qué pantalla se hace y nunca digas que ya lo has hecho.`,
-  `Nunca inventes direcciones web, números de teléfono, comisiones ni importes: si no están en los datos anteriores, no los des.`,
-  `La app está disponible en español, francés, inglés y portugués; el idioma se cambia en Ajustes → Otras funciones → Idioma.`,
-  `Si no sabes algo, dilo con naturalidad y ofrece una alternativa útil dentro de la app.`,
+  `Datos de referencia de la app: tipos de cambio ${Object.entries(LIA_RATES).map(([currency, rate]) => `1 ${currency} = ${Math.round(1 / rate)} XAF`).join(', ')}, 1 XAF = 1 XOF. Tarifas MiTaxi: moto 800 XAF, básico 1 500 XAF, premium 3 500 XAF.`,
+  `Pantallas de la app: Cartera (saldo, recargar, retirar, enviar), MiTaxi, Salud, Supermercados, Noticias, Seguros, CEMAC, Bancos, Tarjetas.`,
+  `Responde SIEMPRE en ${LIA_LANG_NAMES[lang] || 'español'}, de forma clara y amable, con negritas solo cuando aporten.`,
+  `Si no puedes resolver algo, dilo en una frase y ofrece la pantalla exacta donde se hace.`,
 ].join('\n');
 
-const liaLlmReply = async ({ lang, message, history, userId }) => {
+// ── Herramientas de LIA ─────────────────────────────────────────────
+// Cada herramienta devuelve datos reales y el modelo decide cuál usar.
+const LIA_TOOL_DEFS = [
+  {
+    type: 'function',
+    function: {
+      name: 'consultar_saldo',
+      description: 'Saldo actual y moneda del usuario.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'consultar_movimientos',
+      description: 'Últimos movimientos de la cartera, del más reciente al más antiguo.',
+      parameters: {
+        type: 'object',
+        properties: {
+          limite: { type: 'integer', description: 'Cantidad de movimientos, entre 1 y 10.', minimum: 1, maximum: 10 },
+          tipo: { type: 'string', description: 'Filtro opcional por tipo: deposit, withdraw, transfer_sent, transfer_received, payment, refund.' },
+        },
+        required: ['limite'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'consultar_noticias',
+      description: 'Titulares de noticias del día, con fuente y categoría.',
+      parameters: {
+        type: 'object',
+        properties: {
+          limite: { type: 'integer', description: 'Cantidad de titulares, entre 1 y 6.' },
+          categoria: { type: 'string', description: 'Categoría opcional: Política, Finanzas, Salud, Tecnología, Deportes.' },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'consultar_tiempo',
+      description: 'Tiempo actual (temperatura, viento, humedad) en una ciudad de Guinea Ecuatorial.',
+      parameters: {
+        type: 'object',
+        properties: {
+          ciudad: { type: 'string', description: 'Malabo, Bata, Mongomo, Ebebiyín o Annobón.' },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_centros_salud',
+      description: 'Hospitales y farmacias con ciudad y teléfono.',
+      parameters: {
+        type: 'object',
+        properties: {
+          tipo: { type: 'string', enum: ['hospital', 'farmacia', 'todos'] },
+          ciudad: { type: 'string' },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_supermercados',
+      description: 'Supermercados disponibles con dirección, teléfono y si están abiertos.',
+      parameters: {
+        type: 'object',
+        properties: { ciudad: { type: 'string' } },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'consultar_cajeros',
+      description: 'Cajeros automáticos con banco, dirección y comisión.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'consultar_tasas_cambio',
+      description: 'Tipo de cambio de las divisas frente al XAF.',
+      parameters: {
+        type: 'object',
+        properties: { moneda: { type: 'string', description: 'EUR, USD, GBP, CHF o CNY.' } },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'preparar_transferencia',
+      description: 'Valida un envío de dinero y devuelve el resumen para que el usuario lo confirme con su PIN. No ejecuta el envío.',
+      parameters: {
+        type: 'object',
+        properties: {
+          monto: { type: 'number', description: 'Importe en XAF.' },
+          destinatario: { type: 'string', description: 'Teléfono, nombre de usuario o nombre del destinatario.' },
+          concepto: { type: 'string', description: 'Motivo opcional del envío.' },
+        },
+        required: ['monto', 'destinatario'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'abrir_pantalla',
+      description: 'Prepara la pantalla de la app que resuelve la petición (ej. cartera, enviar, recargar, taxi).',
+      parameters: {
+        type: 'object',
+        properties: {
+          pantalla: {
+            type: 'string',
+            enum: ['cartera', 'enviar', 'recargar', 'retirar', 'taxi', 'salud', 'supermercados', 'noticias', 'bancos', 'tarjetas', 'seguros', 'cemac'],
+          },
+        },
+        required: ['pantalla'],
+      },
+    },
+  },
+];
+
+const liaRunTool = async (name, args, userId, lang) => {
+  const a = args && typeof args === 'object' ? args : {};
+  const cityFilter = (item) => !a.ciudad || liaNorm(item.city || '') === liaNorm(a.ciudad);
+
+  switch (name) {
+    case 'consultar_saldo': {
+      const wallet = await liaGetWallet(userId);
+      return { saldo: wallet.balance, moneda: wallet.currency };
+    }
+    case 'consultar_movimientos': {
+      const limite = Math.min(Math.max(Number(a.limite) || 5, 1), 10);
+      let rows = await liaGetTransactions(userId, a.tipo ? 40 : limite);
+      if (a.tipo) rows = rows.filter((tx) => String(tx.type) === String(a.tipo)).slice(0, limite);
+      return rows.map((tx) => ({
+        tipo: tx.type, importe: tx.amount, descripcion: tx.description || tx.reference || '',
+        fecha: tx.created_at,
+      }));
+    }
+    case 'consultar_noticias': {
+      const limite = Math.min(Math.max(Number(a.limite) || 5, 1), 6);
+      const items = NOTICIAS.filter((n) => !a.categoria || liaNorm(n.category) === liaNorm(a.categoria)).slice(0, limite);
+      return items.map((n) => ({ titulo: n.title, fuente: n.source, categoria: n.category, hora: n.time }));
+    }
+    case 'consultar_tiempo':
+      return liaWeatherData(a.ciudad || '', lang);
+    case 'buscar_centros_salud': {
+      const tipo = a.tipo || 'todos';
+      const items = [];
+      if (tipo !== 'farmacia') {
+        HOSPITALES.filter(cityFilter).forEach((h) => items.push({
+          tipo: 'hospital', nombre: h.name, ciudad: h.city, telefono: h.phone, urgencias: Boolean(h.emergency),
+        }));
+      }
+      if (tipo !== 'hospital') {
+        FARMACIAS.filter(cityFilter).forEach((f) => items.push({
+          tipo: 'farmacia', nombre: f.name, ciudad: f.city, telefono: f.phone, abierto_24h: Boolean(f.open24h),
+        }));
+      }
+      return items;
+    }
+    case 'buscar_supermercados':
+      return SUPERMERCADOS.filter(cityFilter).map((s) => ({
+        nombre: s.name, ciudad: s.city, direccion: s.address, telefono: s.phone, abierto: s.open !== false,
+      }));
+    case 'consultar_cajeros':
+      return LIA_ATMS.map((item) => ({ banco: item.bank, direccion: item.addr, comision: item.fee }));
+    case 'consultar_tasas_cambio': {
+      const entries = Object.entries(LIA_RATES)
+        .filter(([currency]) => !a.moneda || currency === String(a.moneda).toUpperCase());
+      return entries.map(([currency, rate]) => ({ moneda: currency, xaf_por_unidad: Math.round(1 / rate) }));
+    }
+    case 'preparar_transferencia': {
+      const amount = Math.round(Number(a.monto) || 0);
+      if (!(amount > 0)) return { error: 'Importe inválido', falta: 'monto' };
+      if (!a.destinatario) return { error: 'Falta el destinatario', falta: 'destinatario' };
+      const to = String(a.destinatario).trim();
+      const recipient = PLATFORM_MERCHANTS.has(to.toLowerCase()) ? null : await findUserByRef(to);
+      const wallet = await liaGetWallet(userId);
+      if (!recipient) {
+        return { error: 'Destinatario no encontrado', destinatario_buscado: to, saldo: wallet.balance };
+      }
+      if (String(recipient.id) === String(userId)) return { error: 'No puedes enviarte dinero a ti mismo' };
+      return {
+        destinatario: recipient.full_name || recipient.phone || to,
+        telefono: recipient.phone || null,
+        importe: amount,
+        concepto: a.concepto ? String(a.concepto).slice(0, 140) : null,
+        saldo_actual: wallet.balance,
+        saldo_despues: wallet.balance - amount,
+        requiere_pin: true,
+        ejecutado: false,
+        siguiente_paso: 'El usuario confirma con el PIN en Cartera → Enviar.',
+      };
+    }
+    case 'abrir_pantalla':
+      return { pantalla: a.pantalla, abrir_en_app: true, ejecutado: false };
+    default:
+      return { error: `Herramienta desconocida: ${name}` };
+  }
+};
+
+const LIA_AGENT_ROUNDS = 4;
+
+const liaAgent = async ({ lang, message, history, userId, profile, wallet }) => {
   const provider = liaProvider();
   if (!provider) return null;
-  try {
-    const [{ data: profile }, wallet] = await Promise.all([
-      supabase.from('users').select('full_name, city').eq('id', userId).maybeSingle(),
-      liaGetWallet(userId),
-    ]);
-    const system = liaBuildSystem(lang, profile, wallet);
-    const safeHistory = (Array.isArray(history) ? history : [])
-      .filter((item) => item && (item.role === 'user' || item.role === 'assistant') && typeof item.content === 'string')
-      .slice(-4)
-      .map((item) => ({ role: item.role, content: item.content.slice(0, 500) }));
+  const system = liaBuildSystem(lang, profile, wallet);
+  const safeHistory = (Array.isArray(history) ? history : [])
+    .filter((item) => item && (item.role === 'user' || item.role === 'assistant') && typeof item.content === 'string')
+    .slice(-6)
+    .map((item) => ({ role: item.role, content: item.content.slice(0, 600) }));
+  const messages = [{ role: 'system', content: system }, ...safeHistory, { role: 'user', content: message.slice(0, 1000) }];
+  const used = [];
+  let lastStatus = 0;
+
+  const call = async (withTools) => {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 20000);
+    const timer = setTimeout(() => controller.abort(), 25000);
     try {
       const response = await fetch(`${provider.base}/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${provider.key}` },
         body: JSON.stringify({
           model: provider.chatModel,
-          temperature: 0.4,
-          max_tokens: 400,
-          messages: [{ role: 'system', content: system }, ...safeHistory, { role: 'user', content: message.slice(0, 1000) }],
+          temperature: 0.2,
+          max_tokens: 700,
+          messages,
+          ...(withTools ? { tools: LIA_TOOL_DEFS, tool_choice: 'auto' } : {}),
         }),
         signal: controller.signal,
       });
       if (!response.ok) {
-        console.warn('LIA LLM error:', provider.name, response.status, (await response.text().catch(() => '')).slice(0, 200));
+        lastStatus = response.status;
+        console.warn('LIA agent error:', provider.name, response.status, (await response.text().catch(() => '')).slice(0, 200));
         return null;
       }
-      const data = await response.json();
-      const text = data?.choices?.[0]?.message?.content;
-      return typeof text === 'string' && text.trim() ? text.trim() : null;
+      return (await response.json())?.choices?.[0]?.message || null;
+    } catch (e) {
+      console.warn('LIA agent exception:', e?.message || e);
+      return null;
     } finally {
       clearTimeout(timer);
     }
-  } catch (e) {
-    console.warn('LIA LLM exception:', e?.message || e);
-    return null;
+  };
+
+  for (let round = 0; round < LIA_AGENT_ROUNDS; round += 1) {
+    const reply = await call(true);
+    if (!reply) {
+      // Solo se reintenta sin herramientas si el proveedor las rechazó de forma explícita.
+      const toolsRejected = lastStatus >= 400 && lastStatus < 500 && lastStatus !== 429;
+      if (toolsRejected) {
+        const plain = await call(false);
+        const plainText = typeof plain?.content === 'string' ? plain.content.trim() : '';
+        return plainText ? { text: plainText, used } : null;
+      }
+      return null;
+    }
+    const toolCalls = Array.isArray(reply.tool_calls) ? reply.tool_calls : [];
+    if (!toolCalls.length) {
+      const text = typeof reply.content === 'string' ? reply.content.trim() : '';
+      return text ? { text, used } : null;
+    }
+    messages.push({ role: 'assistant', content: reply.content || '', tool_calls: toolCalls });
+    for (const toolCall of toolCalls) {
+      const name = toolCall?.function?.name;
+      let args = {};
+      try { args = JSON.parse(toolCall?.function?.arguments || '{}'); } catch { args = {}; }
+      let result;
+      try {
+        result = await liaRunTool(name, args, userId, lang);
+      } catch (e) {
+        console.warn('LIA tool failed:', name, e?.message || e);
+        result = { error: 'No se pudo consultar ese dato ahora mismo' };
+      }
+      used.push(name);
+      const payload = JSON.stringify(result);
+      messages.push({
+        role: 'tool',
+        tool_call_id: toolCall.id,
+        content: payload.length > 4000 ? JSON.stringify({ resultado_recortado: payload.slice(0, 3500) }) : payload,
+      });
+    }
   }
+
+  // Se agotaron las rondas: pedir una respuesta final sin herramientas.
+  const finalReply = await call(false);
+  const text = typeof finalReply?.content === 'string' ? finalReply.content.trim() : '';
+  return text ? { text, used } : null;
 };
 
 const liaAnswer = async (intent, message, lang, userId, history) => {
@@ -4370,8 +4646,7 @@ const liaAnswer = async (intent, message, lang, userId, history) => {
     case 'math':
       return liaMathReply(message, lang) || copy.unknown;
     default: {
-      const llmReply = await liaLlmReply({ lang, message, history, userId });
-      return llmReply || copy.unknown;
+      return copy.unknown;
     }
   }
 };
@@ -4388,10 +4663,30 @@ app.post('/api/lia/chat', auth, async (req, res) => {
   const intent = liaDetectIntent(message);
   let reply = copy.serviceError;
   let action = intent;
+  let tools = [];
 
   try {
-    reply = await liaAnswer(intent, message, lang, req.user.id, req.body?.history);
-    if (intent === 'unknown' && reply && reply !== copy.unknown) action = 'ai';
+    if (intent === 'math') {
+      reply = liaMathReply(message, lang) || copy.unknown;
+    } else {
+      // El modelo es el cerebro: decide qué consultar y con qué argumentos.
+      // El motor de intenciones queda solo como respaldo si el proveedor falla.
+      const [{ data: profile }, wallet] = await Promise.all([
+        supabase.from('users').select('full_name, city').eq('id', req.user.id).maybeSingle(),
+        liaGetWallet(req.user.id),
+      ]);
+      const agent = await liaAgent({
+        lang, message, history: req.body?.history, userId: req.user.id, profile, wallet,
+      });
+      if (agent) {
+        reply = agent.text;
+        tools = agent.used;
+        action = tools.length ? tools[tools.length - 1] : 'ai';
+      } else {
+        reply = await liaAnswer(intent, message, lang, req.user.id, req.body?.history);
+        action = 'rules';
+      }
+    }
   } catch (e) {
     console.error('LIA chat error:', e);
     action = 'error';
@@ -4408,7 +4703,7 @@ app.post('/api/lia/chat', auth, async (req, res) => {
     }
   }
 
-  res.json({ reply, action, lang, timestamp: new Date().toISOString() });
+  res.json({ reply, action, tools, lang, timestamp: new Date().toISOString() });
 });
 
 app.get('/api/lia/history', auth, async (req, res) => {
@@ -4452,6 +4747,8 @@ app.get('/api/lia/status', auth, (_req, res) => {
   res.json({
     engine: provider ? provider.name : 'rules',
     model: provider ? provider.chatModel : null,
+    mode: provider ? 'agent' : 'rules',
+    tools: LIA_TOOL_DEFS.map((tool) => tool.function.name),
     dictation: Boolean(provider),
     languages: LIA_LANGS,
     features: ['balance', 'movements', 'news', 'weather', 'health', 'markets', 'atm', 'banks', 'rates', 'cards', 'taxi', 'transfers', 'help', 'attachments', 'vision', 'documents'],
