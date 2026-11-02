@@ -26,21 +26,24 @@ final class EGChatPushKitCoordinator: NSObject, PKPushRegistryDelegate {
     flushPendingEvents()
   }
 
+  /** El evento solo llega si el JS ya tiene listeners puestos. */
+  private var hasListener: Bool { EGChatPushKitModule.eventSink?.isObserving == true }
+
   private func emitToken(_ token: String) {
     currentVoIPToken = token.isEmpty ? nil : token
-    if let module = EGChatPushKitModule.eventSink {
+    if hasListener, let module = EGChatPushKitModule.eventSink {
       module.sendEvent(withName: "voipTokenUpdated", body: ["token": token])
     } else { pendingToken = token }
   }
 
   private func emitCall(_ call: [String: Any]) {
-    if let module = EGChatPushKitModule.eventSink {
+    if hasListener, let module = EGChatPushKitModule.eventSink {
       module.sendEvent(withName: "voipPushReceived", body: call)
     } else { pendingCalls.append(call) }
   }
 
   private func flushPendingEvents() {
-    guard let module = EGChatPushKitModule.eventSink else { return }
+    guard hasListener, let module = EGChatPushKitModule.eventSink else { return }
     if let token = pendingToken {
       module.sendEvent(withName: "voipTokenUpdated", body: ["token": token])
       pendingToken = nil
@@ -81,13 +84,24 @@ final class EGChatPushKitCoordinator: NSObject, PKPushRegistryDelegate {
 @objc(EGChatPushKitModule)
 class EGChatPushKitModule: RCTEventEmitter {
   static weak var eventSink: EGChatPushKitModule?
+  private(set) var isObserving = false
 
   override init() {
     super.init()
+    // Aquí solo se designa el destino de los eventos. No se vacía la cola: el
+    // init corre cuando React Native instancia el módulo, antes de que el JS
+    // haya registrado listeners, y enviarlos entonces los perdía (era el caso
+    // de las llamadas recibidas con la app cerrada).
+    EGChatPushKitModule.eventSink = self
+  }
+
+  override func startObserving() {
+    isObserving = true
     EGChatPushKitCoordinator.shared.attach(self)
   }
 
-  override func startObserving() { EGChatPushKitCoordinator.shared.attach(self) }
+  override func stopObserving() { isObserving = false }
+
   override func supportedEvents() -> [String] { ["voipTokenUpdated", "voipPushReceived"] }
   override static func requiresMainQueueSetup() -> Bool { true }
 

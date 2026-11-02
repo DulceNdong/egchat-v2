@@ -28,6 +28,29 @@ final class EGChatCallCoordinator: NSObject, CXProviderDelegate {
   private var audioObserversRegistered = false
   private var pendingEvents: [(String, Any)] = []
 
+  /// CallKit puede contestar con JavaScript dormido (push VoIP con la app
+  /// cerrada). La acción se guarda aquí para que la app la reenvíe al servidor
+  /// al arrancar; si no, la UI de sistema queda conectada y el llamante sigue
+  /// sonando hasta que caduca la llamada.
+  static let pendingAnswerKey = "EGChatPendingAnsweredCall"
+  // 5 min: coincide con el TTL del answer pendiente en JavaScript. Con la app
+  // cerrada el usuario puede abrir EGCHAT varios minutos después de contestar.
+  private static let pendingAnswerTTLms: Double = 300_000
+
+  func takePendingAnsweredCall() -> String? {
+    guard let stored = UserDefaults.standard.dictionary(forKey: Self.pendingAnswerKey),
+          let callId = stored["callId"] as? String,
+          let ts = stored["ts"] as? Double,
+          Date().timeIntervalSince1970 * 1000 - ts < Self.pendingAnswerTTLms
+    else { return nil }
+    UserDefaults.standard.removeObject(forKey: Self.pendingAnswerKey)
+    return callId
+  }
+
+  private func clearPendingAnsweredCall() {
+    UserDefaults.standard.removeObject(forKey: Self.pendingAnswerKey)
+  }
+
   func reportIncomingCall(callerName: String, callerAvatar: String, callId: String, isVideo: Bool) {
     let uuid = UUID()
     activeCallUUID = uuid
@@ -56,6 +79,8 @@ final class EGChatCallCoordinator: NSObject, CXProviderDelegate {
 
   func answerCall() {
     guard let uuid = activeCallUUID else { return }
+    // Lo pide JavaScript, así que el answer se enviará al servidor desde JS.
+    clearPendingAnsweredCall()
     callController.request(CXTransaction(action: CXAnswerCallAction(call: uuid))) { error in
       if let error { print("[CallKit] answerCall error: \(error.localizedDescription)") }
     }
@@ -72,8 +97,11 @@ final class EGChatCallCoordinator: NSObject, CXProviderDelegate {
     cleanup()
   }
 
+  /** El evento solo sirve si el JS tiene listeners activos; si no, se encola. */
+  private var hasListener: Bool { EGChatCallModule.eventSink?.isObserving == true }
+
   func emit(_ name: String, body: Any) {
-    if let module = EGChatCallModule.eventSink {
+    if hasListener, let module = EGChatCallModule.eventSink {
       module.sendEvent(withName: name, body: body)
     } else {
       pendingEvents.append((name, body))
@@ -81,7 +109,7 @@ final class EGChatCallCoordinator: NSObject, CXProviderDelegate {
   }
 
   func flushPendingEvents() {
-    guard let module = EGChatCallModule.eventSink else { return }
+    guard hasListener, let module = EGChatCallModule.eventSink else { return }
     let events = pendingEvents
     pendingEvents.removeAll()
     events.forEach { module.sendEvent(withName: $0.0, body: $0.1) }
@@ -139,6 +167,14 @@ final class EGChatCallCoordinator: NSObject, CXProviderDelegate {
     configureAudioSession()
     isCallActive = true
     action.fulfill()
+    // Si JavaScript no está escuchando, la aceptación se queda solo en CallKit:
+    // el llamante nunca se entera. Guardarla permite reenviarla al arrancar el JS.
+    if let callId = activeCallId, !hasListener {
+      UserDefaults.standard.set(
+        ["callId": callId, "ts": Date().timeIntervalSince1970 * 1000],
+        forKey: Self.pendingAnswerKey
+      )
+    }
     emit("callAnswered", body: activeCallId ?? "")
   }
 
@@ -146,6 +182,7 @@ final class EGChatCallCoordinator: NSObject, CXProviderDelegate {
     let callId = activeCallId ?? ""
     let wasActive = isCallActive
     action.fulfill()
+    clearPendingAnsweredCall()
     emit(wasActive ? "callEnded" : "callRejected", body: callId)
     cleanup()
   }
@@ -157,16 +194,22 @@ final class EGChatCallCoordinator: NSObject, CXProviderDelegate {
 @objc(EGChatCallModule)
 class EGChatCallModule: RCTEventEmitter {
   static weak var eventSink: EGChatCallModule?
+  private(set) var isObserving = false
 
   override init() {
     super.init()
+    // Solo se designa el destino de los eventos; la cola se vacía en
+    // startObserving, cuando el JS ya tiene listeners.
     Self.eventSink = self
   }
 
   override func startObserving() {
+    isObserving = true
     Self.eventSink = self
     EGChatCallCoordinator.shared.flushPendingEvents()
   }
+
+  override func stopObserving() { isObserving = false }
 
   override func supportedEvents() -> [String] {
     ["callAnswered", "callRejected", "callEnded", "audioInterrupted", "audioRouteChanged"]
@@ -182,4 +225,10 @@ class EGChatCallModule: RCTEventEmitter {
   @objc func answerCall(_ callId: String) { EGChatCallCoordinator.shared.answerCall() }
   @objc func rejectCall(_ callId: String) { EGChatCallCoordinator.shared.rejectCall() }
   @objc func endCall(_ callId: String) { EGChatCallCoordinator.shared.endCall() }
+
+  /// Llamada que el usuario contestó en CallKit sin que el JS estuviera activo.
+  @objc func consumePendingAnsweredCall(_ resolve: @escaping RCTPromiseResolveBlock,
+                                        rejecter reject: @escaping RCTPromiseRejectBlock) {
+    resolve(EGChatCallCoordinator.shared.takePendingAnsweredCall())
+  }
 }
