@@ -659,7 +659,13 @@ export const callAPI = {
 // ══════════════════════════════════════════════════════════════════
 export const liaAPI = {
   chat: (message: string, history?: any[], lang?: string) =>
-    post<{ reply: string; action?: string; lang?: string }>('/api/lia/chat', { message, history, lang }),
+    post<{
+      reply: string;
+      action?: string;
+      lang?: string;
+      nav?: string | null;
+      transfer?: { destinatario: string; telefono?: string | null; importe: number; concepto?: string | null } | null;
+    }>('/api/lia/chat', { message, history, lang }),
   history: (limit = 30) =>
     get<{ messages: Array<{ role: 'user' | 'assistant'; content: string; time?: string }> }>(
       `/api/lia/history?limit=${limit}`,

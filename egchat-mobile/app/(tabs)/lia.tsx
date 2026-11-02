@@ -41,7 +41,25 @@ interface LIAMessage {
   content: string;
   time: string;
   attachment?: LIAAttachment;
+  nav?: string | null;
+  transfer?: { destinatario: string; telefono?: string | null; importe: number; concepto?: string | null } | null;
 }
+
+// Pantalla que abre cada acción que LIA decide ejecutar.
+const LIA_NAV: Record<string, { labelKey: string; href: string }> = {
+  cartera: { labelKey: 'wallet', href: '/(tabs)/monedero' },
+  enviar: { labelKey: 'send', href: '/(tabs)/monedero' },
+  recargar: { labelKey: 'topUp', href: '/(tabs)/monedero' },
+  retirar: { labelKey: 'withdraw', href: '/(tabs)/monedero' },
+  tarjetas: { labelKey: 'cards', href: '/(tabs)/monedero' },
+  taxi: { labelKey: 'taxi', href: '/mitaxi' },
+  salud: { labelKey: 'health', href: '/(tabs)/servicios' },
+  supermercados: { labelKey: 'supermarket', href: '/supermercados' },
+  noticias: { labelKey: 'news', href: '/(tabs)/servicios' },
+  bancos: { labelKey: 'banks', href: '/bancos' },
+  seguros: { labelKey: 'insurance', href: '/seguros-salud' },
+  cemac: { labelKey: 'svcCemacZone', href: '/cemac' },
+};
 
 const TTS_LOCALE: Record<string, string> = { es: 'es-ES', fr: 'fr-FR', en: 'en-US', pt: 'pt-PT' };
 
@@ -660,7 +678,14 @@ export default function LiaScreen() {
     try {
       const history = sessionHistory.slice(-7, -1).map(m => ({ role: m.role, content: m.content }));
       const res = await liaAPI.chat(msg, history, language);
-      const aiMsg: LIAMessage = { id: (Date.now() + 1).toString(), role: 'assistant', content: res.reply, time };
+      const aiMsg: LIAMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: res.reply,
+        time,
+        nav: res.nav || null,
+        transfer: res.transfer || null,
+      };
       setMessages(prev => { const next = [...prev, aiMsg]; sessionHistory = next; return next; });
       setShowChips(true);
       speakMessage(res.reply, aiMsg.id);
@@ -872,6 +897,24 @@ export default function LiaScreen() {
                         style={[s.bubbleText, attachment ? { marginTop: 8 } : null, isUser ? s.textUser : { color: C.textPrimary }]}
                       />
                     )}
+                    {!isUser && (item.nav || item.transfer) && (() => {
+                      const target = item.nav && LIA_NAV[item.nav] ? LIA_NAV[item.nav] : null;
+                      const label = target
+                        ? `${t('liaOpen')} ${t(target.labelKey)}`
+                        : item.transfer
+                          ? `${t('liaOpen')} ${t('wallet')}`
+                          : null;
+                      if (!label) return null;
+                      return (
+                        <TouchableOpacity
+                          style={s.navBtn}
+                          activeOpacity={0.85}
+                          onPress={() => router.push((target ? target.href : '/(tabs)/monedero') as any)}
+                        >
+                          <Text style={s.navBtnText}>{label}</Text>
+                        </TouchableOpacity>
+                      );
+                    })()}
                     <View style={[s.metaRow, isUser && s.metaRowUser]}>
                       {!isUser && (
                         <TouchableOpacity
@@ -1120,6 +1163,8 @@ const s = StyleSheet.create({
   fileMetaUser: { color: 'rgba(255,255,255,0.82)' },
   metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 5 },
   metaRowUser: { justifyContent: 'flex-end' },
+  navBtn: { alignSelf: 'flex-start', marginTop: 10, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16, backgroundColor: '#00B4E6' },
+  navBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   speakBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 10, backgroundColor: 'rgba(0,200,160,0.1)' },
   speakBtnActive: { backgroundColor: 'rgba(0,200,160,0.2)' },
   speakBtnText: { fontSize: 10, fontWeight: '700', color: '#00A38A' },
