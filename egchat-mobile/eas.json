@@ -45,9 +45,6 @@
         "autoIncrement": true,
         "resourceClass": "m-medium"
       },
-      "prebuild": {
-        "skip": true
-      },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://egchat-api-xlxj.onrender.com"
       }

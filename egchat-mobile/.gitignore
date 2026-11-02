@@ -49,7 +49,7 @@ dist/
 web-build/
 
 # Native
-# ios/ - COMMENTED OUT: We need to commit our custom Swift modules for VoIP
+ios/
 android/
 
 # Environment

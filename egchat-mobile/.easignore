@@ -1,1 +1,3 @@
-{}
+# This tells EAS Build to INCLUDE ios/ even though it's in .gitignore
+# EAS will upload our custom ios/ directory with VoIP modules
+!ios/
