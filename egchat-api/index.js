@@ -395,13 +395,13 @@ app.post('/api/admin/reset-all', async (req, res) => {
   results.push(await resetTable('chat_participants', 'joined_at'));
   results.push(await resetTable('chats', 'created_at'));
   results.push(await resetTable('contacts', 'created_at'));
-  results.push(await resetTable('transactions', 'created_at'));
-  results.push(await resetTable('recharge_codes', 'created_at'));
+  // wallets, transactions y recharge_codes quedan fuera a propósito: borrar el
+  // historial financiero deja los saldos sin asiento que los respalde y anula
+  // cualquier conciliación ante un supervisor.
   results.push(await resetTable('user_news_favorites', 'created_at'));
   results.push(await resetTable('insurance_claims', 'created_at'));
   results.push(await resetTable('insurance_policies', 'created_at'));
   results.push(await resetTable('lia_conversations', 'created_at'));
-  results.push(await resetTable('wallets', 'created_at'));
   results.push(await resetTable('notifications', 'created_at'));
   results.push(await resetTable('users', 'created_at'));
   return res.json({ message: 'Reset ejecutado', ok_tables: results.filter(r=>r.ok).map(r=>r.table), failed: results.filter(r=>!r.ok) });
@@ -3370,7 +3370,7 @@ app.get('/api/wallet/summary', auth, async (req, res) => {
   });
 });
 
-app.post('/api/wallet/hold', auth, async (req, res) => {
+app.post('/api/wallet/hold', auth, walletLimiter, async (req, res) => {
   const amount = Number(req.body?.amount || 0);
   const reference = req.body?.reference || `HOLD-${Date.now()}`;
   if (amount <= 0) return res.status(400).json({ message: 'Importe inválido' });
@@ -3382,23 +3382,36 @@ app.post('/api/wallet/hold', auth, async (req, res) => {
   res.status(201).json({ hold: tx, balance: Number(wallet.balance || 0) });
 });
 
-app.post('/api/wallet/hold/:id/capture', auth, async (req, res) => {
+app.post('/api/wallet/hold/:id/capture', auth, walletLimiter, async (req, res) => {
   const holdId = req.params.id;
   const { data: hold } = await supabase.from('transactions').select('*')
     .eq('id', holdId).eq('user_id', req.user.id).eq('type', 'hold').maybeSingle();
   if (!hold) return res.status(404).json({ message: 'Retención no encontrada' });
   if (hold.status !== 'pending') return res.status(400).json({ message: 'Retención ya procesada' });
-  const wallet = await getWalletSafe(req.user.id);
+
+  const pinCheck = await checkPinForOperation(req.user.id, req.body?.pin);
+  if (!pinCheck.ok) return pinErrorResponse(res, pinCheck.code);
+
   const amount = Number(hold.amount || 0);
-  if (amount > Number(wallet.balance || 0)) return res.status(400).json({ message: 'Saldo insuficiente para captura' });
-  const newBalance = Number(wallet.balance || 0) - amount;
-  await supabase.from('wallets').update({ balance: newBalance }).eq('user_id', req.user.id);
-  await supabase.from('transactions').update({ status: 'captured' }).eq('id', holdId);
+  // Reclamar la retención antes de mover dinero: dos peticiones simultáneas no
+  // pueden capturar la misma retención dos veces.
+  const { data: claimed } = await supabase.from('transactions')
+    .update({ status: 'captured' })
+    .eq('id', holdId).eq('user_id', req.user.id).eq('status', 'pending')
+    .select().maybeSingle();
+  if (!claimed) return res.status(409).json({ message: 'Retención ya en proceso' });
+
+  const debit = await debitWallet(req.user.id, amount);
+  if (!debit.ok) {
+    await supabase.from('transactions').update({ status: 'pending' }).eq('id', holdId);
+    return transferErrorResponse(res, debit.code);
+  }
+
   const { data: tx } = await supabase.from('transactions').insert({
     user_id: req.user.id, type: 'payment_capture', amount, method: 'EGCHAT',
     reference: `CAPTURE:${hold.reference || holdId}`, status: 'completed'
   }).select().single();
-  res.json({ balance: newBalance, transaction: tx });
+  res.json({ balance: debit.balance, transaction: tx });
 });
 
 app.post('/api/wallet/hold/:id/cancel', auth, async (req, res) => {
@@ -3411,25 +3424,10 @@ app.post('/api/wallet/hold/:id/cancel', auth, async (req, res) => {
   res.json({ message: 'Retención cancelada' });
 });
 
-app.post('/api/wallet/reverse/:txId', auth, async (req, res) => {
-  const txId = req.params.txId;
-  const { data: tx } = await supabase.from('transactions').select('*')
-    .eq('id', txId).eq('user_id', req.user.id).maybeSingle();
-  if (!tx) return res.status(404).json({ message: 'Transacción no encontrada' });
-  if (tx.status === 'reversed') return res.status(400).json({ message: 'Transacción ya revertida' });
-  const reversible = ['withdraw', 'transfer_sent', 'payment', 'payment_capture'];
-  if (!reversible.includes(tx.type)) return res.status(400).json({ message: 'Tipo no reversible' });
-  const wallet = await getWalletSafe(req.user.id);
-  const amount = Number(tx.amount || 0);
-  const newBalance = Number(wallet.balance || 0) + amount;
-  await supabase.from('wallets').update({ balance: newBalance }).eq('user_id', req.user.id);
-  await supabase.from('transactions').update({ status: 'reversed' }).eq('id', txId);
-  await supabase.from('transactions').insert({
-    user_id: req.user.id, type: 'reversal_credit', amount, method: 'EGCHAT',
-    reference: `REV:${txId}`, status: 'completed'
-  });
-  res.json({ balance: newBalance, message: 'Reverso aplicado' });
-});
+// No existe ya una ruta de reversión para el usuario: acreditaba el importe al
+// emisor sin descontarlo del receptor, que ya lo había cobrado, y cualquiera con
+// sesión podía ejecutarla. Las devoluciones se harán por el libro mayor, como
+// asiento de dos patas y con aprobación de administrador.
 
 const LEDGER_APPROVAL_THRESHOLD = Number(process.env.LEDGER_APPROVAL_THRESHOLD || 1000000);
 
@@ -3697,7 +3695,7 @@ const getUserStore = (store, userId) => {
   return store.get(key);
 };
 
-app.post('/api/cemac/transfers', auth, async (req, res) => {
+app.post('/api/cemac/transfers', auth, walletLimiter, async (req, res) => {
   try {
     const { from_country, to_country, beneficiary_name, beneficiary_account, amount, external_id } = req.body || {};
     
@@ -5068,10 +5066,16 @@ const createServiceOrder = async (userId, provider, serviceType, amount, contrac
 };
 
 const debitWalletWithTx = async (userId, amount, method, reference, txType = 'payment') => {
-  const { data: wallet } = await supabase.from('wallets').select('balance').eq('user_id', userId).single();
-  if (!wallet || amount > Number(wallet.balance || 0)) return { ok: false, message: 'Saldo insuficiente' };
-  const newBalance = Number(wallet.balance || 0) - Number(amount || 0);
-  await supabase.from('wallets').update({ balance: newBalance }).eq('user_id', userId);
+  const deb = await debitWallet(userId, Number(amount || 0));
+  if (!deb.ok) {
+    return {
+      ok: false,
+      code: deb.code,
+      message: deb.code === 'INSUFFICIENT_BALANCE'
+        ? 'Saldo insuficiente'
+        : 'No se pudo debitar el monedero. Inténtalo de nuevo.',
+    };
+  }
   const { data: tx } = await supabase.from('transactions').insert({
     user_id: userId,
     type: txType,
@@ -5081,7 +5085,7 @@ const debitWalletWithTx = async (userId, amount, method, reference, txType = 'pa
     status: 'completed'
   }).select().maybeSingle();
   await logAudit(userId, 'wallet_debit', 'wallet', tx?.id || reference, { amount, reference, txType });
-  return { ok: true, balance: newBalance, tx };
+  return { ok: true, balance: deb.balance, tx };
 };
 
 app.post('/api/servicios/segesa/consultar', auth, async (req, res) => {
@@ -5092,7 +5096,7 @@ app.post('/api/servicios/segesa/consultar', auth, async (req, res) => {
   res.json(response);
 });
 
-app.post('/api/servicios/segesa/pagar', auth, async (req, res) => {
+app.post('/api/servicios/segesa/pagar', auth, walletLimiter, async (req, res) => {
   const { contrato, importe, metodo } = req.body;
   if (!contrato || toNum(importe) <= 0) return res.status(400).json({ message: 'Datos invalidos', code: 'VALIDATION_ERROR' });
   const deb = await debitWalletWithTx(req.user.id, toNum(importe), metodo || 'EGCHAT', `SEGESA-${contrato}`, 'service_payment');
@@ -5110,7 +5114,7 @@ app.post('/api/servicios/snge/consultar', auth, async (req, res) => {
   res.json(response);
 });
 
-app.post('/api/servicios/snge/pagar', auth, async (req, res) => {
+app.post('/api/servicios/snge/pagar', auth, walletLimiter, async (req, res) => {
   const { contrato, importe, metodo } = req.body;
   if (!contrato || toNum(importe) <= 0) return res.status(400).json({ message: 'Datos invalidos', code: 'VALIDATION_ERROR' });
   const deb = await debitWalletWithTx(req.user.id, toNum(importe), metodo || 'EGCHAT', `SNGE-${contrato}`, 'service_payment');
@@ -5128,7 +5132,7 @@ app.post('/api/servicios/dgi/consultar', auth, async (req, res) => {
   res.json(response);
 });
 
-app.post('/api/servicios/dgi/pagar', auth, async (req, res) => {
+app.post('/api/servicios/dgi/pagar', auth, walletLimiter, async (req, res) => {
   const { nif, importe, referencia } = req.body;
   if (!nif || toNum(importe) <= 0) return res.status(400).json({ message: 'Datos invalidos', code: 'VALIDATION_ERROR' });
   const deb = await debitWalletWithTx(req.user.id, toNum(importe), 'EGCHAT', `DGI-${nif}-${referencia || 'R'}`, 'tax_payment');
@@ -5180,7 +5184,7 @@ app.get('/api/supermarkets/:smId/products', auth, async (req, res) => {
   res.json(result);
 });
 
-app.post('/api/supermarkets/orders', auth, async (req, res) => {
+app.post('/api/supermarkets/orders', auth, walletLimiter, async (req, res) => {
   const { items, supermarketId, address, external_id } = req.body;
   if (external_id) {
     const { data: existing } = await supabase.from('service_orders').select('*').eq('order_ref', external_id).eq('user_id', req.user.id).maybeSingle();
@@ -5660,7 +5664,7 @@ app.post('/api/insurance/quote', auth, async (req, res) => {
 });
 
 // Contratar seguro
-app.post('/api/insurance/contract', auth, async (req, res) => {
+app.post('/api/insurance/contract', auth, walletLimiter, async (req, res) => {
   try {
     const { insurance_type, coverage_amount, duration_months, payment_method } = req.body;
 
@@ -5690,8 +5694,13 @@ app.post('/api/insurance/contract', auth, async (req, res) => {
       return res.status(400).json({ message: 'Saldo insuficiente para contratar seguro' });
     }
 
+    // Cobrar antes de emitir: dos peticiones simultáneas no pueden quedarse con
+    // dos pólizas pagando una sola vez.
+    const debit = await debitWallet(req.user.id, total_premium);
+    if (!debit.ok) return transferErrorResponse(res, debit.code);
+
     // Crear pÁƒÂ³liza
-    const { data: policy } = await supabase
+    const { data: policy, error: policyError } = await supabase
       .from('insurance_policies')
       .insert({
         user_id: req.user.id,
@@ -5706,13 +5715,10 @@ app.post('/api/insurance/contract', auth, async (req, res) => {
       })
       .select()
       .single();
-
-    // Procesar pago
-    const newBalance = wallet.balance - total_premium;
-    await supabase
-      .from('wallets')
-      .update({ balance: newBalance })
-      .eq('user_id', req.user.id);
+    if (policyError) {
+      await creditWallet(req.user.id, total_premium);
+      return res.status(500).json({ message: 'No se pudo emitir la póliza' });
+    }
 
     // Registrar transacciÁƒÂ³n
     await supabase
@@ -5734,7 +5740,7 @@ app.post('/api/insurance/contract', auth, async (req, res) => {
     res.json({
       message: 'Seguro contratado exitosamente',
       policy,
-      balance: newBalance
+      balance: debit.balance
     });
   } catch (e) {
     console.error('Contract insurance error:', e);
