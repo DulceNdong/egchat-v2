@@ -414,6 +414,10 @@ export class CallManager {
     // Iniciar poll de cancelación: detecta si el caller cuelga antes de que
     // el callee abra la app o acepte — para el timbre y limpia el estado.
     this._startPoll('callee', 'fast');
+    // El watchdog de 90s solo se armaba para el llamante. Si el poll no puede
+    // leer la sesión (red caída, fila ya caducada en el servidor), el teléfono
+    // que recibe seguía timbrando sin límite.
+    this._startCallTimeout();
     this._subscribeRealtime();
   }
 
@@ -1394,7 +1398,17 @@ export class CallManager {
           }
         }
 
-      } catch { /* red caída — retry en siguiente ciclo */ }
+      } catch (e: any) {
+        // 404 ≠ red caída. El API borra la sesión al caducar (expires_at = NOW()+5min),
+        // así que GET /api/call/:id responde 404 y el timbre se quedaba sonando para
+        // siempre porque el branch «!s → endCall()» nunca llegaba a ejecutarse.
+        if (e?.status === 404) {
+          if (this._commState === 'ringing' || this._commState === 'calling') this._setCommState('missed');
+          this.endCall();
+          return;
+        }
+        /* red caída — retry en siguiente ciclo */
+      }
     }, INTERVAL);
   }
 
@@ -1415,7 +1429,13 @@ export class CallManager {
           this._onCallConnected();
           this._stopPolling();
         }
-      } catch { /* */ }
+      } catch (e: any) {
+        if (e?.status === 404) {
+          if (this._commState === 'ringing' || this._commState === 'calling') this._setCommState('missed');
+          this.endCall();
+          return;
+        }
+      }
     }, 2000);
   }
 

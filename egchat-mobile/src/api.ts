@@ -235,7 +235,11 @@ async function request<T>(
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({ message: res.statusText }));
-      throw new Error(err.message || `Error ${res.status}`);
+      // El estado HTTP viaja en el error: hay rutas donde un 404 significa
+      // «el recurso ya no existe» (fin de una llamada) y no «reintenta».
+      const e = new Error(err.message || `Error ${res.status}`) as Error & { status?: number };
+      e.status = res.status;
+      throw e;
     }
 
     // 204 No Content y respuestas vacías (típico en DELETE) — no intentar parsear JSON

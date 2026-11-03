@@ -7,6 +7,7 @@ const useRealWebRTC = process.env.EXPO_PUBLIC_ENABLE_WEBRTC !== '0';
 // ── Módulos nativos → stubs web ───────────────────────────────────
 const WEB_STUBS = {
   'react-native-maps':                        './src/stubs/react-native-maps.web.js',
+  'react-native-vision-camera':               './src/stubs/react-native-vision-camera.web.js',
   'expo-secure-store':                        './src/stubs/expo-secure-store.web.js',
   'expo-notifications':                       './src/stubs/expo-notifications.web.js',
   'expo-local-authentication':                './src/stubs/expo-local-authentication.web.js',
