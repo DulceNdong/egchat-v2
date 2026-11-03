@@ -24,8 +24,10 @@ project = Xcodeproj::Project.open(PROJ)
 app_target = project.targets.find { |t| t.name == 'EGCHAT' } or abort 'no app target'
 
 EXTENSIONS = {
-  'EGChatNotifService' => { sources: ['NotificationService.swift'],
-                            entitlements: 'EGChatNotifService/EGChatNotifService.entitlements' },
+  # La NSE va sin entitlements: la capacidad Communication Notifications vive en
+  # la app contenedora, y Apple rechaza capacidades nuevas en el App ID de la
+  # extensión cuando EAS las sincroniza con la API key de ASC.
+  'EGChatNotifService' => { sources: ['NotificationService.swift'], entitlements: nil },
   'EGChatShare'        => { sources: ['ShareViewController.swift'], entitlements: 'EGChatShare/EGChatShareRelease.entitlements' },
 }
 
