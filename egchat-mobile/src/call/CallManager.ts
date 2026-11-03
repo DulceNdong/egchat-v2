@@ -411,6 +411,10 @@ export class CallManager {
     // Iniciar poll de cancelación: detecta si el caller cuelga antes de que
     // el callee abra la app o acepte — para el timbre y limpia el estado.
     this._startPoll('callee', 'fast');
+    // El watchdog de 90s solo se armaba para el llamante. Si el poll no puede
+    // leer la sesión (red caída, fila ya caducada en el servidor), el teléfono
+    // que recibe seguía timbrando sin límite.
+    this._startCallTimeout();
     this._subscribeRealtime();
   }
 
