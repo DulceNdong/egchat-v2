@@ -102,7 +102,10 @@ final class EGChatCallCoordinator: NSObject, CXProviderDelegate {
   /// "contestada" del servidor no debe tumbar la llamada viva.
   func endRingingCall(matching callId: String) {
     guard let uuid = activeCallUUID, activeCallId == callId else { return }
-    guard callController.call(at: uuid)?.isConnected != true else { return }
+    // `isCallActive` la fija el propio delegate de CallKit al contestar aquí, así
+    // que es la única fuente de verdad local: CXCallController no expone
+    // `call(at:)` ni `calls` en este SDK.
+    guard !isCallActive else { return }
     provider.reportCall(with: uuid, endedAt: Date(), reason: .remoteEnded)
     cleanup()
   }
