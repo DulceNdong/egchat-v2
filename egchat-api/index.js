@@ -331,10 +331,10 @@ const emitToUsers = (userIds, payload) => {
   uniq.forEach((id) => emitToUser(id, payload));
 };
 
-// Avisar por SSE a la otra parte de una llamada. La app ya escucha
-// 'call_answered' y 'call_ended' para cortar el timbre al instante; sin este
-// aviso el llamante depende del ciclo de polling y sigue sonando varios
-// segundos (o minutos) después de que el otro contestó o colgó.
+// Avisar por SSE a TODOS los participantes de una señal de llamada. Antes se
+// avisaba solo al usuario distinto del que llama, así que el segundo iPhone del
+// que contesta seguía sonando sin que nadie le dijera nada. El emisor también
+// recibe el aviso: cierra sus otras pestañas y dispositivos de una vuelta.
 const notifyCallPeer = async (callId, selfUserId, payload) => {
   try {
     const { data } = await supabase
@@ -343,9 +343,9 @@ const notifyCallPeer = async (callId, selfUserId, payload) => {
       .eq('call_id', callId)
       .maybeSingle();
     if (!data) return;
-    const iAmCaller = String(data.caller_id) === String(selfUserId);
-    const peer = iAmCaller ? data.target_user_id : data.caller_id;
-    if (peer) emitToUser(peer, payload);
+    const users = [...new Set([data.caller_id, data.target_user_id]
+      .filter(Boolean).map((id) => String(id)))];
+    emitToUsers(users, payload);
   } catch (e) {
     console.warn('[call/notify-peer]', e.message);
   }
