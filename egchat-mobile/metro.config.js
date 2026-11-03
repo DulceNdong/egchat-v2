@@ -30,6 +30,17 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     };
   }
   
+  // Fix react-native-is-edge-to-edge resolution issue
+  if (moduleName === 'react-native-is-edge-to-edge') {
+    const indexPath = platform === 'android' 
+      ? 'node_modules/react-native-is-edge-to-edge/dist/index.android.js'
+      : 'node_modules/react-native-is-edge-to-edge/dist/index.js';
+    return {
+      filePath: path.resolve(__dirname, indexPath),
+      type: 'sourceFile',
+    };
+  }
+  
   if (platform === 'web' && WEB_STUBS[moduleName]) {
     return {
       filePath: path.resolve(__dirname, WEB_STUBS[moduleName]),
@@ -45,7 +56,6 @@ config.watchFolders = [];
 config.resolver.blockList = [
   /android\/.*/,
   /ios\/.*/,
-  /dist\/.*/,
   /\.git\/.*/,
 ];
 
