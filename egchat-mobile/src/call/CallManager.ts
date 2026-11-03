@@ -1356,7 +1356,17 @@ export class CallManager {
           }
         }
 
-      } catch { /* red caída — retry en siguiente ciclo */ }
+      } catch (e: any) {
+        // 404 ≠ red caída. El API borra la sesión al caducar (expires_at = NOW()+5min),
+        // así que GET /api/call/:id responde 404 y el timbre se quedaba sonando para
+        // siempre porque el branch «!s → endCall()» nunca llegaba a ejecutarse.
+        if (e?.status === 404) {
+          if (this._commState === 'ringing' || this._commState === 'calling') this._setCommState('missed');
+          this.endCall();
+          return;
+        }
+        /* red caída — retry en siguiente ciclo */
+      }
     }, INTERVAL);
   }
 
@@ -1377,7 +1387,13 @@ export class CallManager {
           this._onCallConnected();
           this._stopPolling();
         }
-      } catch { /* */ }
+      } catch (e: any) {
+        if (e?.status === 404) {
+          if (this._commState === 'ringing' || this._commState === 'calling') this._setCommState('missed');
+          this.endCall();
+          return;
+        }
+      }
     }, 2000);
   }
 
