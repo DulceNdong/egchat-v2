@@ -1,6 +1,7 @@
 import Expo
 import React
 import ReactAppDependencyProvider
+import UserNotifications
 
 @UIApplicationMain
 public class AppDelegate: ExpoAppDelegate {
@@ -31,6 +32,27 @@ public class AppDelegate: ExpoAppDelegate {
 
     // Iniciar VoIP PushKit
     EGChatPushKitCoordinator.shared.start()
+
+    // La categoría del aviso se busca en el registro de la app, no en el de la
+    // extensión: si aquí no figura `INSendMessageIntent`, el sistema pinta el banner
+    // como texto plano aunque la NSE done el intent y lo aplique al contenido.
+    let replyAction = UNTextInputNotificationAction(
+      identifier: "REPLY_ACTION",
+      title: "Responder",
+      options: [],
+      textInputButtonTitle: "Enviar",
+      textInputPlaceholder: "Escribe un mensaje...")
+    let readAction = UNNotificationAction(
+      identifier: "MARK_READ_ACTION",
+      title: "Marcar como leído",
+      options: [])
+    UNUserNotificationCenter.current().setNotificationCategories([
+      UNNotificationCategory(
+        identifier: "EGCHAT_MESSAGE",
+        actions: [replyAction, readAction],
+        intentIdentifiers: ["INSendMessageIntent"],
+        options: [.customDismissAction])
+    ])
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }

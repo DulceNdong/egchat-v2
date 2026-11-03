@@ -85,8 +85,8 @@ class NotificationService: UNNotificationServiceExtension {
         group.notify(queue: .global()) { [weak self] in
             guard let self = self else { return }
 
-            // 1. Avatar circular con borde verde EGCHAT
-            let styledAvatar = avatarImage.map { self.makeStyledAvatar($0) }
+            // 1. Avatar circular con borde verde EGCHAT; sin foto del remitente, iniciales
+            let styledAvatar = avatarImage.map { self.makeStyledAvatar($0) } ?? self.makeInitialsAvatar(senderName)
 
             // 2. Adjuntar miniatura del mensaje (imagen/video) o ícono del tipo
             let attachmentImage = messageImage ?? self.makeMessageTypeIcon(messageType: messageType)
@@ -95,9 +95,7 @@ class NotificationService: UNNotificationServiceExtension {
             }
 
             // Adjuntar avatar también como attachment secundario
-            if let av = styledAvatar {
-                self.attachImage(av, identifier: "avatar", to: content, append: true)
-            }
+            self.attachImage(styledAvatar, identifier: "avatar", to: content, append: true)
 
             // 3. Communication Notification (iOS 15+)
             if #available(iOS 15.0, *) {
@@ -122,6 +120,27 @@ class NotificationService: UNNotificationServiceExtension {
     }
 
     // ── 1. Avatar circular con borde verde EGCHAT ────────────────────────────
+
+    /// 10 de los 18 dispositivos registrados no tienen `avatar_url`, así que el
+    /// servidor manda `senderAvatar` vacío y el banner salía sin ninguna imagen.
+    private func makeInitialsAvatar(_ name: String) -> UIImage {
+        let initials = name.split(separator: " ").prefix(2)
+            .map { String($0.prefix(1)).uppercased() }.joined()
+        let text = (initials.isEmpty ? "E" : initials) as NSString
+        let size: CGFloat = 120
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size))
+        return renderer.image { ctx in
+            egchatGreen.setFill()
+            ctx.cgContext.fillEllipse(in: CGRect(x: 0, y: 0, width: size, height: size))
+            let attrs: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 46, weight: .semibold),
+                .foregroundColor: UIColor.white
+            ]
+            let box = text.size(withAttributes: attrs)
+            text.draw(at: CGPoint(x: (size - box.width) / 2, y: (size - box.height) / 2),
+                      withAttributes: attrs)
+        }
+    }
 
     private func makeStyledAvatar(_ image: UIImage) -> UIImage {
         let size: CGFloat = 120
@@ -285,10 +304,15 @@ class NotificationService: UNNotificationServiceExtension {
             options: []
         )
 
+        // El estilo de comunicación (avatar del remitente en el banner) se aplica
+        // porque la categoría declara el intent de mensaje por su identificador. Con
+        // `intentIdentifiers: []` el sistema trata el aviso como texto plano aunque
+        // la extensión done el INSendMessageIntent y lo aplique al contenido.
+        // No existe inicializador con `intentCategories:` en el SDK de UserNotifications.
         let category = UNNotificationCategory(
             identifier: "EGCHAT_MESSAGE",
             actions: [replyAction, readAction],
-            intentIdentifiers: [],
+            intentIdentifiers: ["INSendMessageIntent"],
             options: [.customDismissAction]
         )
 
@@ -297,7 +321,9 @@ class NotificationService: UNNotificationServiceExtension {
 
     // ── Lectura del payload ──────────────────────────────────────────────────
 
-    /// Expo mete el objeto `data` del push bajo userInfo["data"], no en la raíz.
+    /// Las claves del `data` del push pueden venir anidadas bajo `userInfo["data"]` o
+    /// ya subidas a la raíz de `userInfo`; se prueban las dos. Con la build 126 la
+    /// miniatura salía leyendo solo la raíz, así que la raíz es el caso normal.
     /// Con `url` exige http(s) para descartar iconos relativos tipo `/favicon.svg`,
     /// que URL(string) acepta pero nunca descargan.
     private func payloadString(_ content: UNNotificationContent, _ keys: [String], url: Bool = false) -> String? {
