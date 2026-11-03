@@ -1,40 +1,105 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { taxiAPI } from '../src/api';
+import { serviciosAPI, taxiAPI } from '../src/api';
 import { EGInput, EGButton } from '../src/components/ui';
 import { Colors, Typography, Spacing, BorderRadius, FontSize, FontWeight, Shadow } from '../src/theme';
 import { useThemeContext } from '../src/theme/ThemeContext';
 import { DarkColors } from '../src/theme/darkMode';
 
-const RIDE_TYPES = [
-  { id: 'moto', label: 'Moto', sub: '1 pasajero', price: 500, eta: '2 min', color: '#F97316', icon: '🏍️' },
-  { id: 'taxi', label: 'Taxi', sub: '4 pasajeros', price: 1000, eta: '4 min', color: '#EAB308', icon: '🚕' },
-  { id: 'suv', label: 'Confort', sub: 'SUV 4 plazas', price: 2000, eta: '5 min', color: '#6366F1', icon: '🚙' },
-  { id: 'vip', label: 'VIP', sub: 'Premium', price: 3500, eta: '7 min', color: '#7C3AED', icon: '🚘' },
-];
+// La presentacion es local; el precio lo pone service_tariffs en el servidor.
+const RIDE_PRESENTATION: Record<string, { label: string; sub: string; eta: string; color: string; icon: string }> = {
+  moto:     { label: 'Moto',    sub: '1 pasajero',   eta: '2 min', color: '#F97316', icon: '🏍️' },
+  basic:    { label: 'Taxi',    sub: '4 pasajeros',  eta: '4 min', color: '#EAB308', icon: '🚕' },
+  premium:  { label: 'VIP',     sub: 'Premium',      eta: '7 min', color: '#7C3AED', icon: '🚘' },
+};
+
+type Ride = { id: string; label: string; sub: string; eta: string; color: string; icon: string; price: number | null };
 
 export default function MiTaxiScreen() {
   const [origin, setOrigin] = useState('');
   const [dest, setDest] = useState('');
-  const [selected, setSelected] = useState(RIDE_TYPES[1]);
+  const [rides, setRides] = useState<Ride[]>([]);
+  const [selected, setSelected] = useState<Ride | null>(null);
   const [step, setStep] = useState<'form' | 'searching' | 'matched'>('form');
   const [loading, setLoading] = useState(false);
+  const [rideId, setRideId] = useState<string | null>(null);
+  const [charged, setCharged] = useState<number | null>(null);
+  const [driver, setDriver] = useState<any>(null);
+  const [etaMin, setEtaMin] = useState<number | null>(null);
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
 
+  useEffect(() => {
+    let vivo = true;
+    (async () => {
+      try {
+        const res = await serviciosAPI.tarifas();
+        if (!vivo) return;
+        const lista: Ride[] = (res?.tarifas || [])
+          .filter((t: any) => t.service === 'taxi')
+          .map((t: any) => ({
+            id: t.variant,
+            price: Number(t.amount),
+            ...(RIDE_PRESENTATION[t.variant] || { label: t.variant, sub: '', eta: '', color: Colors.accent, icon: '🚕' }),
+          }));
+        setRides(lista);
+        setSelected(lista.find(r => r.id === 'basic') || lista[0] || null);
+      } catch {
+        Alert.alert('Sin conexión', 'No se pudieron cargar las tarifas del taxi.');
+      }
+    })();
+    return () => { vivo = false; };
+  }, []);
+
   const requestRide = async () => {
     if (!origin.trim() || !dest.trim()) { Alert.alert('Error', 'Introduce origen y destino'); return; }
+    if (!selected) { Alert.alert('Tarifas no disponibles', 'Revisa tu conexión e inténtalo de nuevo.'); return; }
     setLoading(true);
     setStep('searching');
     try {
-      await taxiAPI.requestRide({ address: origin }, { address: dest }, selected.id);
-    } catch {}
-    setTimeout(() => { setStep('matched'); setLoading(false); }, 3000);
+      const res = await taxiAPI.requestRide({ address: origin }, { address: dest }, selected.id);
+      setRideId(res.rideId);
+      setDriver(res.driver || null);
+      setCharged(Number(res.tarifa));
+      setEtaMin(Number(res.eta) || null);
+      setStep('matched');
+      Alert.alert('Viaje solicitado', `Te hemos cobrado ${Number(res.tarifa).toLocaleString()} XAF.\nSaldo: ${Number(res.balance).toLocaleString()} XAF`);
+    } catch (e: any) {
+      setStep('form');
+      Alert.alert('No se pudo pedir el taxi', e?.message || 'Inténtalo de nuevo.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const cancel = () => { setStep('form'); setOrigin(''); setDest(''); setLoading(false); };
+  const cancel = async () => {
+    if (!rideId) { cancelLocal(); return; }
+    setLoading(true);
+    try {
+      const res = await taxiAPI.cancelRide(rideId);
+      const devuelto = Number(res?.reembolsado || 0);
+      cancelLocal();
+      Alert.alert('Viaje cancelado', devuelto
+        ? `Se han devuelto ${devuelto.toLocaleString()} XAF a tu monedero.\nSaldo: ${Number(res?.balance || 0).toLocaleString()} XAF`
+        : 'No se ha devuelto dinero porque el viaje no estaba cobrado.');
+    } catch (e: any) {
+      Alert.alert('Error al cancelar', e?.message || 'Inténtalo de nuevo.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const cancelLocal = () => {
+    setStep('form');
+    setOrigin('');
+    setDest('');
+    setRideId(null);
+    setCharged(null);
+    setEtaMin(null);
+    setDriver(null);
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: C.bgPrimary }]} edges={['top']}>
@@ -50,17 +115,25 @@ export default function MiTaxiScreen() {
             <EGInput label="Origen" value={origin} onChangeText={setOrigin} placeholder="¿Dónde estás?" />
             <EGInput label="Destino" value={dest} onChangeText={setDest} placeholder="¿A dónde vas?" />
             <Text style={[styles.sectionLabel, { color: C.textTertiary }]}>TIPO DE VEHÍCULO</Text>
-            {RIDE_TYPES.map(r => (
-              <TouchableOpacity key={r.id} style={[styles.rideCard, { backgroundColor: C.bgSecondary, borderColor: selected.id === r.id ? r.color : C.borderLight }, selected.id === r.id && { borderWidth: 2 }]} onPress={() => setSelected(r)} activeOpacity={0.7}>
+            {!rides.length && (
+              <Text style={[styles.searchSub, { color: C.textSecondary }]}>Cargando tarifas…</Text>
+            )}
+            {rides.map(r => (
+              <TouchableOpacity key={r.id} style={[styles.rideCard, { backgroundColor: C.bgSecondary, borderColor: selected?.id === r.id ? r.color : C.borderLight }, selected?.id === r.id && { borderWidth: 2 }]} onPress={() => setSelected(r)} activeOpacity={0.7}>
                 <View style={[styles.rideIcon, { backgroundColor: r.color + '20' }]}><Text style={styles.rideEmoji}>{r.icon}</Text></View>
                 <View style={styles.rideInfo}>
                   <Text style={[styles.rideName, { color: C.textPrimary }]}>{r.label}</Text>
                   <Text style={[styles.rideSub, { color: C.textTertiary }]}>{r.sub} · {r.eta}</Text>
                 </View>
-                <Text style={[styles.ridePrice, { color: r.color }]}>{r.price.toLocaleString()} XAF</Text>
+                <Text style={[styles.ridePrice, { color: r.color }]}>{r.price === null ? '—' : `${r.price.toLocaleString()} XAF`}</Text>
               </TouchableOpacity>
             ))}
-            <EGButton title="Pedir taxi" onPress={requestRide} style={{ marginTop: Spacing.md }} />
+            <EGButton title="Pedir taxi" onPress={requestRide} loading={loading} disabled={!selected} style={{ marginTop: Spacing.md }} />
+            {selected && (
+              <Text style={[styles.searchSub, { color: C.textTertiary, textAlign: 'center' }]}>
+                El importe se cobra de tu monedero al solicitar el viaje
+              </Text>
+            )}
           </>
         )}
         {step === 'searching' && (
@@ -75,18 +148,21 @@ export default function MiTaxiScreen() {
             <View style={[styles.driverCard, { backgroundColor: C.bgSecondary }]}>
               <View style={styles.driverAvatar}><Text style={styles.driverInitials}>CN</Text></View>
               <View style={styles.driverInfo}>
-                <Text style={[styles.driverName, { color: C.textPrimary }]}>Carlos Nguema</Text>
-                <Text style={[styles.driverSub, { color: C.textSecondary }]}>⭐ 4.9 · Toyota Corolla · GE-1234</Text>
+                <Text style={[styles.driverName, { color: C.textPrimary }]}>{driver?.name || 'Conductor'}</Text>
+                <Text style={[styles.driverSub, { color: C.textSecondary }]}>
+                  {driver?.rating ? `⭐ ${driver.rating} · ` : ''}{driver?.vehicle || ''}{driver?.plate ? ` · ${driver.plate}` : ''}
+                </Text>
               </View>
             </View>
             <View style={[styles.tripInfo, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
               <Text style={[styles.tripRow, { color: C.textPrimary }]}>📍 {origin}</Text>
               <Text style={[styles.tripArrow, { color: C.textTertiary }]}>↓</Text>
               <Text style={[styles.tripRow, { color: C.textPrimary }]}>🏁 {dest}</Text>
+              <Text style={[styles.tripRow, { color: C.textTertiary }]}>Ref: {rideId}</Text>
             </View>
-            <Text style={[styles.eta, { color: C.textPrimary }]}>🕐 Llegará en {selected.eta}</Text>
-            <Text style={styles.fare}>Tarifa estimada: {selected.price.toLocaleString()} XAF</Text>
-            <EGButton title="Cancelar viaje" onPress={cancel} variant="danger" style={{ marginTop: Spacing.md }} />
+            <Text style={[styles.eta, { color: C.textPrimary }]}>🕐 {etaMin ? `Llegará en ${etaMin} min` : 'Llegará en unos minutos'}</Text>
+            <Text style={styles.fare}>Cobrado: {(charged ?? 0).toLocaleString()} XAF</Text>
+            <EGButton title="Cancelar viaje" onPress={cancel} variant="danger" loading={loading} style={{ marginTop: Spacing.md }} />
           </>
         )}
       </ScrollView>

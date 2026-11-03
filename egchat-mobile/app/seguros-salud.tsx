@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Linking, Alert, TextInput, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { serviciosAPI } from '../src/api';
 import { Colors, Typography, Spacing, BorderRadius, FontSize, FontWeight, Shadow } from '../src/theme';
 import { useThemeContext } from '../src/theme/ThemeContext';
 import { DarkColors } from '../src/theme/darkMode';
@@ -43,16 +44,41 @@ export default function SegurosSaludScreen() {
   const [nif, setNif] = useState('');
   const [taxResult, setTaxResult] = useState<any>(null);
   const [taxLoading, setTaxLoading] = useState(false);
+  const [payingId, setPayingId] = useState<string | null>(null);
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
 
-  const consultarDGI = () => {
+  const consultarDGI = async () => {
     if (!nif.trim()) { Alert.alert('Error', 'Introduce tu NIF'); return; }
     setTaxLoading(true);
-    setTimeout(() => {
-      setTaxResult({ nif, estado: 'Al corriente', deuda: 0, periodo: '2025' });
-      setTaxLoading(false);
-    }, 1500);
+    setTaxResult(null);
+    try {
+      const res = await serviciosAPI.consultarDGI(nif.trim());
+      const facturas = res.facturas || [];
+      setTaxResult({
+        nif: nif.trim(),
+        estado: facturas.length ? 'Con deuda pendiente' : 'Al corriente',
+        deuda: facturas.reduce((s: number, f: any) => s + Number(f.amount || 0), 0),
+        facturas,
+      });
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'No se pudo consultar la deuda');
+    } finally { setTaxLoading(false); }
+  };
+
+  const pagarFactura = async (factura: any) => {
+    setPayingId(factura.id);
+    try {
+      const res = await serviciosAPI.pagarDGI(factura.id);
+      setTaxResult((prev: any) => {
+        const restantes = (prev.facturas || []).filter((f: any) => f.id !== factura.id);
+        const deuda = restantes.reduce((s: number, f: any) => s + Number(f.amount || 0), 0);
+        return { ...prev, facturas: restantes, deuda, estado: restantes.length ? 'Con deuda pendiente' : 'Al corriente' };
+      });
+      Alert.alert('✅', `Pago de ${Number(res.importe).toLocaleString()} XAF registrado.\nSaldo: ${Number(res.balance).toLocaleString()} XAF`);
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'No se pudo procesar el pago');
+    } finally { setPayingId(null); }
   };
 
   return (
@@ -125,10 +151,28 @@ export default function SegurosSaludScreen() {
             </TouchableOpacity>
             {taxResult && (
               <View style={[styles.resultCard, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
-                {[['NIF', taxResult.nif], ['Estado', taxResult.estado], ['Período', taxResult.periodo], ['Deuda', `${taxResult.deuda.toLocaleString()} XAF`]].map(([l, v]) => (
+                {[['NIF', taxResult.nif], ['Estado', taxResult.estado], ['Deuda', `${taxResult.deuda.toLocaleString()} XAF`]].map(([l, v]) => (
                   <View key={l} style={styles.resultRow}>
                     <Text style={[styles.resultLabel, { color: C.textSecondary }]}>{l}</Text>
                     <Text style={[styles.resultValue, { color: C.textPrimary }, l === 'Estado' && { color: Colors.accent }]}>{v}</Text>
+                  </View>
+                ))}
+                {(taxResult.facturas || []).map((f: any) => (
+                  <View key={f.id} style={[styles.resultRow, { marginTop: Spacing.md, paddingTop: Spacing.md, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.borderLight }]}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.resultValue, { color: C.textPrimary }]}>{f.concept || 'Liquidación'}</Text>
+                      <Text style={[styles.resultLabel, { color: C.textTertiary }]}>
+                        {`${f.period || '-'} · vence ${f.due_date ? String(f.due_date).slice(0, 10) : '-'}`}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={[styles.payBtn, payingId === f.id && { opacity: 0.5 }]}
+                      onPress={() => pagarFactura(f)}
+                      disabled={payingId !== null}>
+                      {payingId === f.id
+                        ? <ActivityIndicator color={Colors.white} />
+                        : <Text style={styles.callBtnText}>{`${Number(f.amount).toLocaleString()} XAF`}</Text>}
+                    </TouchableOpacity>
                   </View>
                 ))}
                 <TouchableOpacity style={[styles.callBtn, { marginTop: Spacing.md }]} onPress={() => Linking.openURL('tel:+240333095500')}>
@@ -217,4 +261,8 @@ const styles = StyleSheet.create({
   resultRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: Spacing.sm },
   resultLabel: { fontSize: FontSize.base, color: Colors.textSecondary },
   resultValue: { fontSize: FontSize.base, color: Colors.textPrimary, fontWeight: FontWeight.semibold },
+  payBtn: {
+    backgroundColor: Colors.accent, borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, minWidth: 110, alignItems: 'center',
+  },
 });

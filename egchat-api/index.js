@@ -3934,10 +3934,11 @@ app.post('/api/wallet/ledger/journals/:id/reject', requireAdmin, async (req, res
 
 app.get('/api/cemac/rates', auth, async (_req, res) => {
   try {
+    const comision = await readTariff('cemac', 'fee');
     res.json({
       base: 'XAF',
       countries: ['GQ', 'CM', 'GA', 'CG', 'TD', 'CF'],
-      transfer_fee_flat: 750,
+      transfer_fee_flat: comision ? Number(comision.amount) : null,
       sandbox: true,
       max_amount: 1000000,
       min_amount: 1000
@@ -3947,14 +3948,6 @@ app.get('/api/cemac/rates', auth, async (_req, res) => {
     res.status(500).json({ message: 'Error al obtener tasas', code: 'INTERNAL_ERROR' });
   }
 });
-
-const taxiFallbackStore = new Map();
-const cemacFallbackStore = new Map();
-const getUserStore = (store, userId) => {
-  const key = String(userId);
-  if (!store.has(key)) store.set(key, []);
-  return store.get(key);
-};
 
 app.post('/api/cemac/transfers', auth, walletLimiter, async (req, res) => {
   try {
@@ -3971,60 +3964,37 @@ app.post('/api/cemac/transfers', auth, walletLimiter, async (req, res) => {
       return res.status(400).json({ message: 'Paises no soportados', code: 'INVALID_COUNTRY' });
     }
     
-    // Verificar transferencia existente con fallback
+    // Reintentar el mismo pedido devuelve la transferencia ya creada.
     if (external_id) {
-      try {
-        const { data: existing } = await supabase.from('cemac_transfers').select('*').eq('transfer_ref', external_id).eq('user_id', req.user.id).maybeSingle();
-        if (existing) return res.json({ transfer: existing, idempotent: true });
-      } catch (checkError) {
-        console.warn('Existing transfer check failed:', checkError.message);
-      }
+      const { data: existing } = await supabase.from('cemac_transfers')
+        .select('*').eq('transfer_ref', external_id).eq('user_id', req.user.id).maybeSingle();
+      if (existing) return res.json({ transfer: existing, idempotent: true });
     }
 
-    const fee = 750;
+    const comision = await readTariff('cemac', 'fee');
+    if (!comision) return res.status(502).json({ message: 'Comision CEMAC no disponible', code: 'TARIFF_UNAVAILABLE' });
+    const fee = Number(comision.amount);
     const total = roundAmount(Number(amount) + fee);
     const transferRef = external_id || safeRef('CEMAC');
-    let transfer = null;
-    
-    // Insert con manejo de columnas y fallback
-    try {
-      const insertData = {
-        transfer_ref: transferRef,
-        user_id: req.user.id,
-        from_country,
-        to_country,
-        beneficiary_name,
-        beneficiary_account,
-        amount: Number(amount),
-        fee,
-        status: 'processing',
-        metadata: { sandbox: true },
-        created_by: req.user.id
-      };
-      
-      const { data } = await supabase.from('cemac_transfers').insert(insertData).select().single();
-      transfer = data;
-    } catch (insertError) {
-      console.warn('CEMAC transfer insert failed, using fallback:', insertError.message);
-      
-      // Fallback a memoria local
-      const fallbackTransfer = {
-        id: transferRef,
-        transfer_ref: transferRef,
-        user_id: req.user.id,
-        from_country,
-        to_country,
-        beneficiary_name,
-        beneficiary_account,
-        amount: Number(amount),
-        fee,
-        status: 'processing',
-        metadata: { sandbox: true },
-        created_at: new Date().toISOString(),
-        created_by: req.user.id
-      };
-      getUserStore(cemacFallbackStore, req.user.id).push(fallbackTransfer);
-      transfer = fallbackTransfer;
+
+    // Sin fila no hay cargo: antes el dinero salia del monedero aunque la
+    // transferencia solo existiera en la memoria del proceso.
+    const { data: transfer, error: insertError } = await supabase.from('cemac_transfers').insert({
+      transfer_ref: transferRef,
+      user_id: req.user.id,
+      from_country,
+      to_country,
+      beneficiary_name,
+      beneficiary_account,
+      amount: Number(amount),
+      fee,
+      status: 'processing',
+      metadata: { sandbox: true },
+      created_by: req.user.id
+    }).select().single();
+    if (insertError || !transfer) {
+      console.error('CEMAC transfer insert:', insertError?.message);
+      return res.status(502).json({ message: 'No se pudo registrar la transferencia', code: 'TRANSFER_NOT_SAVED' });
     }
 
     // El cargo se asienta después de crear la transferencia y con su referencia
@@ -4049,6 +4019,7 @@ app.post('/api/cemac/transfers', auth, walletLimiter, async (req, res) => {
       return transferErrorResponse(res, asiento.code);
     }
     const journalId = asiento.journal_id;
+    await supabase.from('cemac_transfers').update({ journal_id: journalId }).eq('id', transfer.id);
     await supabase.from('transactions').insert({
       user_id: req.user.id,
       type: 'cemac_transfer',
@@ -4058,12 +4029,7 @@ app.post('/api/cemac/transfers', auth, walletLimiter, async (req, res) => {
       status: 'completed',
     });
     
-    // Audit logging con fallback
-    try {
-      await logAudit(req.user.id, 'cemac_transfer_create', 'cemac', transfer?.id || transferRef, { transfer_ref: transferRef, amount: Number(amount), fee });
-    } catch (auditError) {
-      console.warn('Audit logging failed:', auditError.message);
-    }
+    await logAudit(req.user.id, 'cemac_transfer_create', 'cemac', transfer.id, { transfer_ref: transferRef, amount: Number(amount), fee });
 
     res.status(201).json({ transfer, ledger_journal_id: journalId, balance: await readWalletBalance(req.user.id) });
   } catch (e) {
@@ -4074,31 +4040,11 @@ app.post('/api/cemac/transfers', auth, walletLimiter, async (req, res) => {
 
 app.get('/api/cemac/transfers', auth, async (req, res) => {
   try {
-    let transfers = [];
-    
-    // Intentar obtener de Supabase
-    try {
-      const { data } = await supabase.from('cemac_transfers')
-        .select('*').eq('user_id', req.user.id).order('created_at', { ascending: false });
-      transfers = data || [];
-    } catch (dbError) {
-      console.warn('CEMAC transfers query failed, using fallback:', dbError.message);
-    }
-    
-    // Combinar con fallback store
-    const fallbackTransfers = getUserStore(cemacFallbackStore, req.user.id);
-    const combined = [...transfers, ...fallbackTransfers];
-    
-    // Eliminar duplicados por transfer_ref y ordenar
-    const uniqueTransfers = combined.filter((transfer, index, self) => 
-      index === self.findIndex(t => t.transfer_ref === transfer.transfer_ref)
-    );
-    
-    uniqueTransfers.sort((a, b) => 
-      new Date(b.created_at || 0) - new Date(a.created_at || 0)
-    );
-    
-    res.json(uniqueTransfers);
+    const { data: transfers, error } = await supabase.from('cemac_transfers')
+      .select('*').eq('user_id', req.user.id).order('created_at', { ascending: false });
+    if (error) return res.status(502).json({ message: 'No se pudieron listar las transferencias', code: 'TRANSFERS_UNAVAILABLE' });
+
+    res.json(transfers || []);
   } catch (e) {
     console.error('CEMAC transfers error:', e);
     res.status(500).json({ message: e?.message || 'Error interno', code: 'INTERNAL_ERROR' });
@@ -5315,113 +5261,309 @@ const createServiceOrder = async (userId, provider, serviceType, amount, contrac
   return { orderRef, record: data || insert };
 };
 
-// Contrapartida del libro mayor según el tipo de gasto: lo pagado a un proveedor
-// queda obligado en la cuenta puente hasta que se liquide con él.
-const SERVICE_LEDGER = {
-  service_payment: { account: 'SYS-SUSPENSE', operation: 'pago_servicio' },
-  tax_payment: { account: 'SYS-SUSPENSE', operation: 'pago_servicio' },
-  shopping_payment: { account: 'SYS-SUSPENSE', operation: 'pago_servicio' },
-  cemac_transfer: { account: 'SYS-SUSPENSE', operation: 'pago_servicio' },
-  taxi_rate: { account: 'SYS-FEES', operation: 'comision' },
-  payment: { account: 'SYS-SUSPENSE', operation: 'pago_servicio' },
+// Los tres proveedores de facturas (luz, agua, impuestos) comparten camino: la
+// deuda vive en service_bills y el importe lo fija esa tabla, nunca el cliente.
+const SERVICE_BILL_PROVIDERS = { segesa: 'SEGESA', snge: 'SNGE', dgi: 'DGI' };
+
+// El importe de un servicio ya no vive en el codigo ni en el cuerpo de la
+// peticion: vive en service_tariffs / service_products. El cliente manda que
+// variant contrata y la referencia de su pedido; la base de datos pone el precio
+// y asienta la deuda con el proveedor.
+const tariffError = (msg) => (/saldo insuficiente/i.test(String(msg || ''))
+  ? { ok: false, http: 400, code: 'INSUFFICIENT_BALANCE', message: 'Saldo insuficiente' }
+  : { ok: false, http: 500, code: 'CHARGE_FAILED', message: 'No se pudo completar el cargo' });
+
+const serviceCharge = async (userId, service, variant, ref) => {
+  const { data, error } = await supabase.rpc('service_charge', {
+    p_user_id: userId,
+    p_service: String(service),
+    p_variant: String(variant),
+    p_ref: String(ref),
+  });
+  if (error) return tariffError(error.message);
+  return data || { ok: false, code: 'CHARGE_FAILED' };
 };
 
-const debitWalletWithTx = async (userId, amount, method, reference, txType = 'payment', opts = {}) => {
-  const amt = Number(amount || 0);
-  // amt = 0 se usa en cargos simbólicos (valorar un taxi): no hay dinero que
-  // asentar, solo queda el apunte del movimiento.
-  let deb = { ok: true, balance: await readWalletBalance(userId) };
-  if (amt > 0) {
-    const mapa = SERVICE_LEDGER[txType] || SERVICE_LEDGER.payment;
-    deb = await debitWallet(userId, amt, {
-      operation: opts.operation || mapa.operation,
-      account: opts.account || mapa.account,
-      concept: opts.concept || `${txType} por ${method || 'EGCHAT'}`,
-      key: opts.key || null,
-      reference,
-    });
+const serviceBasketCharge = async (userId, ref, items, service = 'supermercado') => {
+  const { data, error } = await supabase.rpc('service_basket_charge', {
+    p_user_id: userId,
+    p_ref: String(ref),
+    p_items: items,
+    p_service: String(service),
+  });
+  if (error) return tariffError(error.message);
+  return data || { ok: false, code: 'CHARGE_FAILED' };
+};
+
+const serviceRefund = async (userId, service, ref, amount) => {
+  const { data, error } = await supabase.rpc('service_refund', {
+    p_user_id: userId,
+    p_service: String(service),
+    p_ref: String(ref),
+    p_amount: roundAmount(amount),
+  });
+  if (error) return tariffError(error.message);
+  return data || { ok: false, code: 'REFUND_FAILED' };
+};
+
+// Unidad de precio del pedido: se lee, nunca se envia desde la app.
+const readTariff = async (service, variant) => {
+  const { data, error } = await supabase
+    .from('service_tariffs')
+    .select('service, variant, amount, currency, concept')
+    .eq('service', service).eq('variant', variant).eq('active', true)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data;
+};
+
+// Catalogo de precios: la tabla que cobra es la misma que se muestra, para que
+// la app no pueda pintar un importe y pagar otro.
+const readProducts = async ({ category, notCategory, q } = {}) => {
+  let query = supabase
+    .from('service_products')
+    .select('id, name, category, price, currency')
+    .eq('active', true)
+    .order('id');
+  if (category) query = query.eq('category', category);
+  if (notCategory) query = query.neq('category', notCategory);
+  if (q) query = query.ilike('name', `%${String(q)}%`);
+  const { data, error } = await query;
+  if (error) return null;
+  return data || [];
+};
+
+// Lista de tarifas y catalogo: la app deja de llevar sus numeros en el codigo.
+app.get('/api/servicios/tarifas', auth, async (_req, res) => {
+  const { data: tarifas, error } = await supabase
+    .from('service_tariffs')
+    .select('service, variant, amount, currency, concept')
+    .eq('active', true)
+    .order('service').order('variant');
+  if (error) return res.status(502).json({ message: error.message, code: 'TARIFFS_UNAVAILABLE' });
+  const { data: productos } = await supabase
+    .from('service_products')
+    .select('id, name, category, price, currency')
+    .eq('active', true)
+    .order('category').order('name');
+  res.json({ tarifas: tarifas || [], productos: productos || [] });
+});
+
+const serviceConsult = async (provider, ref, userId) => {
+  const { data, error } = await supabase
+    .from('service_bills')
+    .select('id, contract_ref, amount, currency, period, concept, due_date, status')
+    .eq('provider', provider)
+    .eq('contract_ref', ref)
+    .eq('status', 'pending')
+    .or(`user_id.is.null,user_id.eq.${userId}`)
+    .order('due_date', { ascending: true });
+
+  if (error) {
+    console.error('serviceConsult error:', error.message);
+    return { ok: false, code: 'BILLS_UNAVAILABLE', message: 'No se pudo consultar la deuda. Inténtalo de nuevo.' };
   }
-  if (!deb.ok) {
-    return {
-      ok: false,
-      code: deb.code,
-      message: deb.code === 'INSUFFICIENT_BALANCE'
-        ? 'Saldo insuficiente'
-        : 'No se pudo debitar el monedero. Inténtalo de nuevo.',
-    };
+
+  const facturas = data || [];
+  const importe = facturas.reduce((s, f) => s + Number(f.amount || 0), 0);
+  return {
+    ok: true,
+    contract: ref,
+    importe,
+    estado: facturas.length ? 'pendiente' : 'sin_deuda',
+    facturas,
+  };
+};
+
+const servicePay = async (provider, billId, userId) => {
+  const { data, error } = await supabase.rpc('service_pay_bill', {
+    p_bill_id: billId,
+    p_user_id: userId,
+  });
+
+  if (error) {
+    console.error('servicePay error:', error.message);
+    if (/Saldo insuficiente/i.test(error.message || '')) {
+      return { ok: false, code: 'INSUFFICIENT_BALANCE', message: 'Saldo insuficiente' };
+    }
+    return { ok: false, code: 'PAY_FAILED', message: 'No se pudo completar el pago. Inténtalo de nuevo.' };
   }
-  const { data: tx } = await supabase.from('transactions').insert({
+
+  const r = data || {};
+  if (!r.ok) {
+    const codes = { BILL_NOT_FOUND: 404, BILL_NOT_PENDING: 409, BILL_OTHER_USER: 403 };
+    return { ok: false, http: codes[r.code] || 400, code: r.code || 'PAY_FAILED', ...r };
+  }
+
+  const balance = await readWalletBalance(userId);
+  const label = SERVICE_BILL_PROVIDERS[provider] || provider.toUpperCase();
+  await supabase.from('transactions').insert({
     user_id: userId,
-    type: txType,
-    amount,
-    method: method || 'EGCHAT',
-    reference,
-    status: 'completed'
-  }).select().maybeSingle();
-  await logAudit(userId, 'wallet_debit', 'wallet', tx?.id || reference, { amount, reference, txType });
-  return { ok: true, balance: deb.balance, tx };
+    type: 'service_payment',
+    amount: Number(r.amount),
+    method: 'EGCHAT',
+    reference: `${label}-${r.contract_ref}`,
+    status: 'completed',
+  });
+  await logAudit(userId, 'service_bill_paid', 'services', r.bill_id, r);
+
+  return {
+    ok: true,
+    response: {
+      success: true,
+      provider,
+      bill_id: r.bill_id,
+      importe: Number(r.amount),
+      balance,
+      journal_id: r.journal_id,
+      message: `Pago de ${label} completado`,
+    },
+  };
 };
 
 app.post('/api/servicios/segesa/consultar', auth, async (req, res) => {
   const { contrato } = req.body;
   if (!contrato) return res.status(400).json({ message: 'Numero de contrato requerido', code: 'VALIDATION_ERROR' });
-  const response = { contrato, titular: 'Cliente SEGESA', importe: Math.floor(Math.random()*15000)+5000, vencimiento: '2026-04-30', estado: 'pendiente', direccion: 'Malabo, Guinea Ecuatorial' };
-  await createServiceOrder(req.user.id, 'segesa', 'consultar', 0, contrato, req.body, response);
-  res.json(response);
+  const out = await serviceConsult('segesa', String(contrato), req.user.id);
+  if (!out.ok) return res.status(502).json(out);
+  await createServiceOrder(req.user.id, 'segesa', 'consultar', 0, String(contrato), req.body, out);
+  res.json(out);
 });
 
 app.post('/api/servicios/segesa/pagar', auth, walletLimiter, async (req, res) => {
-  const { contrato, importe, metodo } = req.body;
-  if (!contrato || toNum(importe) <= 0) return res.status(400).json({ message: 'Datos invalidos', code: 'VALIDATION_ERROR' });
-  const deb = await debitWalletWithTx(req.user.id, toNum(importe), metodo || 'EGCHAT', `SEGESA-${contrato}`, 'service_payment');
-  if (!deb.ok) return res.status(400).json({ message: deb.message, code: deb.code || 'INSUFFICIENT_BALANCE' });
-  const response = { success: true, balance: deb.balance, referencia: safeRef('SEG'), message: 'Pago de electricidad completado' };
-  await createServiceOrder(req.user.id, 'segesa', 'pagar', importe, contrato, req.body, response);
-  res.json(response);
+  const { factura_id } = req.body;
+  if (!factura_id) return res.status(400).json({
+    message: 'factura_id requerido: se paga una factura consultada, no un importe libre',
+    code: 'BILL_ID_REQUIRED',
+  });
+  const out = await servicePay('segesa', factura_id, req.user.id);
+  if (!out.ok) return res.status(out.http || 400).json(out);
+  await createServiceOrder(req.user.id, 'segesa', 'pagar', out.response.importe, out.response.bill_id, req.body, out.response);
+  res.json(out.response);
 });
 
 app.post('/api/servicios/snge/consultar', auth, async (req, res) => {
   const { contrato } = req.body;
   if (!contrato) return res.status(400).json({ message: 'Numero de contrato requerido', code: 'VALIDATION_ERROR' });
-  const response = { contrato, titular: 'Cliente SNGE', importe: Math.floor(Math.random()*8000)+2000, vencimiento: '2026-04-30', estado: 'pendiente', direccion: 'Malabo, Guinea Ecuatorial' };
-  await createServiceOrder(req.user.id, 'snge', 'consultar', 0, contrato, req.body, response);
-  res.json(response);
+  const out = await serviceConsult('snge', String(contrato), req.user.id);
+  if (!out.ok) return res.status(502).json(out);
+  await createServiceOrder(req.user.id, 'snge', 'consultar', 0, String(contrato), req.body, out);
+  res.json(out);
 });
 
 app.post('/api/servicios/snge/pagar', auth, walletLimiter, async (req, res) => {
-  const { contrato, importe, metodo } = req.body;
-  if (!contrato || toNum(importe) <= 0) return res.status(400).json({ message: 'Datos invalidos', code: 'VALIDATION_ERROR' });
-  const deb = await debitWalletWithTx(req.user.id, toNum(importe), metodo || 'EGCHAT', `SNGE-${contrato}`, 'service_payment');
-  if (!deb.ok) return res.status(400).json({ message: deb.message, code: deb.code || 'INSUFFICIENT_BALANCE' });
-  const response = { success: true, balance: deb.balance, referencia: safeRef('SNGE'), message: 'Pago de agua completado' };
-  await createServiceOrder(req.user.id, 'snge', 'pagar', importe, contrato, req.body, response);
-  res.json(response);
+  const { factura_id } = req.body;
+  if (!factura_id) return res.status(400).json({
+    message: 'factura_id requerido: se paga una factura consultada, no un importe libre',
+    code: 'BILL_ID_REQUIRED',
+  });
+  const out = await servicePay('snge', factura_id, req.user.id);
+  if (!out.ok) return res.status(out.http || 400).json(out);
+  await createServiceOrder(req.user.id, 'snge', 'pagar', out.response.importe, out.response.bill_id, req.body, out.response);
+  res.json(out.response);
 });
 
 app.post('/api/servicios/dgi/consultar', auth, async (req, res) => {
-  const { nif, tipo } = req.body;
+  const { nif } = req.body;
   if (!nif) return res.status(400).json({ message: 'NIF requerido', code: 'VALIDATION_ERROR' });
-  const response = { nif, tipo, importe: Math.floor(Math.random()*50000)+10000, periodo: '2026-T1', estado: 'pendiente', descripcion: `Impuesto ${tipo || 'general'}` };
-  await createServiceOrder(req.user.id, 'dgi', 'consultar', 0, nif, req.body, response);
-  res.json(response);
+  const out = await serviceConsult('dgi', String(nif), req.user.id);
+  if (!out.ok) return res.status(502).json(out);
+  await createServiceOrder(req.user.id, 'dgi', 'consultar', 0, String(nif), req.body, out);
+  res.json(out);
 });
 
 app.post('/api/servicios/dgi/pagar', auth, walletLimiter, async (req, res) => {
-  const { nif, importe, referencia } = req.body;
-  if (!nif || toNum(importe) <= 0) return res.status(400).json({ message: 'Datos invalidos', code: 'VALIDATION_ERROR' });
-  const deb = await debitWalletWithTx(req.user.id, toNum(importe), 'EGCHAT', `DGI-${nif}-${referencia || 'R'}`, 'tax_payment');
-  if (!deb.ok) return res.status(400).json({ message: deb.message, code: deb.code || 'INSUFFICIENT_BALANCE' });
-  const response = { success: true, balance: deb.balance, referencia: safeRef('DGI'), message: 'Pago de impuesto completado' };
-  await createServiceOrder(req.user.id, 'dgi', 'pagar', importe, nif, req.body, response);
-  res.json(response);
+  const { factura_id } = req.body;
+  if (!factura_id) return res.status(400).json({
+    message: 'factura_id requerido: se paga una factura consultada, no un importe libre',
+    code: 'BILL_ID_REQUIRED',
+  });
+  const out = await servicePay('dgi', factura_id, req.user.id);
+  if (!out.ok) return res.status(out.http || 400).json(out);
+  await createServiceOrder(req.user.id, 'dgi', 'pagar', out.response.importe, out.response.bill_id, req.body, out.response);
+  res.json(out.response);
 });
 
-app.post('/api/servicios/correos/enviar', auth, async (req, res) => {
+// Las deudas las trae el proveedor (fichero, ventanilla o integración), jamás la
+// app. Cada fila repetida del mismo fichero se ignora por el indice unico.
+app.post('/api/servicios/facturas/cargar', auth, requireAdmin, async (req, res) => {
+  const filas = Array.isArray(req.body?.facturas) ? req.body.facturas : [];
+  if (!filas.length) return res.status(400).json({ message: 'facturas[] requerido', code: 'VALIDATION_ERROR' });
+
+  let creadas = 0, repetidas = 0, invalidas = 0;
+  for (const f of filas) {
+    const provider = String(f?.provider || '').toLowerCase();
+    const ref = String(f?.contract_ref ?? f?.contrato ?? f?.nif ?? '').trim();
+    const amount = roundAmount(Number(f?.amount ?? f?.importe ?? 0));
+    if (!SERVICE_BILL_PROVIDERS[provider] || !ref || !(amount > 0)) { invalidas++; continue; }
+    const { error } = await supabase.from('service_bills').insert({
+      provider,
+      contract_ref: ref,
+      user_id: f?.user_id || null,
+      amount,
+      currency: f?.currency || WALLET_CURRENCY,
+      period: f?.period || null,
+      concept: f?.concept || null,
+      due_date: f?.due_date || null,
+    });
+    if (error) {
+      if (/duplicate key|already exists/i.test(error.message || '')) { repetidas++; continue; }
+      console.error('cargar facturas error:', error.message);
+      invalidas++;
+      continue;
+    }
+    creadas++;
+  }
+
+  await logAudit(req.user.id, 'service_bills_loaded', 'services', 'carga', { filas: filas.length, creadas, repetidas, invalidas });
+  res.json({ filas: filas.length, creadas, repetidas, invalidas });
+});
+
+// Deuda del usuario en todos los proveedores, para que la app no tenga que
+// adivinar contratos.
+app.get('/api/servicios/facturas', auth, async (req, res) => {
+  const { data, error } = await supabase
+    .from('service_bills')
+    .select('id, provider, contract_ref, amount, currency, period, concept, due_date, status')
+    .eq('status', 'pending')
+    .or(`user_id.eq.${req.user.id},user_id.is.null`)
+    .order('due_date', { ascending: true });
+  if (error) return res.status(502).json({ message: error.message, code: 'BILLS_UNAVAILABLE' });
+  const facturas = data || [];
+  res.json({
+    facturas,
+    total: facturas.reduce((s, f) => s + Number(f.amount || 0), 0),
+    por_proveedor: facturas.reduce((acc, f) => {
+      acc[f.provider] = (acc[f.provider] || 0) + Number(f.amount || 0);
+      return acc;
+    }, {}),
+  });
+});
+
+app.post('/api/servicios/correos/enviar', auth, walletLimiter, async (req, res) => {
   const { destinatario, peso, tipo } = req.body;
   if (!destinatario) return res.status(400).json({ message: 'destinatario requerido', code: 'VALIDATION_ERROR' });
-  const tarifa = tipo === 'express' ? 5000 : 2500;
-  const response = { tracking: `EG${Date.now()}`, tarifa, estimado: tipo === 'express' ? '1-2 dias' : '3-5 dias', destinatario, message: 'Paquete registrado correctamente' };
-  await createServiceOrder(req.user.id, 'correos', 'enviar', tarifa, destinatario, { destinatario, peso, tipo }, response);
+  const variant = ['nacional', 'express', 'internacional', 'apartado'].includes(tipo) ? tipo : 'nacional';
+
+  const tarifa = await readTariff('correos', variant);
+  if (!tarifa) return res.status(502).json({ message: 'Tarifa de Correos no disponible', code: 'TARIFF_UNAVAILABLE' });
+
+  const tracking = `EG${Date.now()}`;
+  const cargo = await serviceCharge(req.user.id, 'correos', variant, tracking);
+  if (!cargo.ok) return res.status(cargo.http || 400).json(cargo);
+
+  const balance = await readWalletBalance(req.user.id);
+  const response = {
+    tracking,
+    tarifa: Number(cargo.amount),
+    variante: variant,
+    estimado: variant === 'express' ? '1-2 dias' : '3-5 dias',
+    destinatario,
+    journal_id: cargo.journal_id,
+    balance,
+    message: 'Paquete registrado y pagado',
+  };
+  await createServiceOrder(req.user.id, 'correos', 'enviar', Number(cargo.amount), destinatario, { destinatario, peso, tipo: variant }, response);
   res.json(response);
 });
 
@@ -5438,14 +5580,6 @@ const SUPERMERCADOS = [
   { id: '2', name: 'Tienda Bata Centro', city: 'Bata', address: 'Av. Hassan II', phone: '+240 333 001', open: true },
   { id: '3', name: 'Mercado Mongomo', city: 'Mongomo', address: 'Plaza Central', phone: '+240 444 001', open: false },
 ];
-const PRODUCTOS = [
-  { id: '1', name: 'Arroz 5kg', price: 3500, category: 'AlimentaciÁƒÂ³n', stock: 50 },
-  { id: '2', name: 'Aceite 1L', price: 1200, category: 'AlimentaciÁƒÂ³n', stock: 30 },
-  { id: '3', name: 'Agua 6x1.5L', price: 2000, category: 'Bebidas', stock: 100 },
-  { id: '4', name: 'Leche 1L', price: 800, category: 'LÁƒÂ¡cteos', stock: 20 },
-  { id: '5', name: 'Pan de molde', price: 600, category: 'PanaderÁƒÂ­a', stock: 15 },
-];
-
 app.get('/api/supermarkets', auth, async (req, res) => {
   const { city } = req.query;
   const result = city ? SUPERMERCADOS.filter(s => s.city.toLowerCase() === city.toLowerCase()) : SUPERMERCADOS;
@@ -5453,9 +5587,11 @@ app.get('/api/supermarkets', auth, async (req, res) => {
 });
 
 app.get('/api/supermarkets/:smId/products', auth, async (req, res) => {
-  const { cat } = req.query;
-  const result = cat ? PRODUCTOS.filter(p => p.category === cat) : PRODUCTOS;
-  res.json(result);
+  const productos = await readProducts(req.query.cat
+    ? { category: req.query.cat }
+    : { notCategory: 'Medicamentos' });
+  if (productos === null) return res.status(502).json({ message: 'Catalogo no disponible', code: 'CATALOG_UNAVAILABLE' });
+  res.json(productos);
 });
 
 app.post('/api/supermarkets/orders', auth, walletLimiter, async (req, res) => {
@@ -5464,10 +5600,27 @@ app.post('/api/supermarkets/orders', auth, walletLimiter, async (req, res) => {
     const { data: existing } = await supabase.from('service_orders').select('*').eq('order_ref', external_id).eq('user_id', req.user.id).maybeSingle();
     if (existing) return res.json({ orderId: existing.order_ref, status: existing.status, total: existing.amount, balance: null, eta: '30-45 min', idempotent: true });
   }
-  const total = items?.reduce((s, i) => s + (i.price * i.qty), 0) || 0;
-  const deb = await debitWalletWithTx(req.user.id, total, 'EGCHAT', `SUPER-${supermarketId}`, 'shopping_payment');
-  if (!deb.ok) return res.status(400).json({ message: deb.message, code: deb.code || 'INSUFFICIENT_BALANCE' });
+  // El cuerpo puede traer precios: se ignoran. El total lo pone service_products.
+  const pedido = (Array.isArray(items) ? items : []).map(i => ({
+    product_id: String(i?.product_id ?? i?.id ?? '').trim(),
+    qty: Number(i?.qty ?? i?.cantidad ?? 1),
+  })).filter(i => i.product_id && i.qty > 0);
+  if (!pedido.length) {
+    return res.status(400).json({ message: 'Pedido vacio: cada linea necesita product_id y cantidad', code: 'VALIDATION_ERROR' });
+  }
+
   const orderId = external_id || safeRef('ORD');
+  const cargo = await serviceBasketCharge(req.user.id, orderId, pedido);
+  if (!cargo.ok) {
+    return res.status(cargo.http || 400).json({
+      message: cargo.code === 'PRODUCT_NOT_FOUND' ? 'Algun producto ya no esta en el catalogo'
+        : cargo.message || 'No se pudo completar el pedido',
+      code: cargo.code || 'ORDER_FAILED',
+    });
+  }
+
+  const total = Number(cargo.amount);
+  const balance = await readWalletBalance(req.user.id);
   await supabase.from('service_orders').upsert({
     order_ref: orderId,
     user_id: req.user.id,
@@ -5476,11 +5629,11 @@ app.post('/api/supermarkets/orders', auth, walletLimiter, async (req, res) => {
     contract_ref: String(supermarketId || ''),
     amount: total,
     status: 'completed',
-    payload: { items: items || [], address: address || '' },
-    response: { eta: '30-45 min' }
+    payload: { items: cargo.lines || pedido, address: address || '' },
+    response: { eta: '30-45 min', journal_id: cargo.journal_id }
   }, { onConflict: 'order_ref' });
-  await logAudit(req.user.id, 'supermarket_order_create', 'supermarkets', orderId, { total, supermarketId });
-  res.json({ orderId, status: 'confirmed', total, balance: deb.balance, eta: '30-45 min' });
+  await logAudit(req.user.id, 'supermarket_order_create', 'supermarkets', orderId, { total, supermarketId, journal_id: cargo.journal_id });
+  res.json({ orderId, status: 'confirmed', total, balance, eta: '30-45 min', journal_id: cargo.journal_id });
 });
 
 app.get('/api/supermarkets/orders', auth, async (req, res) => {
@@ -5533,21 +5686,32 @@ app.post('/api/salud/citas', auth, async (req, res) => {
 });
 
 app.get('/api/salud/medicamentos', auth, async (req, res) => {
-  const { q } = req.query;
-  const meds = [
-    { id: '1', name: 'Paracetamol 500mg', price: 500, stock: true },
-    { id: '2', name: 'Ibuprofeno 400mg', price: 800, stock: true },
-    { id: '3', name: 'Amoxicilina 500mg', price: 1500, stock: false },
-    { id: '4', name: 'Omeprazol 20mg', price: 1200, stock: true },
-  ];
-  const result = q ? meds.filter(m => m.name.toLowerCase().includes(q.toLowerCase())) : meds;
-  res.json(result);
+  const meds = await readProducts({ category: 'Medicamentos', q: req.query.q });
+  if (meds === null) return res.status(502).json({ message: 'Catalogo no disponible', code: 'CATALOG_UNAVAILABLE' });
+  res.json(meds);
 });
 
-app.post('/api/salud/medicamentos/pedido', auth, async (req, res) => {
-  const { items, farmaciaId, direccion, external_id } = req.body;
-  const total = items?.reduce((s, i) => s + (i.price * i.qty), 0) || 0;
+app.post('/api/salud/medicamentos/pedido', auth, walletLimiter, async (req, res) => {
+  const { items, farmaciaId, direccion, external_id } = req.body || {};
+  const pedido = (Array.isArray(items) ? items : []).map(i => ({
+    product_id: String(i?.product_id ?? i?.id ?? '').trim(),
+    qty: Number(i?.qty ?? i?.cantidad ?? 1),
+  })).filter(i => i.product_id && i.qty > 0);
+  if (!pedido.length) {
+    return res.status(400).json({ message: 'Pedido vacio: cada linea necesita product_id y cantidad', code: 'VALIDATION_ERROR' });
+  }
+
   const orderId = external_id || safeRef('MED');
+  const cargo = await serviceBasketCharge(req.user.id, orderId, pedido, 'farmacia');
+  if (!cargo.ok) {
+    return res.status(cargo.http || 400).json({
+      message: cargo.code === 'PRODUCT_NOT_FOUND' ? 'Algun producto ya no esta en el catalogo'
+        : cargo.message || 'No se pudo completar el pedido',
+      code: cargo.code || 'ORDER_FAILED',
+    });
+  }
+
+  const total = Number(cargo.amount);
   await supabase.from('service_orders').upsert({
     order_ref: orderId,
     user_id: req.user.id,
@@ -5556,80 +5720,68 @@ app.post('/api/salud/medicamentos/pedido', auth, async (req, res) => {
     contract_ref: String(farmaciaId || ''),
     amount: total,
     status: 'completed',
-    payload: { items: items || [], direccion: direccion || '' },
-    response: { eta: '20-30 min' }
+    payload: { items: cargo.lines || pedido, direccion: direccion || '' },
+    response: { eta: '20-30 min', journal_id: cargo.journal_id }
   }, { onConflict: 'order_ref' });
-  res.json({ orderId, status: 'confirmed', total, eta: '20-30 min', message: 'Pedido de medicamentos confirmado' });
+  await logAudit(req.user.id, 'medicament_order_create', 'salud', orderId, { total, farmaciaId, journal_id: cargo.journal_id });
+  res.json({ orderId, status: 'confirmed', total, balance: await readWalletBalance(req.user.id), eta: '20-30 min', journal_id: cargo.journal_id, message: 'Pedido de medicamentos confirmado y pagado' });
 });
 
 // ════════════════════════════════════════════════════════════════════
 // TAXI
 // ════════════════════════════════════════════════════════════════════
-app.post('/api/taxi/request', auth, async (req, res) => {
+app.post('/api/taxi/request', auth, walletLimiter, async (req, res) => {
   try {
     const { origin, dest, type } = req.body;
     if (!origin || !dest) return res.status(400).json({ message: 'origin y dest requeridos', code: 'VALIDATION_ERROR' });
-    const tarifa = type === 'premium' ? 3500 : type === 'moto' ? 800 : 1500;
-    
-    // Validar wallet con fallback
-    let wallet = null;
-    try {
-      const { data } = await supabase.from('wallets').select('balance').eq('user_id', req.user.id).single();
-      wallet = data;
-    } catch (e) {
-      console.warn('Wallet query failed, using fallback:', e.message);
-    }
-    
-    if (!wallet || tarifa > Number(wallet.balance || 0)) {
-      return res.status(400).json({ message: 'Saldo insuficiente', code: 'INSUFFICIENT_BALANCE' });
-    }
-    
+    const variant = ['moto', 'basic', 'premium'].includes(type) ? type : 'basic';
+
+    const tarifa = await readTariff('taxi', variant);
+    if (!tarifa) return res.status(502).json({ message: 'Tarifa de taxi no disponible', code: 'TARIFF_UNAVAILABLE' });
+
     const rideId = safeRef('RIDE');
-    const driver = { name: 'Carlos Mba', phone: '+240 222 555', rating: 4.8, plate: 'GE-1234', vehicle: type === 'moto' ? 'Moto Honda' : 'Toyota Corolla' };
-    
-    // Insert con manejo de columnas y fallback
-    let ride = null;
-    try {
-      const insertData = {
-        ride_ref: rideId,
-        user_id: req.user.id,
-        origin,
-        destination: dest,
-        ride_type: type || 'basic',
-        fare: tarifa,
-        status: 'searching',
-        driver
-      };
-      
-      // Intentar insert con columnas específicas
-      const { data } = await supabase.from('taxi_rides').insert(insertData).select().maybeSingle();
-      ride = data;
-    } catch (insertError) {
-      console.warn('Taxi ride insert failed, using fallback store:', insertError.message);
-      // Fallback a memoria local
-      const fallbackRide = {
-        id: rideId,
-        ride_ref: rideId,
-        user_id: req.user.id,
-        origin,
-        destination: dest,
-        ride_type: type || 'basic',
-        fare: tarifa,
-        status: 'searching',
-        driver,
-        created_at: new Date().toISOString()
-      };
-      getUserStore(taxiFallbackStore, req.user.id).push(fallbackRide);
-      ride = fallbackRide;
+    const driver = { name: 'Carlos Mba', phone: '+240 222 555', rating: 4.8, plate: 'GE-1234', vehicle: variant === 'moto' ? 'Moto Honda' : 'Toyota Corolla' };
+
+    // El viaje se escribe antes de cobrar: si no queda fila, no hay cargo.
+    const { data: ride, error: rideError } = await supabase.from('taxi_rides').insert({
+      ride_ref: rideId,
+      user_id: req.user.id,
+      origin,
+      destination: dest,
+      ride_type: variant,
+      fare: Number(tarifa.amount),
+      status: 'searching',
+      driver,
+    }).select().maybeSingle();
+    if (rideError || !ride) {
+      console.error('taxi_rides insert:', rideError?.message || 'sin fila insertada');
+      return res.status(502).json({ message: 'No se pudo registrar el viaje', code: 'RIDE_NOT_SAVED' });
     }
-    
-    try {
-      await logAudit(req.user.id, 'taxi_request', 'taxi', ride?.id || rideId, { tarifa, type });
-    } catch (auditError) {
-      console.warn('Audit logging failed:', auditError.message);
+
+    const cargo = await serviceCharge(req.user.id, 'taxi', variant, rideId);
+    if (!cargo.ok) {
+      await supabase.from('taxi_rides').update({ status: 'cancelled', updated_at: new Date().toISOString() })
+        .eq('id', ride.id).eq('charged_at', null);
+      return res.status(cargo.http || 400).json(cargo.code === 'INSUFFICIENT_BALANCE'
+        ? { message: 'Saldo insuficiente', code: 'INSUFFICIENT_BALANCE' }
+        : { message: 'No se pudo cobrar el viaje', code: cargo.code || 'CHARGE_FAILED' });
     }
-    
-    res.json({ rideId, driver, eta: Math.floor(Math.random() * 8) + 3, tarifa, type, status: 'searching' });
+
+    await supabase.from('taxi_rides')
+      .update({ status: 'assigned', charged_at: new Date().toISOString(), journal_id: cargo.journal_id })
+      .eq('id', ride.id);
+    await logAudit(req.user.id, 'taxi_request', 'taxi', ride.id, { fare: Number(cargo.amount), variant });
+
+    res.json({
+      rideId,
+      driver,
+      eta: Math.floor(Math.random() * 8) + 3,
+      tarifa: Number(cargo.amount),
+      type: variant,
+      status: 'assigned',
+      balance: await readWalletBalance(req.user.id),
+      journal_id: cargo.journal_id,
+    });
   } catch (error) {
     console.error('Taxi request error:', error);
     res.status(500).json({ message: 'Error al solicitar taxi', code: 'INTERNAL_ERROR' });
@@ -5638,27 +5790,12 @@ app.post('/api/taxi/request', auth, async (req, res) => {
 
 app.get('/api/taxi/:rideId/status', auth, async (req, res) => {
   try {
-    let ride = null;
-    
-    // Intentar obtener de Supabase
-    try {
-      const { data } = await supabase.from('taxi_rides')
-        .select('*').eq('user_id', req.user.id).eq('ride_ref', req.params.rideId).maybeSingle();
-      ride = data;
-    } catch (dbError) {
-      console.warn('Taxi status query failed, checking fallback:', dbError.message);
-    }
-    
-    // Si no hay datos, buscar en fallback store
-    if (!ride) {
-      const userRides = getUserStore(taxiFallbackStore, req.user.id);
-      ride = userRides.find(r => r.ride_ref === req.params.rideId);
-    }
-    
+    const { data: ride } = await supabase.from('taxi_rides')
+      .select('*').eq('user_id', req.user.id).eq('ride_ref', req.params.rideId).maybeSingle();
     if (!ride) {
       return res.status(404).json({ message: 'Viaje no encontrado', code: 'RIDE_NOT_FOUND' });
     }
-    
+
     const status = sandboxStatus.includes(ride.status) ? ride.status : 'processing';
     res.json({ 
       rideId: ride.ride_ref, 
@@ -5676,54 +5813,30 @@ app.get('/api/taxi/:rideId/status', auth, async (req, res) => {
 
 app.post('/api/taxi/:rideId/cancel', auth, async (req, res) => {
   try {
-    let ride = null;
-    
-    // Buscar en Supabase
-    try {
-      const { data } = await supabase.from('taxi_rides')
-        .select('*').eq('user_id', req.user.id).eq('ride_ref', req.params.rideId).maybeSingle();
-      ride = data;
-    } catch (dbError) {
-      console.warn('Taxi cancel query failed, checking fallback:', dbError.message);
+    const { data: ride } = await supabase.from('taxi_rides')
+      .select('*').eq('user_id', req.user.id).eq('ride_ref', req.params.rideId).maybeSingle();
+    if (!ride) return res.status(404).json({ message: 'Viaje no encontrado', code: 'RIDE_NOT_FOUND' });
+
+    // Un viaje cobrado se devuelve con su propio asiento, una sola vez: la clave
+    // de reembolso lleva el id del viaje, así que cancelar dos veces no devuelve
+    // dinero dos veces.
+    let reembolsado = 0;
+    if (ride.charged_at && !ride.refunded_at) {
+      const dev = await serviceRefund(req.user.id, 'taxi', ride.ride_ref, Number(ride.fare));
+      if (!dev.ok) return res.status(dev.http || 500).json({ message: 'No se pudo devolver el viaje', code: dev.code || 'REFUND_FAILED' });
+      reembolsado = Number(dev.amount);
     }
-    
-    // Si no hay datos, buscar en fallback store
-    if (!ride) {
-      const userRides = getUserStore(taxiFallbackStore, req.user.id);
-      ride = userRides.find(r => r.ride_ref === req.params.rideId);
-    }
-    
-    if (!ride) {
-      return res.status(404).json({ message: 'Viaje no encontrado', code: 'RIDE_NOT_FOUND' });
-    }
-    
-    // Actualizar en Supabase si tiene ID
-    if (ride.id && typeof ride.id === 'string' && !ride.id.startsWith('RIDE')) {
-      try {
-        await supabase.from('taxi_rides').update({ 
-          status: 'failed', 
-          updated_at: new Date().toISOString() 
-        }).eq('id', ride.id);
-      } catch (updateError) {
-        console.warn('Taxi cancel update failed:', updateError.message);
-      }
-    }
-    
-    // Actualizar en fallback store
-    const userRides = getUserStore(taxiFallbackStore, req.user.id);
-    const fallbackIndex = userRides.findIndex(r => r.ride_ref === req.params.rideId);
-    if (fallbackIndex !== -1) {
-      userRides[fallbackIndex].status = 'failed';
-      userRides[fallbackIndex].updated_at = new Date().toISOString();
-    }
-    
-    try {
-      await logAudit(req.user.id, 'taxi_cancel', 'taxi', ride.id, { ride_ref: ride.ride_ref });
-    } catch (auditError) {
-      console.warn('Audit logging failed:', auditError.message);
-    }
-    
-    res.json({ message: 'Viaje cancelado', rideId: req.params.rideId });
+
+    // Si no se devolvio nada, refunded_at no se toca: ponerlo a null dejaria el
+    // viaje otra vez reembolsable al tercer clic.
+    await supabase.from('taxi_rides')
+      .update(reembolsado
+        ? { status: 'cancelled', refunded_at: new Date().toISOString(), updated_at: new Date().toISOString() }
+        : { status: 'cancelled', updated_at: new Date().toISOString() })
+      .eq('id', ride.id);
+    await logAudit(req.user.id, 'taxi_cancel', 'taxi', ride.id, { ride_ref: ride.ride_ref, reembolsado });
+
+    res.json({ message: 'Viaje cancelado', rideId: req.params.rideId, reembolsado, balance: await readWalletBalance(req.user.id) });
   } catch (error) {
     console.error('Taxi cancel error:', error);
     res.status(500).json({ message: 'Error al cancelar viaje', code: 'INTERNAL_ERROR' });
@@ -5736,69 +5849,29 @@ app.post('/api/taxi/:rideId/rate', auth, async (req, res) => {
     if (!rating || rating < 1 || rating > 5) {
       return res.status(400).json({ message: 'Rating debe ser entre 1 y 5', code: 'INVALID_RATING' });
     }
-    
-    let ride = null;
-    
-    // Buscar en Supabase
-    try {
-      const { data } = await supabase.from('taxi_rides')
-        .select('*').eq('user_id', req.user.id).eq('ride_ref', req.params.rideId).maybeSingle();
-      ride = data;
-    } catch (dbError) {
-      console.warn('Taxi rate query failed, checking fallback:', dbError.message);
-    }
-    
-    // Si no hay datos, buscar en fallback store
-    if (!ride) {
-      const userRides = getUserStore(taxiFallbackStore, req.user.id);
-      ride = userRides.find(r => r.ride_ref === req.params.rideId);
-    }
-    
+
+    const { data: ride } = await supabase.from('taxi_rides')
+      .select('*').eq('user_id', req.user.id).eq('ride_ref', req.params.rideId).maybeSingle();
     if (!ride) {
       return res.status(404).json({ message: 'Viaje no encontrado', code: 'RIDE_NOT_FOUND' });
     }
-    
-    const updateData = {
+
+    // Valorar cierra el viaje: el cobro ya se hizo al solicitarlo, aqui solo
+    // queda la opinion del cliente y el estado.
+    await supabase.from('taxi_rides').update({
       rating: Number(rating),
       rating_comment: comment || null,
       status: 'completed',
       updated_at: new Date().toISOString()
-    };
-    
-    // Actualizar en Supabase si tiene ID
-    if (ride.id && typeof ride.id === 'string' && !ride.id.startsWith('RIDE')) {
-      try {
-        await supabase.from('taxi_rides').update(updateData).eq('id', ride.id);
-      } catch (updateError) {
-        console.warn('Taxi rate update failed:', updateError.message);
-      }
-    }
-    
-    // Actualizar en fallback store
-    const userRides = getUserStore(taxiFallbackStore, req.user.id);
-    const fallbackIndex = userRides.findIndex(r => r.ride_ref === req.params.rideId);
-    if (fallbackIndex !== -1) {
-      Object.assign(userRides[fallbackIndex], updateData);
-    }
-    
-    let deb = { balance: 0 };
-    try {
-      deb = await debitWalletWithTx(req.user.id, 0, 'EGCHAT', `TAXI-RATE-${req.params.rideId}`, 'taxi_rate');
-    } catch (walletError) {
-      console.warn('Wallet debit failed:', walletError.message);
-    }
-    
-    try {
-      await logAudit(req.user.id, 'taxi_rate', 'taxi', ride.id, { ride_ref: ride.ride_ref, rating });
-    } catch (auditError) {
-      console.warn('Audit logging failed:', auditError.message);
-    }
-    
-    res.json({ 
-      message: 'Valoracion enviada', 
-      rating: Number(rating), 
-      rideId: req.params.rideId, 
-      balance: deb.balance 
+    }).eq('id', ride.id);
+
+    await logAudit(req.user.id, 'taxi_rate', 'taxi', ride.id, { ride_ref: ride.ride_ref, rating });
+
+    res.json({
+      message: 'Valoracion enviada',
+      rating: Number(rating),
+      rideId: req.params.rideId,
+      balance: await readWalletBalance(req.user.id)
     });
   } catch (error) {
     console.error('Taxi rate error:', error);
@@ -5808,31 +5881,10 @@ app.post('/api/taxi/:rideId/rate', auth, async (req, res) => {
 
 app.get('/api/taxi/rides', auth, async (req, res) => {
   try {
-    let rides = [];
-    
-    // Intentar obtener de Supabase
-    try {
-      const { data } = await supabase.from('taxi_rides')
-        .select('*').eq('user_id', req.user.id).order('created_at', { ascending: false });
-      rides = data || [];
-    } catch (dbError) {
-      console.warn('Taxi rides query failed, using fallback:', dbError.message);
-    }
-    
-    // Combinar con fallback store
-    const fallbackRides = getUserStore(taxiFallbackStore, req.user.id);
-    const combined = [...rides, ...fallbackRides];
-    
-    // Eliminar duplicados por ride_ref y ordenar
-    const uniqueRides = combined.filter((ride, index, self) => 
-      index === self.findIndex(r => r.ride_ref === ride.ride_ref)
-    );
-    
-    uniqueRides.sort((a, b) => 
-      new Date(b.created_at || 0) - new Date(a.created_at || 0)
-    );
-    
-    res.json(uniqueRides);
+    const { data, error } = await supabase.from('taxi_rides')
+      .select('*').eq('user_id', req.user.id).order('created_at', { ascending: false });
+    if (error) return res.status(502).json({ message: 'No se pudieron listar los viajes', code: 'RIDES_UNAVAILABLE' });
+    res.json(data || []);
   } catch (error) {
     console.error('Taxi rides error:', error);
     res.status(500).json({ message: 'Error al obtener viajes', code: 'INTERNAL_ERROR' });

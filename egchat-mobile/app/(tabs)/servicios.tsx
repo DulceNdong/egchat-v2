@@ -81,13 +81,12 @@ const SERVICE_SECTIONS = [
   },
 ];
 
-// ── Tipos de taxi ─────────────────────────────────────────────────
-const RIDE_TYPES = [
-  { id: 'moto',  label: 'Moto',    sub: '1 pasajero',   price: 500,  eta: '2 min', color: '#F97316' },
-  { id: 'taxi',  label: 'Taxi',    sub: '4 pasajeros',  price: 1000, eta: '4 min', color: '#EAB308' },
-  { id: 'suv',   label: 'Confort', sub: 'SUV 4 plazas', price: 2000, eta: '5 min', color: '#6366F1' },
-  { id: 'vip',   label: 'VIP',     sub: 'Premium',      price: 3500, eta: '7 min', color: '#7C3AED' },
-];
+// ── Tipos de taxi: la presentacion es local, el precio lo pone service_tariffs ──
+const RIDE_PRESENTATION: Record<string, { label: string; sub: string; eta: string; color: string }> = {
+  moto:    { label: 'Moto',   sub: '1 pasajero',  eta: '2 min', color: '#F97316' },
+  basic:   { label: 'Taxi',   sub: '4 pasajeros', eta: '4 min', color: '#EAB308' },
+  premium: { label: 'VIP',    sub: 'Premium',     eta: '7 min', color: '#7C3AED' },
+};
 
 // ── Modal genérico (bottom sheet) ─────────────────────────────────
 const ServiceModal = ({
@@ -112,17 +111,65 @@ const ServiceModal = ({
 const TaxiModal = ({ visible, onClose }: { visible: boolean; onClose: () => void }) => {
   const [origin, setOrigin] = useState('');
   const [dest, setDest] = useState('');
-  const [selectedRide, setSelectedRide] = useState(RIDE_TYPES[1]);
+  const [rides, setRides] = useState<any[]>([]);
+  const [selectedRide, setSelectedRide] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [rideId, setRideId] = useState<string | null>(null);
+  const [viaje, setViaje] = useState<any | null>(null);
   const [step, setStep] = useState<'form' | 'searching' | 'matched'>('form');
+
+  useEffect(() => {
+    if (!visible || rides.length) return;
+    (async () => {
+      try {
+        const res = await serviciosAPI.tarifas();
+        const lista = (res?.tarifas || [])
+          .filter((t: any) => t.service === 'taxi')
+          .map((t: any) => ({ id: t.variant, price: Number(t.amount), ...(RIDE_PRESENTATION[t.variant] || { label: t.variant, sub: '', eta: '', color: Colors.accent }) }));
+        setRides(lista);
+        setSelectedRide(lista.find((r: any) => r.id === 'basic') || lista[0] || null);
+      } catch {
+        Alert.alert('Sin conexión', 'No se pudieron cargar las tarifas del taxi.');
+      }
+    })();
+  }, [visible, rides.length]);
 
   const requestRide = async () => {
     if (!origin.trim() || !dest.trim()) { Alert.alert('Error', 'Introduce origen y destino'); return; }
+    if (!selectedRide) { Alert.alert('Tarifas no disponibles', 'Revisa tu conexión e inténtalo de nuevo.'); return; }
     setLoading(true); setStep('searching');
-    try { await taxiAPI.requestRide({ address: origin }, { address: dest }, selectedRide.id); } catch {}
-    setTimeout(() => { setStep('matched'); setLoading(false); }, 3000);
+    try {
+      const res = await taxiAPI.requestRide({ address: origin }, { address: dest }, selectedRide.id);
+      setRideId(res.rideId);
+      setViaje(res);
+      setStep('matched');
+      Alert.alert('Viaje solicitado', `Te hemos cobrado ${Number(res.tarifa).toLocaleString()} XAF.\nSaldo: ${Number(res.balance).toLocaleString()} XAF`);
+    } catch (e: any) {
+      setStep('form');
+      Alert.alert('No se pudo pedir el taxi', e?.message || 'Inténtalo de nuevo.');
+    } finally {
+      setLoading(false);
+    }
   };
-  const reset = () => { setStep('form'); setOrigin(''); setDest(''); setLoading(false); onClose(); };
+
+  const cancelar = async () => {
+    if (!rideId) { setStep('form'); return; }
+    setLoading(true);
+    try {
+      const res = await taxiAPI.cancelRide(rideId);
+      const devuelto = Number(res?.reembolsado || 0);
+      setStep('form'); setRideId(null); setViaje(null);
+      Alert.alert('Viaje cancelado', devuelto
+        ? `Se han devuelto ${devuelto.toLocaleString()} XAF.\nSaldo: ${Number(res?.balance || 0).toLocaleString()} XAF`
+        : 'No se ha devuelto dinero porque el viaje no estaba cobrado.');
+    } catch (e: any) {
+      Alert.alert('Error al cancelar', e?.message || 'Inténtalo de nuevo.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const reset = () => { setStep('form'); setOrigin(''); setDest(''); setRideId(null); setViaje(null); onClose(); };
 
   return (
     <ServiceModal visible={visible} title="🚕 MiTaxi" onClose={reset}>
@@ -131,9 +178,10 @@ const TaxiModal = ({ visible, onClose }: { visible: boolean; onClose: () => void
           <EGInput label="Origen" value={origin} onChangeText={setOrigin} placeholder="¿Dónde estás?" />
           <EGInput label="Destino" value={dest} onChangeText={setDest} placeholder="¿A dónde vas?" />
           <Text style={styles.sectionLabel}>Tipo de vehículo</Text>
-          {RIDE_TYPES.map(r => (
+          {!rides.length && <Text style={styles.rideSub}>Cargando tarifas…</Text>}
+          {rides.map(r => (
             <TouchableOpacity key={r.id} onPress={() => setSelectedRide(r)}
-              style={[styles.rideOption, selectedRide.id === r.id && { borderColor: r.color, borderWidth: 2 }]}
+              style={[styles.rideOption, selectedRide?.id === r.id && { borderColor: r.color, borderWidth: 2 }]}
               activeOpacity={0.7}>
               <View style={[styles.rideIconBox, { backgroundColor: r.color + '18' }]}>
                 <Text style={styles.rideEmoji}>🚗</Text>
@@ -145,7 +193,8 @@ const TaxiModal = ({ visible, onClose }: { visible: boolean; onClose: () => void
               <Text style={[styles.ridePrice, { color: r.color }]}>{r.price.toLocaleString()} XAF</Text>
             </TouchableOpacity>
           ))}
-          <EGButton title="Pedir taxi" onPress={requestRide} style={styles.actionBtn} />
+          <EGButton title="Pedir taxi" onPress={requestRide} loading={loading} disabled={!selectedRide} style={styles.actionBtn} />
+          <Text style={styles.rideSub}>El importe se cobra de tu monedero al solicitar el viaje.</Text>
         </View>
       )}
       {step === 'searching' && (
@@ -158,15 +207,18 @@ const TaxiModal = ({ visible, onClose }: { visible: boolean; onClose: () => void
       {step === 'matched' && (
         <View>
           <View style={styles.driverCard}>
-            <View style={styles.driverAvatar}><Text style={styles.driverInitials}>CN</Text></View>
+            <View style={styles.driverAvatar}><Text style={styles.driverInitials}>{(viaje?.driver?.name || '—').slice(0, 1)}</Text></View>
             <View style={styles.driverInfo}>
-              <Text style={styles.driverName}>Carlos Nguema</Text>
-              <Text style={styles.driverSub}>⭐ 4.9 · Toyota Corolla · GE-1234</Text>
+              <Text style={styles.driverName}>{viaje?.driver?.name || 'Conductor'}</Text>
+              <Text style={styles.driverSub}>
+                {viaje?.driver?.rating ? `⭐ ${viaje.driver.rating} · ` : ''}
+                {viaje?.driver?.vehicle || ''}{viaje?.driver?.plate ? ` · ${viaje.driver.plate}` : ''}
+              </Text>
             </View>
           </View>
-          <Text style={styles.etaText}>🕐 Llegará en {selectedRide.eta}</Text>
-          <Text style={styles.fareText}>Tarifa estimada: {selectedRide.price.toLocaleString()} XAF</Text>
-          <EGButton title="Cancelar viaje" onPress={reset} variant="danger" style={styles.actionBtn} />
+          <Text style={styles.etaText}>🕐 {viaje?.eta ? `Llegará en ${viaje.eta} min` : 'Llegará en unos minutos'}</Text>
+          <Text style={styles.fareText}>Cobrado: {Number(viaje?.tarifa || 0).toLocaleString()} XAF · Ref {rideId}</Text>
+          <EGButton title="Cancelar viaje" onPress={cancelar} variant="danger" loading={loading} style={styles.actionBtn} />
         </View>
       )}
     </ServiceModal>
@@ -176,50 +228,75 @@ const TaxiModal = ({ visible, onClose }: { visible: boolean; onClose: () => void
 // ── Modal Electricidad / Agua ─────────────────────────────────────
 const UtilityModal = ({ visible, onClose, type }: { visible: boolean; onClose: () => void; type: 'electricidad' | 'agua' }) => {
   const [contrato, setContrato] = useState('');
-  const [factura, setFactura] = useState<any>(null);
+  const [facturas, setFacturas] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(false);
-  const [paying, setPaying] = useState(false);
+  const [payingId, setPayingId] = useState<string | null>(null);
   const title = type === 'electricidad' ? '⚡ SEGESA - Electricidad' : '💧 SNGE - Agua';
 
   const consultar = async () => {
     if (!contrato.trim()) { Alert.alert('Error', 'Introduce el número de contrato'); return; }
     setLoading(true);
+    setFacturas(null);
     try {
       const res = type === 'electricidad'
-        ? await serviciosAPI.consultarFacturaElec(contrato)
-        : await serviciosAPI.consultarFacturaAgua(contrato);
-      setFactura(res);
-    } catch { setFactura({ contrato, importe: 15000, periodo: 'Mayo 2026', estado: 'pendiente' }); }
-    finally { setLoading(false); }
+        ? await serviciosAPI.consultarFacturaElec(contrato.trim())
+        : await serviciosAPI.consultarFacturaAgua(contrato.trim());
+      const listas = res.facturas || [];
+      setFacturas(listas);
+      if (!listas.length) Alert.alert('Sin deuda', `El contrato ${contrato.trim()} no tiene facturas pendientes.`);
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'No se pudo consultar la deuda');
+    } finally { setLoading(false); }
   };
 
-  const pagar = async () => {
-    if (!factura) return;
-    setPaying(true);
+  const pagar = async (factura: any) => {
+    setPayingId(factura.id);
     try {
-      if (type === 'electricidad') await serviciosAPI.pagarElectricidad(contrato, factura.importe, 'monedero');
-      else await serviciosAPI.pagarAgua(contrato, factura.importe, 'monedero');
-      Alert.alert('✅', 'Pago realizado correctamente');
-      setFactura(null); setContrato(''); onClose();
-    } catch (e: any) { Alert.alert('Error', e.message || 'No se pudo procesar el pago'); }
-    finally { setPaying(false); }
+      const res = type === 'electricidad'
+        ? await serviciosAPI.pagarElectricidad(factura.id)
+        : await serviciosAPI.pagarAgua(factura.id);
+      setFacturas(prev => (prev || []).filter(f => f.id !== factura.id));
+      Alert.alert('✅', `Pago de ${Number(res.importe).toLocaleString()} XAF registrado.\nSaldo: ${Number(res.balance).toLocaleString()} XAF`);
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'No se pudo procesar el pago');
+    } finally { setPayingId(null); }
   };
+
+  const total = (facturas || []).reduce((s, f) => s + Number(f.amount || 0), 0);
 
   return (
-    <ServiceModal visible={visible} title={title} onClose={() => { setFactura(null); setContrato(''); onClose(); }}>
+    <ServiceModal visible={visible} title={title} onClose={() => { setFacturas(null); setContrato(''); onClose(); }}>
       <EGInput label="Número de contrato" value={contrato} onChangeText={setContrato} placeholder="Ej: 123456789" keyboardType="numeric" />
       <EGButton title={loading ? 'Consultando...' : 'Consultar factura'} onPress={consultar} loading={loading} />
-      {factura && (
-        <EGCard style={styles.facturaCard}>
-          <Text style={styles.facturaTitle}>Factura encontrada</Text>
-          {[['Contrato', factura.contrato], ['Período', factura.periodo || 'Mayo 2026'], ['Importe', `${(factura.importe || 15000).toLocaleString()} XAF`]].map(([l, v]) => (
-            <View key={l} style={styles.facturaRow}>
-              <Text style={styles.facturaLabel}>{l}</Text>
-              <Text style={[styles.facturaValue, l === 'Importe' && { color: Colors.accent, fontWeight: FontWeight.bold }]}>{v}</Text>
-            </View>
+      {facturas && facturas.length > 0 && (
+        <View style={styles.facturaList}>
+          <Text style={styles.sectionLabel}>
+            {`Deuda real: ${total.toLocaleString()} XAF (${facturas.length} ${facturas.length === 1 ? 'factura' : 'facturas'})`}
+          </Text>
+          {facturas.map(f => (
+            <EGCard key={f.id} style={styles.facturaCard}>
+              {[
+                ['Contrato', f.contract_ref],
+                ['Concepto', f.concept || (type === 'electricidad' ? 'Electricidad' : 'Agua')],
+                ['Período', f.period || '-'],
+                ['Vence', f.due_date ? String(f.due_date).slice(0, 10) : '-'],
+                ['Importe', `${Number(f.amount).toLocaleString()} ${f.currency || 'XAF'}`],
+              ].map(([l, v]) => (
+                <View key={l} style={styles.facturaRow}>
+                  <Text style={styles.facturaLabel}>{l}</Text>
+                  <Text style={[styles.facturaValue, l === 'Importe' && { color: Colors.accent, fontWeight: FontWeight.bold }]}>{v}</Text>
+                </View>
+              ))}
+              <EGButton
+                title={payingId === f.id ? 'Pagando...' : `Pagar ${Number(f.amount).toLocaleString()} XAF`}
+                onPress={() => pagar(f)}
+                loading={payingId === f.id}
+                disabled={payingId !== null && payingId !== f.id}
+                style={styles.actionBtn}
+              />
+            </EGCard>
           ))}
-          <EGButton title={paying ? 'Pagando...' : `Pagar ${(factura.importe || 15000).toLocaleString()} XAF`} onPress={pagar} loading={paying} style={styles.actionBtn} />
-        </EGCard>
+        </View>
       )}
     </ServiceModal>
   );
@@ -467,52 +544,78 @@ const SegurosModal = ({ visible, onClose }: { visible: boolean; onClose: () => v
 );
 
 // ── Modal Facturas ────────────────────────────────────────────────
-const FacturasModal = ({ visible, onClose }: { visible: boolean; onClose: () => void }) => {
-  const [contrato, setContrato] = useState('');
-  const [tipo, setTipo] = useState<'electricidad' | 'agua' | 'internet'>('electricidad');
-  const [factura, setFactura] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-  const TIPOS = [
-    { id: 'electricidad', label: '⚡ Luz' },
-    { id: 'agua',         label: '💧 Agua' },
-    { id: 'internet',     label: '🌐 Internet' },
-  ] as const;
+const BILL_PROVIDERS = {
+  segesa: { label: '⚡ Luz',     pagar: (id: string) => serviciosAPI.pagarElectricidad(id) },
+  snge:   { label: '💧 Agua',    pagar: (id: string) => serviciosAPI.pagarAgua(id) },
+  dgi:    { label: '📋 DGI',     pagar: (id: string) => serviciosAPI.pagarDGI(id) },
+} as const;
 
-  const consultar = async () => {
-    if (!contrato.trim()) { Alert.alert('Error', 'Introduce el número de contrato'); return; }
+const FacturasModal = ({ visible, onClose }: { visible: boolean; onClose: () => void }) => {
+  const [facturas, setFacturas] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [payingId, setPayingId] = useState<string | null>(null);
+
+  const cargar = async () => {
     setLoading(true);
-    setTimeout(() => {
-      setFactura({ contrato, importe: tipo === 'electricidad' ? 15000 : tipo === 'agua' ? 8000 : 20000, periodo: 'Mayo 2026', estado: 'pendiente' });
-      setLoading(false);
-    }, 1200);
+    try {
+      const res = await serviciosAPI.facturas();
+      setFacturas(res.facturas || []);
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'No se pudieron cargar tus facturas');
+    } finally { setLoading(false); }
   };
 
+  useEffect(() => { if (visible) cargar(); }, [visible]);
+
+  const pagar = async (factura: any) => {
+    const provider = BILL_PROVIDERS[factura.provider as keyof typeof BILL_PROVIDERS];
+    if (!provider) { Alert.alert('Error', 'Esta factura todavía no se puede pagar en la app'); return; }
+    setPayingId(factura.id);
+    try {
+      const res = await provider.pagar(factura.id);
+      setFacturas(prev => prev.filter(f => f.id !== factura.id));
+      Alert.alert('✅', `Pago de ${Number(res.importe).toLocaleString()} XAF registrado.\nSaldo: ${Number(res.balance).toLocaleString()} XAF`);
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'No se pudo procesar el pago');
+    } finally { setPayingId(null); }
+  };
+
+  const total = facturas.reduce((s, f) => s + Number(f.amount || 0), 0);
+
   return (
-    <ServiceModal visible={visible} title="🧾 Facturas" onClose={() => { setFactura(null); setContrato(''); onClose(); }}>
-      <Text style={styles.sectionLabel}>Tipo de servicio</Text>
-      <View style={styles.operatorRow}>
-        {TIPOS.map(t => (
-          <TouchableOpacity key={t.id} onPress={() => { setTipo(t.id); setFactura(null); }}
-            style={[styles.operatorChip, tipo === t.id && styles.operatorChipActive]}>
-            <Text style={[styles.operatorText, tipo === t.id && styles.operatorTextActive]}>{t.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-      <EGInput label="Número de contrato" value={contrato} onChangeText={setContrato} placeholder="Ej: 123456789" keyboardType="numeric" />
-      <EGButton title={loading ? 'Consultando...' : 'Consultar factura'} onPress={consultar} loading={loading} />
-      {factura && (
-        <EGCard style={styles.facturaCard}>
-          <Text style={styles.facturaTitle}>Factura encontrada</Text>
-          {[['Contrato', factura.contrato], ['Período', factura.periodo], ['Importe', `${factura.importe.toLocaleString()} XAF`]].map(([l, v]) => (
+    <ServiceModal visible={visible} title="🧾 Facturas" onClose={() => { setFacturas([]); onClose(); }}>
+      <Text style={styles.sectionLabel}>
+        {loading && !facturas.length ? 'Cargando facturas...'
+          : facturas.length
+            ? `${total.toLocaleString()} XAF pendientes (${facturas.length} ${facturas.length === 1 ? 'factura' : 'facturas'})`
+            : 'No tienes facturas pendientes'}
+      </Text>
+      {facturas.map(f => (
+        <EGCard key={f.id} style={styles.facturaCard}>
+          <Text style={styles.facturaTitle}>{BILL_PROVIDERS[f.provider as keyof typeof BILL_PROVIDERS]?.label || f.provider}</Text>
+          {[
+            ['Referencia', f.contract_ref],
+            ['Concepto', f.concept || '-'],
+            ['Período', f.period || '-'],
+            ['Vence', f.due_date ? String(f.due_date).slice(0, 10) : '-'],
+            ['Importe', `${Number(f.amount).toLocaleString()} ${f.currency || 'XAF'}`],
+          ].map(([l, v]) => (
             <View key={l} style={styles.facturaRow}>
               <Text style={styles.facturaLabel}>{l}</Text>
               <Text style={[styles.facturaValue, l === 'Importe' && { color: Colors.accent, fontWeight: FontWeight.bold }]}>{v}</Text>
             </View>
           ))}
-          <EGButton title={`Pagar ${factura.importe.toLocaleString()} XAF`}
-            onPress={() => { Alert.alert('✅', 'Pago realizado correctamente'); setFactura(null); setContrato(''); onClose(); }}
-            style={styles.actionBtn} />
+          <EGButton
+            title={payingId === f.id ? 'Pagando...' : `Pagar ${Number(f.amount).toLocaleString()} XAF`}
+            onPress={() => pagar(f)}
+            loading={payingId === f.id}
+            disabled={payingId !== null && payingId !== f.id}
+            style={styles.actionBtn}
+          />
         </EGCard>
+      ))}
+      {!loading && facturas.length > 0 && (
+        <EGButton title="Actualizar" onPress={cargar} variant="secondary" style={styles.actionBtn} />
       )}
     </ServiceModal>
   );
@@ -689,72 +792,207 @@ const EducacionModal = ({ visible, onClose }: { visible: boolean; onClose: () =>
 // ── Modal Impuestos ───────────────────────────────────────────────
 const ImpuestosModal = ({ visible, onClose }: { visible: boolean; onClose: () => void }) => {
   const [nif, setNif] = useState('');
-  const [result, setResult] = useState<any>(null);
+  const [facturas, setFacturas] = useState<any[] | null>(null);
   const [loading, setLoading] = useState(false);
+  const [payingId, setPayingId] = useState<string | null>(null);
 
-  const consultar = () => {
+  const consultar = async () => {
     if (!nif.trim()) { Alert.alert('Error', 'Introduce tu NIF'); return; }
     setLoading(true);
-    setTimeout(() => {
-      setResult({ nif, deuda: 0, estado: 'Al corriente', periodo: '2025' });
-      setLoading(false);
-    }, 1500);
+    setFacturas(null);
+    try {
+      const res = await serviciosAPI.consultarDGI(nif.trim());
+      const listas = res.facturas || [];
+      setFacturas(listas);
+      if (!listas.length) Alert.alert('Al corriente', `El NIF ${nif.trim()} no tiene deudas pendientes.`);
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'No se pudo consultar la deuda');
+    } finally { setLoading(false); }
   };
 
+  const pagar = async (factura: any) => {
+    setPayingId(factura.id);
+    try {
+      const res = await serviciosAPI.pagarDGI(factura.id);
+      setFacturas(prev => (prev || []).filter(f => f.id !== factura.id));
+      Alert.alert('✅', `Pago de ${Number(res.importe).toLocaleString()} XAF a la DGI registrado.\nSaldo: ${Number(res.balance).toLocaleString()} XAF`);
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'No se pudo procesar el pago');
+    } finally { setPayingId(null); }
+  };
+
+  const total = (facturas || []).reduce((s, f) => s + Number(f.amount || 0), 0);
+
   return (
-    <ServiceModal visible={visible} title="📋 Impuestos DGI" onClose={() => { setResult(null); setNif(''); onClose(); }}>
+    <ServiceModal visible={visible} title="📋 Impuestos DGI" onClose={() => { setFacturas(null); setNif(''); onClose(); }}>
       <Text style={styles.sectionLabel}>Consulta tu situación fiscal</Text>
       <EGInput label="NIF / Número de contribuyente" value={nif} onChangeText={setNif} placeholder="Ej: GQ-123456789" />
       <EGButton title={loading ? 'Consultando...' : 'Consultar DGI'} onPress={consultar} loading={loading} />
-      {result && (
-        <EGCard style={styles.facturaCard}>
-          <Text style={styles.facturaTitle}>Resultado DGI</Text>
-          {[['NIF', result.nif], ['Estado', result.estado], ['Período', result.periodo], ['Deuda pendiente', `${result.deuda.toLocaleString()} XAF`]].map(([l, v]) => (
-            <View key={l} style={styles.facturaRow}>
-              <Text style={styles.facturaLabel}>{l}</Text>
-              <Text style={[styles.facturaValue, l === 'Estado' && { color: Colors.accent }]}>{v}</Text>
-            </View>
+      {facturas && facturas.length > 0 && (
+        <View style={styles.facturaList}>
+          <Text style={styles.sectionLabel}>
+            {`Deuda con la DGI: ${total.toLocaleString()} XAF (${facturas.length} ${facturas.length === 1 ? 'liquidación' : 'liquidaciones'})`}
+          </Text>
+          {facturas.map(f => (
+            <EGCard key={f.id} style={styles.facturaCard}>
+              {[
+                ['NIF', f.contract_ref],
+                ['Concepto', f.concept || 'Liquidación'],
+                ['Período', f.period || '-'],
+                ['Vence', f.due_date ? String(f.due_date).slice(0, 10) : '-'],
+                ['Importe', `${Number(f.amount).toLocaleString()} ${f.currency || 'XAF'}`],
+              ].map(([l, v]) => (
+                <View key={l} style={styles.facturaRow}>
+                  <Text style={styles.facturaLabel}>{l}</Text>
+                  <Text style={[styles.facturaValue, l === 'Importe' && { color: Colors.accent, fontWeight: FontWeight.bold }]}>{v}</Text>
+                </View>
+              ))}
+              <EGButton
+                title={payingId === f.id ? 'Pagando...' : `Pagar ${Number(f.amount).toLocaleString()} XAF`}
+                onPress={() => pagar(f)}
+                loading={payingId === f.id}
+                disabled={payingId !== null && payingId !== f.id}
+                style={styles.actionBtn}
+              />
+            </EGCard>
           ))}
-          <TouchableOpacity style={styles.callBtn} onPress={() => Linking.openURL('tel:+240333095500')}>
-            <Text style={styles.callBtnText}>📞 Contactar DGI</Text>
-          </TouchableOpacity>
-        </EGCard>
+        </View>
       )}
+      <TouchableOpacity style={styles.callBtn} onPress={() => Linking.openURL('tel:+240333095500')}>
+        <Text style={styles.callBtnText}>📞 Contactar DGI</Text>
+      </TouchableOpacity>
     </ServiceModal>
   );
 };
 
 // ── Modal Correos ─────────────────────────────────────────────────
-const POSTAL_SERVICES = [
-  { icon: '📦', name: 'Envío nacional',      desc: 'Paquetes dentro de Guinea Ecuatorial', price: 'Desde 2,000 XAF' },
-  { icon: '✈️', name: 'Envío internacional', desc: 'Paquetes al extranjero',               price: 'Desde 15,000 XAF' },
-  { icon: '📬', name: 'Apartado postal',      desc: 'Alquiler de apartado en Correos GQ',  price: '5,000 XAF/año' },
-  { icon: '🔍', name: 'Seguimiento de envío', desc: 'Rastrea tu paquete en tiempo real',   price: 'Gratis' },
+const POSTAL_INFO = [
+  { icon: '🔍', name: 'Seguimiento de envío', desc: 'Rastrea tu paquete en tiempo real', price: 'Gratis' },
   { icon: '🏢', name: 'Oficinas de Correos',  desc: 'Malabo, Bata, Ebebiyín, Mongomo',     price: 'L-V 8:00-17:00' },
 ];
+const POSTAL_LABELS: Record<string, { icon: string; name: string; desc: string }> = {
+  nacional:      { icon: '📦', name: 'Envío nacional',      desc: 'Paquetes dentro de Guinea Ecuatorial' },
+  express:       { icon: '⚡', name: 'Envío express',       desc: 'Recogida y entrega prioritaria' },
+  internacional: { icon: '✈️', name: 'Envío internacional', desc: 'Paquetes al extranjero' },
+  apartado:      { icon: '📬', name: 'Apartado postal',     desc: 'Alquiler de apartado en Correos GQ, 1 año' },
+};
 
-const CorreosModal = ({ visible, onClose }: { visible: boolean; onClose: () => void }) => (
-  <ServiceModal visible={visible} title="📮 Correos GQ" onClose={onClose}>
-    <Text style={styles.sectionLabel}>Servicios postales</Text>
-    {POSTAL_SERVICES.map(ps => (
-      <TouchableOpacity key={ps.name} style={styles.planCard}
-        onPress={() => Alert.alert(ps.name, `${ps.desc}\n\nPrecio: ${ps.price}`)}
-        activeOpacity={0.7}>
-        <View style={styles.insuranceRow}>
-          <Text style={styles.insuranceIcon}>{ps.icon}</Text>
-          <View style={styles.insuranceInfo}>
-            <Text style={styles.providerName}>{ps.name}</Text>
-            <Text style={styles.providerCat}>{ps.desc}</Text>
-            <Text style={[styles.providerCat, { color: Colors.accent }]}>{ps.price}</Text>
+const CorreosModal = ({ visible, onClose }: { visible: boolean; onClose: () => void }) => {
+  const [tarifas, setTarifas] = useState<any[] | null>(null);
+  const [tipo, setTipo] = useState('nacional');
+  const [destinatario, setDestinatario] = useState('');
+  const [peso, setPeso] = useState('');
+  const [enviando, setEnviando] = useState(false);
+  const [envio, setEnvio] = useState<any | null>(null);
+
+  useEffect(() => {
+    if (!visible) return;
+    (async () => {
+      try {
+        const res = await serviciosAPI.tarifas();
+        setTarifas((res?.tarifas || []).filter((t: any) => t.service === 'correos'));
+      } catch {
+        setTarifas([]);
+      }
+    })();
+  }, [visible]);
+
+  const precio = Number((tarifas || []).find(t => t.variant === tipo)?.amount ?? 0);
+
+  const enviar = async () => {
+    if (!destinatario.trim()) { Alert.alert('Falta el destinatario', 'Escribe a quién va el paquete.'); return; }
+    if (!precio) { Alert.alert('Tarifa no disponible', 'Revisa tu conexión e inténtalo de nuevo.'); return; }
+    setEnviando(true);
+    try {
+      const res = await serviciosAPI.enviarPaquete({
+        destinatario: destinatario.trim(),
+        peso: Number(peso) || undefined,
+        tipo,
+      });
+      setEnvio(res);
+      setDestinatario('');
+      setPeso('');
+    } catch (e: any) {
+      Alert.alert('No se pudo enviar', e?.message || 'Inténtalo de nuevo.');
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  return (
+    <ServiceModal visible={visible} title="📮 Correos GQ" onClose={onClose}>
+      <Text style={styles.sectionLabel}>Tarifas oficiales</Text>
+      {!tarifas && <Text style={styles.providerCat}>Cargando tarifas…</Text>}
+      {tarifas && tarifas.length === 0 && (
+        <Text style={styles.providerCat}>No se pudieron cargar las tarifas. Revisa tu conexión.</Text>
+      )}
+      {(tarifas || []).map(t => {
+        const meta = POSTAL_LABELS[t.variant] || { icon: '📦', name: t.variant, desc: '' };
+        const activo = tipo === t.variant;
+        return (
+          <TouchableOpacity key={t.variant} style={styles.planCard} onPress={() => setTipo(t.variant)} activeOpacity={0.7}>
+            <View style={styles.insuranceRow}>
+              <Text style={styles.insuranceIcon}>{activo ? '✅' : meta.icon}</Text>
+              <View style={styles.insuranceInfo}>
+                <Text style={styles.providerName}>{meta.name}</Text>
+                <Text style={styles.providerCat}>{meta.desc}</Text>
+              </View>
+              <Text style={[styles.planAction, { color: Colors.accent }]}>{Number(t.amount).toLocaleString()} XAF</Text>
+            </View>
+          </TouchableOpacity>
+        );
+      })}
+
+      {envio ? (
+        <EGCard style={styles.facturaCard}>
+          <Text style={styles.facturaTitle}>Paquete registrado</Text>
+          <View style={styles.facturaRow}>
+            <Text style={styles.facturaLabel}>Importe cobrado</Text>
+            <Text style={styles.facturaValue}>{Number(envio.tarifa).toLocaleString()} XAF</Text>
+          </View>
+          <View style={styles.facturaRow}>
+            <Text style={styles.facturaLabel}>Localizador</Text>
+            <Text style={styles.facturaValue}>{envio.tracking}</Text>
+          </View>
+          <View style={styles.facturaRow}>
+            <Text style={styles.facturaLabel}>Saldo</Text>
+            <Text style={styles.facturaValue}>{Number(envio.balance).toLocaleString()} XAF</Text>
+          </View>
+          <EGButton title="Enviar otro paquete" variant="secondary" onPress={() => setEnvio(null)} style={{ marginTop: Spacing.sm }} />
+        </EGCard>
+      ) : (
+        <>
+          <Text style={styles.sectionLabel}>Enviar ahora</Text>
+          <EGInput label="Destinatario" value={destinatario} onChangeText={setDestinatario} placeholder="Nombre y ciudad" />
+          <EGInput label="Peso (kg)" value={peso} onChangeText={setPeso} placeholder="2" keyboardType="numeric" />
+          <EGButton
+            title={precio ? `Enviar y pagar ${precio.toLocaleString()} XAF` : 'Enviar'}
+            onPress={enviar}
+            loading={enviando}
+            disabled={!precio}
+            style={{ marginTop: Spacing.md }}
+          />
+        </>
+      )}
+
+      {POSTAL_INFO.map(ps => (
+        <View key={ps.name} style={styles.planCard}>
+          <View style={styles.insuranceRow}>
+            <Text style={styles.insuranceIcon}>{ps.icon}</Text>
+            <View style={styles.insuranceInfo}>
+              <Text style={styles.providerName}>{ps.name}</Text>
+              <Text style={styles.providerCat}>{ps.desc}</Text>
+              <Text style={[styles.providerCat, { color: Colors.accent }]}>{ps.price}</Text>
+            </View>
           </View>
         </View>
+      ))}
+      <TouchableOpacity style={[styles.callBtn, { marginTop: Spacing.md }]} onPress={() => Linking.openURL('tel:+240333095600')}>
+        <Text style={styles.callBtnText}>📞 Llamar a Correos GQ</Text>
       </TouchableOpacity>
-    ))}
-    <TouchableOpacity style={[styles.callBtn, { marginTop: Spacing.md }]} onPress={() => Linking.openURL('tel:+240333095600')}>
-      <Text style={styles.callBtnText}>📞 Llamar a Correos GQ</Text>
-    </TouchableOpacity>
-  </ServiceModal>
-);
+    </ServiceModal>
+  );
+};
 
 // ── Modal Supermercado ────────────────────────────────────────────
 const SUPERMARKETS = [
@@ -1502,6 +1740,7 @@ const styles = StyleSheet.create({
 
   // Facturas
   facturaCard: { marginTop: Spacing.lg, padding: Spacing.lg },
+  facturaList: { marginTop: Spacing.md },
   facturaTitle: { ...Typography.chatHeaderName, color: Colors.textPrimary, marginBottom: Spacing.md },
   facturaRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: Spacing.sm },
   facturaLabel: { fontSize: FontSize.base, color: Colors.textSecondary },

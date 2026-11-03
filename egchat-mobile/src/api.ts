@@ -218,18 +218,22 @@ export const storiesAPI = {
 // SERVICIOS (electricidad, agua, etc.)
 // ══════════════════════════════════════════════════════════════════
 export const serviciosAPI = {
+  tarifas: () => get<any>('/api/servicios/tarifas'),
+  facturas: () => get<any>('/api/servicios/facturas'),
   consultarFacturaElec: (contrato: string) =>
     post<any>('/api/servicios/segesa/consultar', { contrato }),
-  pagarElectricidad: (contrato: string, amount: number, method: string) =>
-    post<any>('/api/servicios/segesa/pagar', { contrato, importe: amount, metodo: method }),
+  pagarElectricidad: (facturaId: string) =>
+    post<any>('/api/servicios/segesa/pagar', { factura_id: facturaId }),
   consultarFacturaAgua: (contrato: string) =>
     post<any>('/api/servicios/snge/consultar', { contrato }),
-  pagarAgua: (contrato: string, amount: number, method: string) =>
-    post<any>('/api/servicios/snge/pagar', { contrato, importe: amount, metodo: method }),
+  pagarAgua: (facturaId: string) =>
+    post<any>('/api/servicios/snge/pagar', { factura_id: facturaId }),
   consultarDGI: (nif: string) =>
     post<any>('/api/servicios/dgi/consultar', { nif }),
-  pagarDGI: (nif: string, amount: number, referencia: string) =>
-    post<any>('/api/servicios/dgi/pagar', { nif, importe: amount, referencia }),
+  pagarDGI: (facturaId: string) =>
+    post<any>('/api/servicios/dgi/pagar', { factura_id: facturaId }),
+  enviarPaquete: (datos: { destinatario: string; peso?: number; tipo: string }) =>
+    post<any>('/api/servicios/correos/enviar', datos),
 };
 
 // ══════════════════════════════════════════════════════════════════
