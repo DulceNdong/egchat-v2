@@ -10,13 +10,22 @@ DEPLOYMENT_TARGET = '15.1'
 # valores; deben coincidir con el Info.plist de la app o App Store Connect
 # rechaza el binario ("nested bundle version does not match the app").
 # Al subir el build number de la app hay que subir también estos dos.
-MARKETING_VERSION      = '1.0.0'
-CURRENT_PROJECT_VERSION = '123'
+MARKETING_VERSION = '1.0.0'
+# Se lee de app.json en cada ejecución: con un número fijado a mano el script
+# regresaba las extensiones a 123 cuando la app ya iba por 124 y App Store
+# Connect rechazaba el binario.
+require 'json'
+CURRENT_PROJECT_VERSION = begin
+  JSON.parse(File.read('../app.json', encoding: 'UTF-8'))['expo']['ios']['buildNumber'].to_s
+rescue StandardError
+  abort 'no se pudo leer expo.ios.buildNumber de app.json'
+end
 project = Xcodeproj::Project.open(PROJ)
 app_target = project.targets.find { |t| t.name == 'EGCHAT' } or abort 'no app target'
 
 EXTENSIONS = {
-  'EGChatNotifService' => { sources: ['NotificationService.swift'], entitlements: nil },
+  'EGChatNotifService' => { sources: ['NotificationService.swift'],
+                            entitlements: 'EGChatNotifService/EGChatNotifService.entitlements' },
   'EGChatShare'        => { sources: ['ShareViewController.swift'], entitlements: 'EGChatShare/EGChatShareRelease.entitlements' },
 }
 
