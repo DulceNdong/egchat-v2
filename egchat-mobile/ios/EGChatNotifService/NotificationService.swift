@@ -2,6 +2,16 @@ import UserNotifications
 import Intents
 import UIKit
 
+extension Optional where Wrapped == String {
+    /// nil y "" son el mismo caso: ningún URL que descargar.
+    var nonEmpty: String? {
+        switch self {
+        case .some(let s) where !s.isEmpty: return s
+        default: return nil
+        }
+    }
+}
+
 /**
  * EGChat — Notification Service Extension (mejorada)
  *
@@ -32,10 +42,15 @@ class NotificationService: UNNotificationServiceExtension {
             return
         }
 
-        let avatarUrlString = content.userInfo["imageUrl"]    as? String
-                           ?? content.userInfo["senderAvatar"] as? String
+        // El servidor manda la foto del mensaje en `imageUrl`; `messageImageUrl`
+        // no existe en el payload, así que la foto nunca se adjuntaba.
+        let messageImageUrl = (content.userInfo["messageImageUrl"] as? String).nonEmpty
+                           ?? (content.userInfo["imageUrl"] as? String).nonEmpty
                            ?? ""
-        let messageImageUrl = content.userInfo["messageImageUrl"] as? String ?? ""
+        // El avatar es la foto del remitente: `senderAvatar`, nunca la del mensaje.
+        let avatarUrlString = (content.userInfo["senderAvatar"] as? String).nonEmpty
+                           ?? (content.userInfo["icon"] as? String).nonEmpty
+                           ?? ""
         let senderName      = content.userInfo["senderName"]  as? String ?? content.title
         let senderId        = content.userInfo["senderId"]    as? String ?? "unknown"
         let chatId          = content.userInfo["chatId"]      as? String ?? ""
