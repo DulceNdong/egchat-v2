@@ -22,6 +22,14 @@ const WEB_STUBS = {
 };
 
 config.resolver.resolveRequest = (context, moduleName, platform) => {
+  // Fix whatwg-fetch resolution issue
+  if (moduleName === 'whatwg-fetch') {
+    return {
+      filePath: path.resolve(__dirname, 'node_modules/whatwg-fetch/fetch.js'),
+      type: 'sourceFile',
+    };
+  }
+  
   if (platform === 'web' && WEB_STUBS[moduleName]) {
     return {
       filePath: path.resolve(__dirname, WEB_STUBS[moduleName]),
