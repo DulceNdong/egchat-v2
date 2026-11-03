@@ -182,6 +182,7 @@
   "submit": {
     "testflight": {
       "ios": {
+        "bundleIdentifier": "com.jallzstores.egchat",
         "appleId": "reddington120@icloud.com",
         "ascAppId": "6810877584",
         "appleTeamId": "XU6YD7ZJ2K",

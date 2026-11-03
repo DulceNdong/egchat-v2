@@ -73,6 +73,28 @@ final class EGChatPushKitCoordinator: NSObject, PKPushRegistryDelegate {
     let callerAvatar = (dictionary["callerAvatar"] as? String) ?? ""
     let callType = (dictionary["callType"] as? String) ?? (aps["callType"] as? String) ?? "audio"
 
+    // Un push que anuncia el fin de la llamada (otro dispositivo del usuario ya
+    // contestó, o el llamante colgó) tiene que CORTAR el timbre, no presentar una
+    // llamada nueva: reportNewIncomingCall dejaría un segundo timbre que ya nadie
+    // puede parar, porque el servidor da la llamada por terminada.
+    // endRingingCall solo actúa si la llamada sigue sin conectar, así que el
+    // dispositivo que contestó mantiene su conversación viva; el llamante, cuyas
+    // salientes no pasan por CallKit, recibe el aviso solo en JavaScript.
+    let status = (dictionary["status"] as? String) ?? (aps["status"] as? String) ?? ""
+    let notifType = (dictionary["notificationType"] as? String) ?? ""
+    let endsCall = ["call_answered", "call_ended"].contains(notifType)
+                || ["answered", "ended", "rejected", "cancelled", "missed"].contains(status)
+    if endsCall {
+      EGChatCallCoordinator.shared.endRingingCall(matching: callId)
+      emitCall([
+        "callId": callId,
+        "notificationType": notifType.isEmpty ? "call_ended" : notifType,
+        "status": status.isEmpty ? "ended" : status,
+      ])
+      completion()
+      return
+    }
+
     EGChatCallCoordinator.shared.reportIncomingCall(callerName: callerName, callerAvatar: callerAvatar, callId: callId, isVideo: callType == "video")
     var event: [String: Any] = ["callId": callId, "callerName": callerName, "callerAvatar": callerAvatar, "callType": callType]
     ["offer", "targetUserId", "chatId"].forEach { key in if let value = dictionary[key] { event[key] = value } }

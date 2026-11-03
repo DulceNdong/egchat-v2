@@ -839,14 +839,15 @@ export default function RootLayout() {
                 setTimeout(() => syncCachedVoipToken().catch(() => {}), 3000);
                 setTimeout(() => syncCachedVoipToken().catch(() => {}), 8000);
                 pushCallCleanup.current = PushKit.onIncomingCall((callData) => {
-                  // Si es una notificación de "llamada aceptada" (no entrante), procesarla como SSE
+                  // Si es un aviso de fin/respuesta (no una llamada entrante), se
+                  // despacha al handler correspondiente y se para aquí.
                   const notifType = (callData as any).notificationType;
-                  if (notifType === 'call_answered') {
-                    const callId = callData.callId;
-                    if (callId) {
-                      console.log('[PushKit] VoIP call_answered recibido para callId:', callId);
-                      callManager.onCallAnsweredSSE(callId);
-                    }
+                  if (notifType === 'call_answered' || notifType === 'call_ended') {
+                    const endedCallId = callData.callId;
+                    if (!endedCallId) return;
+                    console.log(`[PushKit] VoIP ${notifType} recibido para callId:`, endedCallId);
+                    if (notifType === 'call_answered') callManager.onCallAnsweredSSE(endedCallId);
+                    else callManager.onCallEndedSSE(endedCallId);
                     return;
                   }
                   // Punto de entrada único — no duplicar con router.push aquí
@@ -1048,6 +1049,16 @@ export default function RootLayout() {
                       });
 
                       pushCallCleanup.current = PushKit.onIncomingCall((callData) => {
+                        // Aviso de fin/respuesta: este dispositivo no debe abrir una
+                        // llamada nueva, solo callar el timbre que tenga puesto.
+                        const notifType2 = (callData as any).notificationType;
+                        if (notifType2 === 'call_answered' || notifType2 === 'call_ended') {
+                          const endedCallId = callData.callId;
+                          if (!endedCallId) return;
+                          if (notifType2 === 'call_answered') callManager.onCallAnsweredSSE(endedCallId);
+                          else callManager.onCallEndedSSE(endedCallId);
+                          return;
+                        }
                         // Punto de entrada único — sin router.push
                         const rawOffer2 = (callData as any).offer;
                         let parsedOffer2 = rawOffer2;

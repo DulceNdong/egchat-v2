@@ -42,26 +42,22 @@ class NotificationService: UNNotificationServiceExtension {
             return
         }
 
-        // El servidor manda la foto del mensaje en `imageUrl`; `messageImageUrl`
-        // no existe en el payload, así que la foto nunca se adjuntaba.
-        let messageImageUrl = (content.userInfo["messageImageUrl"] as? String).nonEmpty
-                           ?? (content.userInfo["imageUrl"] as? String).nonEmpty
-                           ?? ""
+        // Expo anida todo su objeto `data` bajo userInfo["data"]; leer estas claves
+        // en la raíz devolvía siempre "" y el banner salía sin foto.
+        let messageImageUrl = payloadString(content, ["imageUrl", "messageImageUrl"], url: true) ?? ""
         // El avatar es la foto del remitente: `senderAvatar`, nunca la del mensaje.
-        let avatarUrlString = (content.userInfo["senderAvatar"] as? String).nonEmpty
-                           ?? (content.userInfo["icon"] as? String).nonEmpty
-                           ?? ""
-        let senderName      = content.userInfo["senderName"]  as? String ?? content.title
-        let senderId        = content.userInfo["senderId"]    as? String ?? "unknown"
-        let chatId          = content.userInfo["chatId"]      as? String ?? ""
-        let messageType     = content.userInfo["messageType"] as? String ?? "text"
+        let avatarUrlString = payloadString(content, ["senderAvatar", "icon"], url: true) ?? ""
+        let senderName      = payloadString(content, ["senderName"]) ?? content.title
+        let senderId        = payloadString(content, ["senderId"]) ?? "unknown"
+        let chatId          = payloadString(content, ["chatId"]) ?? ""
+        let messageType     = payloadString(content, ["messageType"]) ?? "text"
 
         // 4. Registrar categoría con acciones rápidas
         registerNotificationCategory()
 
         // Asignar categoría para las acciones. Las llamadas entrante traen la suya
         // propia (EGCHAT_CALL, con Aceptar/Rechazar) y no se debe pisar.
-        let isCall = (content.userInfo["notificationType"] as? String) == "incoming_call"
+        let isCall = payloadString(content, ["notificationType"]) == "incoming_call"
         if !isCall || content.categoryIdentifier.isEmpty {
             content.categoryIdentifier = "EGCHAT_MESSAGE"
         }
@@ -297,6 +293,26 @@ class NotificationService: UNNotificationServiceExtension {
         )
 
         UNUserNotificationCenter.current().setNotificationCategories([category])
+    }
+
+    // ── Lectura del payload ──────────────────────────────────────────────────
+
+    /// Expo mete el objeto `data` del push bajo userInfo["data"], no en la raíz.
+    /// Con `url` exige http(s) para descartar iconos relativos tipo `/favicon.svg`,
+    /// que URL(string) acepta pero nunca descargan.
+    private func payloadString(_ content: UNNotificationContent, _ keys: [String], url: Bool = false) -> String? {
+        let nested = (content.userInfo["data"] as? [String: Any]) ?? [:]
+        let root = content.userInfo.reduce(into: [String: Any]()) { acc, pair in
+            if let key = pair.key as? String { acc[key] = pair.value }
+        }
+        for dict in [nested, root] {
+            for key in keys {
+                guard let value = (dict[key] as? String).nonEmpty else { continue }
+                if url, !value.hasPrefix("http://"), !value.hasPrefix("https://") { continue }
+                return value
+            }
+        }
+        return nil
     }
 
     // ── Descarga de imagen ───────────────────────────────────────────────────

@@ -97,6 +97,16 @@ final class EGChatCallCoordinator: NSObject, CXProviderDelegate {
     cleanup()
   }
 
+  /// Corta el timbre desde un push sin levantar JavaScript, pero solo si la
+  /// llamada sigue sin conectar. Si en esta máquina ya se contestó, el aviso de
+  /// "contestada" del servidor no debe tumbar la llamada viva.
+  func endRingingCall(matching callId: String) {
+    guard let uuid = activeCallUUID, activeCallId == callId else { return }
+    guard callController.call(at: uuid)?.isConnected != true else { return }
+    provider.reportCall(with: uuid, endedAt: Date(), reason: .remoteEnded)
+    cleanup()
+  }
+
   /** El evento solo sirve si el JS tiene listeners activos; si no, se encola. */
   private var hasListener: Bool { EGChatCallModule.eventSink?.isObserving == true }
 

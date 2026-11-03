@@ -187,6 +187,9 @@ export class CallManager {
   private _iceOffsetCallee = 0;
   private _answerApplied   = false;
   private _appliedOfferSdp: string | null = null;  // SDP del offer ya aplicado
+  // Este dispositivo fue el que aceptó. Sin esta marca, un segundo teléfono del
+  // mismo usuario recibe el aviso de "contestada" y se conectaba una segunda vez.
+  private _answeredHere    = false;
 
   // ── Timers ────────────────────────────────────────────────────
   private _pollingTimer:      ReturnType<typeof setInterval> | null = null;
@@ -482,7 +485,9 @@ export class CallManager {
         const result = await callAPI.claimCall?.(this._session.callId);
         if (result?.alreadyAccepted) {
           this._stopRingOnce();
-          this._setCommState('ended');
+          // 'rejected' cierra la pantalla sin escribir historial: la llamada no
+          // se perdió, la contestó otra máquina de este mismo usuario.
+          this._setCommState('rejected');
           this._finalCleanup();
           setTimeout(() => { this._setCommState('idle'); this._session = null; this._notify(); }, 400);
           return;
@@ -496,6 +501,7 @@ export class CallManager {
       const { callId, callType, offer: rawOffer } = this._session;
 
       this._setCommState('accepted');
+      this._answeredHere = true;
       this._stopRingOnce();
       // Notificar a CallKit nativo que la llamada fue aceptada — sin esto
       // iOS sigue mostrando la UI de llamada entrante y el tono continúa
@@ -629,8 +635,11 @@ export class CallManager {
                    : this._commState === 'missed'  ? 'missed'
                    : 'normal';
       try { await callAPI.end(session.callId, reason); } catch { /* */ }
-      // Guardar historial en chat
-      if (session.chatId) {
+      // Guardar historial en chat. Solo lo escribe el llamante: el chip viaja por
+      // el mismo hilo para los dos, así que si también escribiera el contestado
+      // (o los varios teléfonos de uno y otro) el chat se llenaba de "Appel vocal"
+      // repetidos de la misma llamada.
+      if (session.chatId && session.role === 'caller') {
         const myId     = session.myUserId ?? '';
         const callerId = session.role === 'caller' ? myId : session.targetUserId;
         const calleeId = session.role === 'caller' ? session.targetUserId : myId;
@@ -783,6 +792,26 @@ export class CallManager {
   onCallAnsweredSSE(callId: string): void {
     if (!this._session || this._session.callId !== callId) return;
     if (this._answerApplied) return;
+    // El servidor emite a los dos usuarios, así que esto también lo dispara la
+    // propia máquina que contestó: su eco se ignora.
+    if (this._session.role === 'callee') {
+      if (this._answeredHere) return;
+      // Contestó otro dispositivo del mismo usuario. Conectarse una segunda vez
+      // duplicaría la llamada; lo suyo es callar el timbre.
+      // Cierre SOLO local: callAPI.end() mataría desde aquí la conversación viva
+      // y saveCallMessage() escribiría una burbuja más en el chat. 'rejected' es
+      // el único estado terminal que desmonta la pantalla sin historial.
+      console.log('[CallManager] call_answered en dispositivo que no contestó — cerrando timbre');
+      LiveActivity.endCall();
+      this._setCommState('rejected');
+      this._finalCleanup();
+      // Soltar la sesión: si queda viva, un call_ended posterior dispararía
+      // endCall() sobre una llamada que en este momento está conectada en el
+      // otro dispositivo.
+      this._session = null;
+      this._setCommState('idle');
+      return;
+    }
     console.log('[CallManager] SSE call_answered — forzando poll inmediato');
     // Parar el tono de llamada inmediatamente — el callee ya aceptó
     stopDialingTone();
@@ -803,6 +832,19 @@ export class CallManager {
   /** SSE: la otra parte terminó/rechazó la llamada */
   onCallEndedSSE(callId: string): void {
     if (!this._session || this._session.callId !== callId) return;
+    // Este teléfono nunca llegó a entrar en la conversación (el aviso de fin le
+    // llega por push, despierta el JS y puede encontrar la sesión aún en
+    // ringing). Cerrar aquí haría POST /end sobre una llamada viva en otra
+    // máquina y escribiría una burbuja duplicada: solo callar el timbre.
+    if (this._session.role === 'callee' && !this._connectedOnce) {
+      console.log('[CallManager] call_ended sin conexión previa en esta máquina — timbre parado');
+      LiveActivity.endCall();
+      this._setCommState('rejected');
+      this._finalCleanup();
+      this._session = null;
+      this._setCommState('idle');
+      return;
+    }
     console.log('[CallManager] SSE call_ended — terminando llamada');
     this.endCall();
   }
@@ -1896,7 +1938,9 @@ export class CallManager {
                 (this._commState === 'ringing' || this._commState === 'accepted') &&
                 !this._isAcceptingLocally) {   // guard: no interrumpir nuestra propia aceptación
               this._stopRingOnce();
-              this._setCommState('ended');
+              // Igual que en SSE: cerrar sin historial, la llamada está viva en
+              // el otro dispositivo y un 'ended' aquí pintaría una perdida falsa.
+              this._setCommState('rejected');
               this._finalCleanup();
               setTimeout(() => { this._setCommState('idle'); this._session = null; this._notify(); }, 400);
             }
@@ -2064,6 +2108,7 @@ export class CallManager {
     this._iceOffsetCaller      = 0;
     this._iceOffsetCallee      = 0;
     this._answerApplied        = false;
+    this._answeredHere         = false;
     this._appliedOfferSdp      = null;
     this._lastNetConnected     = null;
     this._isAcceptingLocally   = false;

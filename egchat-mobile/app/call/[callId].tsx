@@ -453,6 +453,9 @@ export default function CallScreen() {
   const logCallToChat = useCallback(async (connected: boolean, secs: number) => {
     if (!chatId) return;
     if (loggedRef.current) return;
+    // El historial del chat lo escribe el llamante (CallManager), una sola vez.
+    // El contestado no duplica la tarjeta: en un hilo 1:1 ambos la ven igual.
+    if (role === 'callee') { loggedRef.current = true; return; }
     loggedRef.current = true;
     try {
       const isVid = callType === 'video';
