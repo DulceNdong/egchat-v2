@@ -7969,6 +7969,9 @@ app.get('/api/call/:callId', auth, async (req, res) => {
         version: 0, gone: true,
       });
     }
+    const ringExpired = !data.ended && !data.answer
+      && ['new', 'calling', 'ringing'].includes(String(data.status || 'ringing'))
+      && !!data.expires_at && new Date(data.expires_at).getTime() < Date.now();
     res.json({
       offer:            JSON.parse(data.offer || 'null'),
       answer:           data.answer ? JSON.parse(data.answer) : null,
@@ -7977,8 +7980,8 @@ app.get('/api/call/:callId', auth, async (req, res) => {
       type:             data.type,
       callerId:         data.caller_id,
       targetUserId:     data.target_user_id,
-      ended:            data.ended,
-      status:           data.status || (data.ended ? 'ended' : 'ringing'),
+      ended:            ringExpired ? true : data.ended,
+      status:           ringExpired ? 'missed' : (data.status || (data.ended ? 'ended' : 'ringing')),
       connectedAt:      data.connected_at || null,
       endedAt:          data.ended_at || null,
       version:          data.version || 1,
