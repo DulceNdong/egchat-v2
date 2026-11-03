@@ -1320,6 +1320,10 @@ app.post('/api/chats/:chatId/messages', auth, async (req, res) => {
         notificationType: 'message',
         // Datos para notificaciones ricas nativas
         senderName,
+        // La extensión de iOS lee `senderId` para construir el INPerson del
+        // remitente; sin él todos los contactos comparten el identificador
+        // "unknown" y el banner nunca puede pintar su foto de perfil.
+        senderId: String(senderData?.id || ''),
         senderAvatar: senderData?.avatar_url || '',
         messageType: msgType,
         imageUrl: msgType === 'image' ? (message.file_url || '') : '',
