@@ -308,7 +308,18 @@ export default function RootLayout() {
     const sub = AppState.addEventListener('change', state => {
       if (state === 'active') flush().catch(() => {});
     });
-    return () => { mounted = false; sub.remove(); };
+    // Con arranque frío desde un VoIP push este efecto corre antes de autenticar
+    // y el AppState ya está 'active', así que no vuelve a dispararse: sin el
+    // reintento la respuesta contestada en CallKit se queda guardada y el
+    // llamante sigue sonando.
+    let attempts = 0;
+    const retry = setInterval(() => {
+      if (!mounted || ++attempts >= 15) { clearInterval(retry); return; }
+      if (!userIdRef.current) return;
+      clearInterval(retry);
+      flush().catch(() => {});
+    }, 4000);
+    return () => { mounted = false; sub.remove(); clearInterval(retry); };
   }, []);
 
   // ── Llamadas pendientes cuando la app vuelve del background (Android) ──
