@@ -569,13 +569,24 @@ app.post('/api/auth/register', authLimiter, async (req, res) => {
 
     if (error) throw error;
 
-    // Crear wallet inicial (saldo de bienvenida solo en modo pruebas)
+    // Monedero nuevo a cero: el saldo de bienvenida de las pruebas se abona con
+    // su asiento (SYS-CASH paga, el cliente cobra). Antes se insertaba el saldo
+    // a pelo y el libro mayor no tenía ni idea de de dónde salían esos 5.000.
     try {
-      await supabase.from('wallets').insert({
+      const { error: walletError } = await supabase.from('wallets').insert({
         user_id: user.id,
-        balance: WALLET_SANDBOX ? 5000 : 0,
+        balance: 0,
         currency: WALLET_CURRENCY,
       });
+      if (!walletError && WALLET_SANDBOX) {
+        await creditWallet(user.id, 5000, {
+          operation: 'saldo_inicial',
+          account: 'SYS-CASH',
+          concept: 'Saldo de bienvenida (modo pruebas)',
+          key: `OPENING-${user.id}`,
+          reference: `OPENING:${user.id}`,
+        });
+      }
     } catch {}
 
     const token = jwt.sign({ id: user.id, phone }, JWT_SECRET, { expiresIn: '30d' });
@@ -1228,11 +1239,34 @@ app.post('/api/chats/:chatId/messages', auth, async (req, res) => {
       .from('chat_participants').select('chat_id').eq('chat_id', chatId).eq('user_id', req.user.id).single();
     if (!part) return res.status(403).json({ message: 'Sin acceso' });
 
-    const { data: message, error } = await supabase
+    const seleccion = 'id, text, type, created_at, sender_id, status, file_url';
+    // client_ref es la clave que manda el emisor: el indice unico
+    // (chat_id, sender_id, client_ref) corta el reintento que duplicaba el
+    // mensaje en la pantalla del destinatario.
+    const clientRef = req.body?.client_ref ? String(req.body.client_ref).slice(0, 64) : null;
+    const fila = {
+      chat_id: chatId,
+      sender_id: req.user.id,
+      text: text || null,
+      type,
+      reply_to: reply_to || null,
+      file_url: file_url || null,
+      status: 'sent',
+    };
+    if (clientRef) fila.client_ref = clientRef;
+
+    let { data: message, error } = await supabase
       .from('messages')
-      .insert({ chat_id: chatId, sender_id: req.user.id, text: text || null, type, reply_to: reply_to || null, file_url: file_url || null, status: 'sent' })
-      .select('id, text, type, created_at, sender_id, status, file_url')
+      .insert(fila)
+      .select(seleccion)
       .single();
+
+    if (error && (error.code === '23505' || /uix_messages_client_ref|duplicate key/.test(String(error.message)))) {
+      const { data: existente } = await supabase.from('messages').select(seleccion)
+        .eq('chat_id', chatId).eq('sender_id', req.user.id).eq('client_ref', clientRef)
+        .maybeSingle();
+      if (existente) return res.json({ ...existente, duplicated: true });
+    }
 
     if (error) throw error;
 
@@ -1761,8 +1795,9 @@ const applyChatRead = async (chatId, userId, upToMessageId) => {
 // Marcar hasta un mensaje concreto: lo usa el cliente al recibir un mensaje
 app.post('/api/chats/:chatId/read', auth, async (req, res) => {
   try {
-    const { messageIds } = await applyChatRead(req.params.chatId, req.user.id, req.body?.message_id);
-    res.json({ message: 'Mensajes marcados como leídos', read: messageIds.length });
+    const r = await applyChatRead(req.params.chatId, req.user.id, req.body?.message_id);
+    if (r.forbidden) return res.status(403).json({ message: 'Sin acceso a este chat' });
+    res.json({ message: 'Mensajes marcados como leídos', read: r.messageIds.length });
   } catch (e) {
     console.error('Mark as read error:', e);
     res.status(500).json({ message: e.message });
@@ -1772,8 +1807,9 @@ app.post('/api/chats/:chatId/read', auth, async (req, res) => {
 // Marcar todo el chat como leído: lo usa el cliente al abrir el chat
 app.post('/api/chats/:chatId/read-all', auth, async (req, res) => {
   try {
-    const { messageIds } = await applyChatRead(req.params.chatId, req.user.id, null);
-    res.json({ message: 'Chat marcado como leído', read: messageIds.length });
+    const r = await applyChatRead(req.params.chatId, req.user.id, null);
+    if (r.forbidden) return res.status(403).json({ message: 'Sin acceso a este chat' });
+    res.json({ message: 'Chat marcado como leído', read: r.messageIds.length });
   } catch (e) {
     console.error('Mark chat as read error:', e);
     res.status(500).json({ message: e.message });
@@ -1781,12 +1817,12 @@ app.post('/api/chats/:chatId/read-all', auth, async (req, res) => {
 });
 
 // Silenciar / reactivar un chat en el servidor, para que el push lo respete
+// La columna la crea la migracion 2026-11-02_ledger_lote_b.sql; aquí solo se
+// comprueba que esté, porque exec_sql ya no existe en el esquema.
 const ensureChatMuteColumn = async () => {
   try {
-    const { error } = await supabase.rpc('exec_sql', {
-      sql: `ALTER TABLE chat_participants ADD COLUMN IF NOT EXISTS muted_until TIMESTAMPTZ;`,
-    });
-    if (error) console.warn('ensureChatMuteColumn:', error.message);
+    const { error } = await supabase.from('chat_participants').select('muted_until').limit(1);
+    if (error) console.warn('ensureChatMuteColumn: falta la migracion de esquema:', error.message);
   } catch (e) {
     console.warn('ensureChatMuteColumn:', e.message);
   }
@@ -2490,7 +2526,12 @@ app.post('/api/wallet/deposit', auth, walletLimiter, async (req, res) => {
     const quotaError = await walletQuotaError(req.user.id, 'deposit', amount);
     if (quotaError) return res.status(400).json({ message: quotaError, code: 'LIMIT_EXCEEDED' });
 
-    const credit = await creditWallet(req.user.id, amount);
+    const credit = await creditWallet(req.user.id, amount, {
+      operation: 'recarga',
+      account: 'SYS-CASH',
+      concept: `Recarga de ${method || 'monedero'}`,
+      reference,
+    });
     if (!credit.ok) return transferErrorResponse(res, credit.code);
 
     const { data: tx } = await supabase.from('transactions').insert({
@@ -2524,7 +2565,12 @@ app.post('/api/wallet/withdraw', auth, walletLimiter, async (req, res) => {
     const quotaError = await walletQuotaError(req.user.id, 'withdraw', amount);
     if (quotaError) return res.status(400).json({ message: quotaError, code: 'LIMIT_EXCEEDED' });
 
-    const debit = await debitWallet(req.user.id, amount);
+    const debit = await debitWallet(req.user.id, amount, {
+      operation: 'retiro',
+      account: 'SYS-CASH',
+      concept: `Retirada por ${method || 'pasarela'}`,
+      reference: destination,
+    });
     if (!debit.ok) {
       if (debit.code === 'WALLET_NOT_FOUND') return res.status(404).json({ message: 'Monedero no encontrado' });
       return transferErrorResponse(res, debit.code);
@@ -2583,41 +2629,172 @@ const ensureWallet = async (userId) => {
   return error ? null : data;
 };
 
-// Resta con comprobación optimista: si otra operación modificó el saldo entre
-// la lectura y la escritura, la condición `balance` ya no coincide y se aborta.
-const debitWallet = async (userId, amount) => {
-  const wallet = await getWallet(userId);
-  if (!wallet) return { ok: false, code: 'WALLET_NOT_FOUND' };
-  const current = Number(wallet.balance || 0);
-  if (amount > current) return { ok: false, code: 'INSUFFICIENT_BALANCE' };
-  const next = roundAmount(current - amount);
-  const { data, error } = await supabase
-    .from('wallets')
-    .update({ balance: next, updated_at: new Date().toISOString() })
-    .eq('user_id', userId)
-    .eq('balance', wallet.balance)
-    .select('balance')
-    .maybeSingle();
-  if (error || !data) return { ok: false, code: 'CONCURRENT_UPDATE' };
-  return { ok: true, balance: Number(data.balance) };
+// El libro mayor es lo que mueve wallets.balance (el disparador
+// ledger_journal_apply_wallets de la migracion 2026-11-02_ledger_lote_b.sql
+// aplica el delta al cerrar el asiento). Debitar o abonar desde JS es, por
+// tanto, crear su asiento: si el JS escribiera el saldo aparte, el mismo euro
+// se movería dos veces.
+// Criterio contable: el saldo de un cliente es pasivo del operador (crece al
+// Haber); SYS-CASH es activo (crece al Debe), SYS-FEES ingreso y SYS-SUSPENSE
+// es lo que se debe a proveedores y lo retenido en pendientes.
+const ledgerPost = async ({ userId, operation, key = null, concept, lines, reference = null, requiresApproval = false }) => {
+  const { data, error } = await supabase.rpc('ledger_post', {
+    p_user_id: userId,
+    p_operation: String(operation),
+    p_idempotency_key: key,
+    p_concept: String(concept || operation).slice(0, 200),
+    p_lines: lines,
+    p_reference: reference ? String(reference).slice(0, 120) : null,
+    p_requires_approval: requiresApproval === true,
+  });
+  if (error) {
+    const msg = String(error.message || '');
+    const code = /saldo insuficiente/i.test(msg) ? 'INSUFFICIENT_BALANCE'
+      : /no tiene monedero|unificarlos antes/i.test(msg) ? 'WALLET_NOT_FOUND'
+      : 'LEDGER_REJECTED';
+    if (code === 'LEDGER_REJECTED') console.error('[LEDGER] asiento rechazado:', operation, key, msg);
+    return { ok: false, code, message: msg };
+  }
+  if (!data?.journal_id) return { ok: false, code: 'LEDGER_REJECTED', message: 'El libro mayor no devolvió ningún asiento' };
+  if (data.status === 'pending_approval') {
+    return { ok: false, code: 'PENDING_APPROVAL', journal_id: data.journal_id };
+  }
+  return { ok: true, journal_id: data.journal_id, already_posted: data.already_posted === true };
 };
 
-const creditWallet = async (userId, amount, attempts = 3) => {
-  for (let attempt = 0; attempt < attempts; attempt++) {
-    const wallet = await ensureWallet(userId);
-    if (!wallet) return { ok: false, code: 'WALLET_NOT_FOUND' };
-    const next = roundAmount(Number(wallet.balance || 0) + amount);
-    const { data, error } = await supabase
-      .from('wallets')
-      .update({ balance: next, updated_at: new Date().toISOString() })
-      .eq('user_id', userId)
-      .eq('balance', wallet.balance)
-      .select('balance')
-      .maybeSingle();
-    if (error) return { ok: false, code: 'CREDIT_FAILED' };
-    if (data) return { ok: true, balance: Number(data.balance) };
+const readWalletBalance = async (userId) => {
+  const wallet = await getWallet(userId);
+  return Number(wallet?.balance || 0);
+};
+
+// La misma puerta, pero con la plantilla de asiento resuelta dentro de la base
+// de datos (migracion 2026-11-03_ledger_lote_b2.sql). La usan los canales sin
+// telefono inteligente: un menu USSD no puede reconstruir el debe y el haber,
+// asi que pide el asiento por su tipo y el libro lo diseña.
+const ledgerPostKind = async ({ kind, userId, amount, fee = 0, counterpartyUserId = null, key = null, concept = null, reference = null, provider = null, requiresApproval = false }) => {
+  const { data, error } = await supabase.rpc('ledger_post_kind', {
+    p_kind: String(kind),
+    p_user_id: userId,
+    p_amount: roundAmount(amount),
+    p_idempotency_key: key ? String(key) : null,
+    p_fee: roundAmount(fee),
+    p_counterparty_id: counterpartyUserId,
+    p_concept: String(concept || kind).slice(0, 200),
+    p_reference: reference ? String(reference).slice(0, 120) : null,
+    p_provider: provider ? String(provider).slice(0, 60) : null,
+    p_requires_approval: requiresApproval === true,
+  });
+  if (error) {
+    const msg = String(error.message || '');
+    const code = /saldo insuficiente/i.test(msg) ? 'INSUFFICIENT_BALANCE'
+      : /no tiene monedero|unificarlos antes/i.test(msg) ? 'WALLET_NOT_FOUND'
+      : 'LEDGER_REJECTED';
+    if (code === 'LEDGER_REJECTED') console.error('[LEDGER] plantilla rechazada:', kind, key, msg);
+    return { ok: false, code, message: msg };
   }
-  return { ok: false, code: 'CONCURRENT_UPDATE' };
+  if (!data?.journal_id) return { ok: false, code: 'LEDGER_REJECTED', message: 'El libro mayor no devolvió ningún asiento' };
+  if (data.status === 'pending_approval') return { ok: false, code: 'PENDING_APPROVAL', journal_id: data.journal_id };
+  return { ok: true, journal_id: data.journal_id, already_posted: data.already_posted === true };
+};
+
+const debitWallet = async (userId, amount, opts = {}) => {
+  const amt = roundAmount(Number(amount || 0));
+  if (!(amt > 0)) return { ok: false, code: 'INVALID_AMOUNT' };
+  const wallet = await getWallet(userId);
+  if (!wallet) return { ok: false, code: 'WALLET_NOT_FOUND' };
+  const res = await ledgerPost({
+    userId,
+    operation: opts.operation || 'pago_servicio',
+    key: opts.key || null,
+    concept: opts.concept || `Cargo de ${amt} XAF`,
+    reference: opts.reference || null,
+    lines: [
+      { wallet_user_id: userId, entry_type: 'debit', amount: amt },
+      { account: opts.account || 'SYS-SUSPENSE', entry_type: 'credit', amount: amt },
+    ],
+  });
+  if (!res.ok) return res;
+  return { ok: true, balance: await readWalletBalance(userId), journal_id: res.journal_id, already_posted: res.already_posted };
+};
+
+const creditWallet = async (userId, amount, opts = {}) => {
+  const amt = roundAmount(Number(amount || 0));
+  if (!(amt > 0)) return { ok: false, code: 'INVALID_AMOUNT' };
+  const wallet = await ensureWallet(userId);
+  if (!wallet) return { ok: false, code: 'WALLET_NOT_FOUND' };
+  const res = await ledgerPost({
+    userId,
+    operation: opts.operation || 'recarga',
+    key: opts.key || null,
+    concept: opts.concept || `Abono de ${amt} XAF`,
+    reference: opts.reference || null,
+    lines: [
+      { wallet_user_id: userId, entry_type: 'credit', amount: amt },
+      { account: opts.account || 'SYS-CASH', entry_type: 'debit', amount: amt },
+    ],
+  });
+  if (!res.ok) return res;
+  return { ok: true, balance: await readWalletBalance(userId), journal_id: res.journal_id, already_posted: res.already_posted };
+};
+
+// Traspaso entre dos monederos: un solo asiento de dos patas. Si se hiciera con
+// un débito y un crédito separados, cada mitad quedaría obligada con una cuenta
+// del operador y el libro mentiría sobre de dónde vino el dinero.
+const moveWallets = async (fromUserId, toUserId, amount, opts = {}) => {
+  const amt = roundAmount(Number(amount || 0));
+  if (!(amt > 0)) return { ok: false, code: 'INVALID_AMOUNT' };
+  const wallet = await getWallet(fromUserId);
+  if (!wallet) return { ok: false, code: 'WALLET_NOT_FOUND' };
+  await ensureWallet(toUserId);
+  const res = await ledgerPost({
+    userId: fromUserId,
+    operation: opts.operation || 'transferencia_p2p',
+    key: opts.key || null,
+    concept: opts.concept || `Transferencia de ${amt} XAF`,
+    reference: opts.reference || null,
+    lines: [
+      { wallet_user_id: toUserId, entry_type: 'credit', amount: amt },
+      { wallet_user_id: fromUserId, entry_type: 'debit', amount: amt },
+    ],
+  });
+  if (!res.ok) return res;
+  return {
+    ok: true,
+    balance: await readWalletBalance(fromUserId),
+    to_balance: await readWalletBalance(toUserId),
+    journal_id: res.journal_id,
+    already_posted: res.already_posted,
+  };
+};
+
+// Traspaso por plantilla SQL: el mismo asiento `p2p_send` que dibuja
+// ledger_lines(), pero pedido por su tipo. Es la primitiva de dinero de los
+// canales sin telefono inteligente, donde no hay codigo cliente que decida
+// cuantas patas tiene un pago.
+const sendP2PByKind = async (fromUserId, toUserId, amount, opts = {}) => {
+  const amt = roundAmount(Number(amount || 0));
+  if (!(amt > 0)) return { ok: false, code: 'INVALID_AMOUNT' };
+  const wallet = await getWallet(fromUserId);
+  if (!wallet) return { ok: false, code: 'WALLET_NOT_FOUND' };
+  await ensureWallet(toUserId);
+  const res = await ledgerPostKind({
+    kind: 'p2p_send',
+    userId: fromUserId,
+    amount: amt,
+    counterpartyUserId: toUserId,
+    key: opts.key || null,
+    concept: opts.concept || `Transferencia de ${amt} XAF`,
+    reference: opts.reference || null,
+    provider: opts.provider || null,
+  });
+  if (!res.ok) return { ...res, balance: await readWalletBalance(fromUserId) };
+  return {
+    ok: true,
+    balance: await readWalletBalance(fromUserId),
+    to_balance: await readWalletBalance(toUserId),
+    journal_id: res.journal_id,
+    already_posted: res.already_posted,
+  };
 };
 
 const buildPendingReference = (recipientId, concept) =>
@@ -2634,6 +2811,12 @@ const parsePendingReference = (reference) => {
 const transferErrorResponse = (res, code) => {
   if (code === 'INSUFFICIENT_BALANCE') {
     return res.status(400).json({ message: 'Saldo insuficiente', code });
+  }
+  if (code === 'WALLET_NOT_FOUND') {
+    return res.status(409).json({ message: 'Necesitas un monedero antes de operar con dinero', code });
+  }
+  if (code === 'PENDING_APPROVAL') {
+    return res.status(202).json({ message: 'El asiento quedó pendiente de la segunda firma de un administrador', code });
   }
   return res.status(409).json({ message: 'No se pudo completar la operación. Inténtalo de nuevo.', code });
 };
@@ -2737,16 +2920,25 @@ app.post('/api/wallet/transfer', auth, walletLimiter, async (req, res) => {
       return res.status(400).json({ message: 'No puedes transferirte a ti mismo' });
     }
 
-    const debit = await debitWallet(req.user.id, amount);
-    if (!debit.ok) return transferErrorResponse(res, debit.code);
-
-    if (recipient) {
-      const credit = await creditWallet(recipient.id, amount);
-      if (!credit.ok) {
-        await creditWallet(req.user.id, amount); // compensación: devolver al emisor
-        return res.status(500).json({ message: 'No se pudo abonar al destinatario. Tu saldo no ha cambiado.' });
-      }
-    }
+    // Un traspaso entre personas es un solo asiento: sale de un monedero y entra
+    // en el otro. El pago a un comercio de la plataforma sí pasa por la cuenta
+    // puente, porque la deuda con ese proveedor todavía no está liquidada.
+    const key = req.body?.client_ref ? `P2P-${String(req.body.client_ref)}` : null;
+    const detailRef = concept ? String(concept).slice(0, 140) : null;
+    const traspaso = recipient
+      ? await moveWallets(req.user.id, recipient.id, amount, {
+          key,
+          concept: `Transferencia a ${recipient.phone || recipient.full_name || recipient.id}`,
+          reference: detailRef,
+        })
+      : await debitWallet(req.user.id, amount, {
+          operation: 'pago_servicio',
+          account: 'SYS-SUSPENSE',
+          concept: `Pago a ${to}`,
+          key,
+          reference: detailRef,
+        });
+    if (!traspaso.ok) return transferErrorResponse(res, traspaso.code);
 
     const detail = concept ? ` · ${String(concept).slice(0, 140)}` : '';
     const { data: sent } = await supabase.from('transactions').insert({
@@ -2776,7 +2968,7 @@ app.post('/api/wallet/transfer', auth, walletLimiter, async (req, res) => {
     }
 
     res.json({
-      balance: debit.balance,
+      balance: traspaso.balance,
       transaction: sent,
       recipient: recipient
         ? { id: recipient.id, name: recipient.full_name }
@@ -2810,9 +3002,9 @@ app.post('/api/wallet/transfer/pending', auth, walletLimiter, async (req, res) =
       return res.status(400).json({ message: 'No puedes transferirte a ti mismo' });
     }
 
-    const debit = await debitWallet(req.user.id, amount);
-    if (!debit.ok) return transferErrorResponse(res, debit.code);
-
+    // Primero se crea la transferencia y después se aparta el saldo, con el id
+    // del movimiento como clave de idempotencia: un reintento del mismo pedido
+    // devuelve el asiento ya hecho en vez de apartar el dinero otra vez.
     const { data: transfer, error } = await supabase.from('transactions').insert({
       user_id: req.user.id,
       type: 'transfer_sent',
@@ -2823,8 +3015,19 @@ app.post('/api/wallet/transfer/pending', auth, walletLimiter, async (req, res) =
     }).select().single();
 
     if (error || !transfer) {
-      await creditWallet(req.user.id, amount); // devolver el saldo apartado
       return res.status(500).json({ message: 'No se pudo crear la transferencia' });
+    }
+
+    const debit = await debitWallet(req.user.id, amount, {
+      operation: 'transferencia_p2p',
+      account: 'SYS-SUSPENSE',
+      concept: `Saldo apartado para ${recipient.phone || recipient.full_name || recipient.id}`,
+      key: `PEND-${transfer.id}`,
+      reference: `PEND:${transfer.id}`,
+    });
+    if (!debit.ok) {
+      await supabase.from('transactions').update({ status: 'cancelled' }).eq('id', transfer.id).eq('status', 'pending');
+      return transferErrorResponse(res, debit.code);
     }
 
     notifyMoney(
@@ -2857,7 +3060,14 @@ const expirePendingTransfer = async (transfer) => {
     .select('id, user_id, amount')
     .maybeSingle();
   if (claimed) {
-    await creditWallet(claimed.user_id, Number(claimed.amount));
+    // Se libera la retención: la cuenta puente era la que guardaba el saldo.
+    await creditWallet(claimed.user_id, Number(claimed.amount), {
+      operation: 'ajuste',
+      account: 'SYS-SUSPENSE',
+      concept: 'Transferencia pendiente caducada',
+      key: `PEND-EXP-${claimed.id}`,
+      reference: `PEND-EXP:${claimed.id}`,
+    });
   }
   return Boolean(claimed);
 };
@@ -2958,10 +3168,21 @@ app.post('/api/wallet/transfer/accept/:id', auth, walletLimiter, async (req, res
     if (!claimed) return res.status(409).json({ message: 'La transferencia ya fue procesada' });
 
     const amount = Number(transfer.amount);
-    const credit = await creditWallet(req.user.id, amount);
+    // El dinero sale de la cuenta puente donde quedó apartado al crear la
+    // transferencia; la clave la fija el id del movimiento, así un doble clic
+    // del receptor no puede cobrarla dos veces.
+    const credit = await creditWallet(req.user.id, amount, {
+      operation: 'transferencia_p2p',
+      account: 'SYS-SUSPENSE',
+      concept: `Transferencia recibida de ${transfer.user_id}`,
+      key: `PEND-ACK-${transfer.id}`,
+      reference: `PEND-ACK:${transfer.id}`,
+    });
     if (!credit.ok) {
+      // Se devuelve a pendiente para que el receptor pueda reintentar: si el
+      // asiento se rechaza, el abono tampoco llegó al monedero.
       await supabase.from('transactions').update({ status: 'pending' }).eq('id', transfer.id);
-      return res.status(500).json({ message: 'No se pudo abonar la transferencia' });
+      return transferErrorResponse(res, credit.code);
     }
 
     await supabase.from('transactions').insert({
@@ -3005,56 +3226,97 @@ app.post('/api/wallet/transfer/cancel/:id', auth, walletLimiter, async (req, res
       .select('id').maybeSingle();
     if (!claimed) return res.status(409).json({ message: 'La transferencia ya fue procesada' });
 
-    await creditWallet(req.user.id, Number(transfer.amount));
-    res.json({ success: true, message: 'Transferencia cancelada y saldo devuelto' });
+    // Devolución del saldo apartado: mismo asiento en sentido contrario que el
+    // de la aceptación, y clave fija por el id para no poder devolver dos veces.
+    const devolucion = await creditWallet(req.user.id, Number(transfer.amount), {
+      operation: 'ajuste',
+      account: 'SYS-SUSPENSE',
+      concept: 'Transferencia pendiente cancelada',
+      key: `PEND-CANCEL-${transfer.id}`,
+      reference: `PEND-CANCEL:${transfer.id}`,
+    });
+    if (!devolucion.ok) {
+      await supabase.from('transactions').update({ status: 'pending' }).eq('id', transfer.id).eq('status', 'cancelled');
+      return transferErrorResponse(res, devolucion.code);
+    }
+    res.json({ success: true, message: 'Transferencia cancelada y saldo devuelto', balance: devolucion.balance });
   } catch (e) {
     console.error('Cancel transfer error:', e.message);
     res.status(500).json({ message: 'Error al cancelar la transferencia' });
   }
 });
 
-app.post('/api/wallet/recharge-code', auth, walletLimiter, async (req, res) => {
-  const { code } = req.body;
-  if (!code || code.replace(/-/g, '').length !== 16)
-    return res.status(400).json({ message: 'CÁƒÂ³digo invÁƒÂ¡lido' });
+// Redención de un código de recarga. Un único camino para la app y para los
+// canales sin teléfono inteligente: si el canal tuviera su propia versión, el
+// histórico y el libro mayor se escribirían distinto según por dónde entrara.
+// Devuelve códigos, no respuestas HTTP.
+const redeemRechargeCode = async ({ userId, code }) => {
+  const raw = String(code || '').trim();
+  if (raw.replace(/-/g, '').length !== 16) return { ok: false, code: 'CODE_INVALID' };
 
-  // Verificar si el cÁƒÂ³digo ya fue usado
-  const { data: usedCode } = await supabase
-    .from('recharge_codes').select('*').eq('code', code).single();
+  const { data: row } = await supabase
+    .from('recharge_codes').select('*').eq('code', raw).maybeSingle();
+  if (!row) return { ok: false, code: 'CODE_NOT_FOUND' };
+  if (row.used || row.is_used) return { ok: false, code: 'CODE_USED' };
+  if (row.expires_at && new Date(row.expires_at) < new Date()) return { ok: false, code: 'CODE_EXPIRED' };
 
-  if (!usedCode) return res.status(400).json({ message: 'CÁƒÂ³digo no vÁƒÂ¡lido' });
-  if (usedCode.used || usedCode.is_used) return res.status(400).json({ message: 'CÁƒÂ³digo ya utilizado' });
-  if (usedCode.expires_at && new Date(usedCode.expires_at) < new Date())
-    return res.status(400).json({ message: 'CÁƒÂ³digo expirado' });
-
-  const amount = usedCode?.amount || 5000;
+  const amount = roundAmount(Number(row.amount || 5000));
 
   // Reclamo atómico: solo la primera petición que encuentre el código sin usar
   // consigue la fila actualizada; las demás reciben data = null.
   const { data: claimed } = await supabase
     .from('recharge_codes')
-    .update({ used: true, used_by: req.user.id, used_at: new Date().toISOString() })
-    .eq('code', code)
+    .update({ used: true, used_by: userId, used_at: new Date().toISOString() })
+    .eq('code', raw)
     .or('used.eq.false,used.is.null')
     .select('id')
     .maybeSingle();
+  if (!claimed) return { ok: false, code: 'CODE_USED' };
 
-  if (!claimed) return res.status(400).json({ message: 'Código ya utilizado' });
-
-  const credit = await creditWallet(req.user.id, roundAmount(amount));
+  // El código ya está reclamado (used=true) antes de abonar: la clave del
+  // asiento es el id del código, así que aunque la petición se repita el
+  // importe entra una sola vez.
+  const credit = await creditWallet(userId, amount, {
+    operation: 'recarga',
+    account: 'SYS-CASH',
+    concept: `Recarga con código ${raw}`,
+    key: `RECHARGE-${claimed.id}`,
+    reference: raw,
+  });
   if (!credit.ok) {
     await supabase.from('recharge_codes')
       .update({ used: false, used_by: null, used_at: null })
-      .eq('code', code);
-    return transferErrorResponse(res, credit.code);
+      .eq('code', raw);
+    return { ok: false, code: credit.code };
   }
 
   await supabase.from('transactions').insert({
-    user_id: req.user.id, type: 'deposit', amount: roundAmount(amount), method: 'Código de recarga',
-    reference: code, status: 'completed'
+    user_id: userId, type: 'deposit', amount, method: 'Código de recarga',
+    reference: raw, status: 'completed',
   });
+  return { ok: true, amount, balance: credit.balance };
+};
 
-  res.json({ balance: credit.balance, amount, message: `${amount.toLocaleString()} XAF añadidos`, sandbox: WALLET_SANDBOX });
+app.post('/api/wallet/recharge-code', auth, walletLimiter, async (req, res) => {
+  const out = await redeemRechargeCode({ userId: req.user.id, code: req.body?.code });
+  if (!out.ok) {
+    const messages = {
+      CODE_INVALID: 'Código inválido',
+      CODE_NOT_FOUND: 'Código no válido',
+      CODE_USED: 'Código ya utilizado',
+      CODE_EXPIRED: 'Código expirado',
+    };
+    return res.status(400).json({
+      message: messages[out.code] || 'No se pudo completar la recarga',
+      code: out.code,
+    });
+  }
+  res.json({
+    balance: out.balance,
+    amount: out.amount,
+    message: `${out.amount.toLocaleString()} XAF añadidos`,
+    sandbox: WALLET_SANDBOX,
+  });
 });
 
 // ── Pasarela de pagos ────────────────────────────────────────────────
@@ -3167,7 +3429,13 @@ app.post('/api/payments/deposit/confirm', auth, walletLimiter, async (req, res) 
       .select('id').maybeSingle();
     if (!claimed) return res.status(409).json({ message: 'La operación ya fue procesada' });
 
-    const credit = await creditWallet(req.user.id, roundAmount(intent.amount));
+    const credit = await creditWallet(req.user.id, roundAmount(intent.amount), {
+      operation: 'recarga',
+      account: 'SYS-CASH',
+      concept: `Recarga por ${intent.gateway || 'pasarela'}`,
+      key: `PAY-${intent.id}`,
+      reference: intent.id,
+    });
     if (!credit.ok) {
       await supabase.from('payment_transactions')
         .update({ status: 'processing', updated_at: new Date().toISOString() })
@@ -3271,7 +3539,13 @@ app.post('/api/payments/withdraw/confirm/:id', auth, walletLimiter, async (req, 
       .select('id').maybeSingle();
     if (!claimed) return res.status(409).json({ message: 'La operación ya fue procesada' });
 
-    const debit = await debitWallet(req.user.id, roundAmount(intent.amount));
+    const debit = await debitWallet(req.user.id, roundAmount(intent.amount), {
+      operation: 'retiro',
+      account: 'SYS-CASH',
+      concept: `Retirada por ${intent.gateway || 'pasarela'}`,
+      key: `PAY-${intent.id}`,
+      reference: intent.id,
+    });
     if (!debit.ok) {
       await supabase.from('payment_transactions')
         .update({ status: 'processing', updated_at: new Date().toISOString() })
@@ -3401,7 +3675,13 @@ app.post('/api/wallet/hold/:id/capture', auth, walletLimiter, async (req, res) =
     .select().maybeSingle();
   if (!claimed) return res.status(409).json({ message: 'Retención ya en proceso' });
 
-  const debit = await debitWallet(req.user.id, amount);
+  const debit = await debitWallet(req.user.id, amount, {
+    operation: 'pago_servicio',
+    account: 'SYS-SUSPENSE',
+    concept: `Captura de retención ${hold.reference || holdId}`,
+    key: `HOLD-CAP-${holdId}`,
+    reference: `CAPTURE:${hold.reference || holdId}`,
+  });
   if (!debit.ok) {
     await supabase.from('transactions').update({ status: 'pending' }).eq('id', holdId);
     return transferErrorResponse(res, debit.code);
@@ -3431,36 +3711,21 @@ app.post('/api/wallet/hold/:id/cancel', auth, async (req, res) => {
 
 const LEDGER_APPROVAL_THRESHOLD = Number(process.env.LEDGER_APPROVAL_THRESHOLD || 1000000);
 
-const ensureSystemLedgerAccounts = async () => {
-  const baseAccounts = [
-    { code: 'SYS-CASH', name: 'Caja Operativa', account_type: 'asset' },
-    { code: 'SYS-FEES', name: 'Ingresos por Comisiones', account_type: 'income' },
-    { code: 'SYS-SUSPENSE', name: 'Cuenta Puente', account_type: 'liability' }
-  ];
-  for (const a of baseAccounts) {
-    await supabase.from('ledger_accounts').upsert({
-      code: a.code,
-      name: a.name,
-      account_type: a.account_type,
-      currency: 'XAF',
-      is_system: true,
-      is_active: true
-    }, { onConflict: 'code' });
-  }
-};
-
+// El plan contable del operador (SYS-CASH, SYS-FEES, SYS-SUSPENSE,
+// SYS-DISCREPANCY) lo siembra la migracion 2026-11-02_ledger_lote_b.sql. Antes
+// lo upserteaba este código sin índice unico en ledger_accounts.code: fallaba en
+// silencio y no quedaba ni plan contable.
 const makeAccountCode = (userId) => `USR-${String(userId).slice(0, 8)}-${Date.now()}`;
 
 app.get('/api/wallet/ledger/config', auth, async (_req, res) => {
   res.json({
     approval_threshold: LEDGER_APPROVAL_THRESHOLD,
     currency: 'XAF',
-    modes: ['draft', 'posted', 'pending_approval', 'rejected']
+    modes: ['draft', 'posted', 'pending_approval', 'rejected', 'reversed']
   });
 });
 
 app.get('/api/wallet/ledger/accounts', auth, async (req, res) => {
-  await ensureSystemLedgerAccounts();
   const scope = String(req.query.scope || 'mine');
   let query = supabase.from('ledger_accounts').select('*').order('created_at', { ascending: false });
   if (scope === 'system') query = query.eq('is_system', true);
@@ -3471,12 +3736,14 @@ app.get('/api/wallet/ledger/accounts', auth, async (req, res) => {
   res.json(data || []);
 });
 
-app.post('/api/wallet/ledger/accounts', auth, async (req, res) => {
-  const { name, account_type, currency } = req.body || {};
+// Alta de cuentas del plan contable: solo administrador. La cuenta-monedero de
+// un cliente la crea ledger_post() en su primera operación, no esta ruta.
+app.post('/api/wallet/ledger/accounts', requireAdmin, async (req, res) => {
+  const { name, account_type, currency, user_id } = req.body || {};
   if (!name || !account_type) return res.status(400).json({ message: 'name y account_type son requeridos' });
   const payload = {
-    user_id: req.user.id,
-    code: makeAccountCode(req.user.id),
+    user_id: user_id || null,
+    code: makeAccountCode(user_id || req.admin.id),
     name: String(name).trim(),
     account_type: String(account_type).trim(),
     currency: String(currency || 'XAF'),
@@ -3525,9 +3792,12 @@ app.get('/api/wallet/ledger/journals/:id', auth, async (req, res) => {
   res.json({ journal, entries: entries || [], approval: approval || null });
 });
 
-app.post('/api/wallet/ledger/journals', auth, async (req, res) => {
-  await ensureSystemLedgerAccounts();
-  const { concept, reference, lines } = req.body || {};
+// Único camino para abrir un asiento desde fuera del monedero: ledger_post, que
+// cuadra, sella y mueve los monederos en la misma transacción. Antes esta ruta
+// insertaba journal + entries a mano con cualquier token de usuario, así que un
+// cliente podía asentarse el saldo que quisiera.
+app.post('/api/wallet/ledger/journals', requireAdmin, async (req, res) => {
+  const { concept, reference, lines, operation, idempotency_key, user_id } = req.body || {};
   if (!concept || !Array.isArray(lines) || lines.length < 2) {
     return res.status(400).json({ message: 'concept y al menos 2 líneas son requeridos' });
   }
@@ -3536,96 +3806,97 @@ app.post('/api/wallet/ledger/journals', auth, async (req, res) => {
   let credit = 0;
   const normalized = [];
   for (const l of lines) {
-    const amount = Number(l?.amount || 0);
-    const entryType = String(l?.entry_type || '');
-    const accountId = String(l?.account_id || '');
-    if (!accountId || !['debit', 'credit'].includes(entryType) || amount <= 0) {
-      return res.status(400).json({ message: 'Líneas inválidas: account_id, entry_type y amount son obligatorios' });
+    const amount = roundAmount(Number(l?.amount || 0));
+    const entryType = String(l?.entry_type || '').toLowerCase();
+    const code = String(l?.account || '').trim().toUpperCase();
+    const walletUser = String(l?.wallet_user_id || '').trim();
+    if (!['debit', 'credit'].includes(entryType) || !(amount > 0) || (!code && !walletUser)) {
+      return res.status(400).json({
+        message: 'Líneas inválidas: cada una necesita account (código) o wallet_user_id, entry_type y amount > 0',
+      });
     }
     if (entryType === 'debit') debit += amount;
     else credit += amount;
     normalized.push({
-      account_id: accountId,
+      ...(code ? { account: code } : { wallet_user_id: walletUser }),
       entry_type: entryType,
       amount,
       currency: String(l?.currency || 'XAF'),
       memo: l?.memo ? String(l.memo) : null,
-      counterparty_user_id: l?.counterparty_user_id || null
+      counterparty_user_id: l?.counterparty_user_id || null,
     });
   }
-  if (Math.abs(debit - credit) > 0.00001) {
-    return res.status(400).json({ message: 'Asiento no balanceado: total debit debe igualar total credit' });
+  if (Math.abs(roundAmount(debit) - roundAmount(credit)) >= 0.005) {
+    return res.status(400).json({ message: `Asiento no balanceado: debe ${debit} / haber ${credit}` });
   }
 
-  const totalAmount = debit;
-  const requiresApproval = totalAmount >= LEDGER_APPROVAL_THRESHOLD;
-  const status = requiresApproval ? 'pending_approval' : 'posted';
-
-  const { data: journal, error: jErr } = await supabase.from('ledger_journals').insert({
-    user_id: req.user.id,
-    reference: reference || `JR-${Date.now()}`,
+  const total = roundAmount(debit);
+  const asiento = await ledgerPost({
+    userId: user_id || req.admin.id,
+    operation: String(operation || 'ajuste'),
+    key: idempotency_key ? String(idempotency_key) : `MANUAL-${req.admin.id}-${Date.now()}`,
     concept,
-    total_amount: totalAmount,
-    status,
-    requires_approval: requiresApproval,
-    created_by: req.user.id
-  }).select().single();
-  if (jErr) return res.status(500).json({ message: jErr.message });
+    reference,
+    lines: normalized,
+    requiresApproval: total >= LEDGER_APPROVAL_THRESHOLD,
+  });
+  if (!asiento.ok) return transferErrorResponse(res, asiento.code);
 
-  const entriesPayload = normalized.map((e) => ({ ...e, journal_id: journal.id }));
-  const { error: eErr } = await supabase.from('ledger_entries').insert(entriesPayload);
-  if (eErr) return res.status(500).json({ message: eErr.message });
-
-  if (requiresApproval) {
-    await supabase.from('ledger_approvals').upsert({
-      journal_id: journal.id,
-      requested_by: req.user.id,
-      status: 'pending'
-    }, { onConflict: 'journal_id' });
-  }
-
+  const { data: journal } = await supabase.from('ledger_journals')
+    .select('id, status, total_amount, requires_approval, posted_at')
+    .eq('id', asiento.journal_id)
+    .maybeSingle();
   res.status(201).json({
-    journal_id: journal.id,
-    status: journal.status,
-    requires_approval: journal.requires_approval,
-    total_amount: totalAmount
+    ...(journal || { id: asiento.journal_id }),
+    already_posted: asiento.already_posted === true,
   });
 });
 
-app.post('/api/wallet/ledger/journals/:id/approve', auth, async (req, res) => {
-  const id = req.params.id;
+// Devolver un asiento cerrado: asiento espejo, el original queda 'reversed' y
+// sigue visible. Solo administrador y con la segunda firma de otro administrador.
+app.post('/api/wallet/ledger/journals/:id/reverse', requireAdmin, async (req, res) => {
   const { reason } = req.body || {};
-  const { data: journal } = await supabase
-    .from('ledger_journals')
-    .select('*')
-    .eq('id', id)
-    .maybeSingle();
-  if (!journal) return res.status(404).json({ message: 'Asiento no encontrado' });
-  if (journal.status !== 'pending_approval') return res.status(400).json({ message: 'El asiento no está pendiente de aprobación' });
-  if (String(journal.created_by) === String(req.user.id)) {
-    return res.status(403).json({ message: 'Maker-checker activo: el creador no puede aprobar su propio asiento' });
-  }
-
-  const approvedAt = new Date().toISOString();
-  await supabase.from('ledger_journals').update({
-    status: 'posted',
-    approved_by: req.user.id,
-    approved_at: approvedAt
-  }).eq('id', id);
-
-  await supabase.from('ledger_approvals').upsert({
-    journal_id: id,
-    requested_by: journal.created_by,
-    approved_by: req.user.id,
-    status: 'approved',
-    reason: reason || null,
-    updated_at: approvedAt
-  }, { onConflict: 'journal_id' });
-
-  res.json({ message: 'Asiento aprobado y contabilizado', journal_id: id, approved_at: approvedAt });
+  if (!reason) return res.status(400).json({ message: 'reason es obligatorio en una reversión' });
+  const { data, error } = await supabase.rpc('ledger_reverse_journal', {
+    p_journal_id: req.params.id,
+    p_admin_id: req.admin.id,
+    p_reason: String(reason).slice(0, 200),
+  });
+  if (error) return res.status(400).json({ message: error.message, code: 'REVERSE_FAILED' });
+  res.json(data || { journal_id: req.params.id });
 });
 
-app.post('/api/wallet/ledger/journals/:id/reject', auth, async (req, res) => {
+// Cuadre monedero-libro: los monederos cuyo saldo no tiene asiento detrás.
+app.get('/api/wallet/ledger/reconciliation', requireAdmin, async (_req, res) => {
+  const { data, error } = await supabase.from('ledger_wallet_reconciliation_v')
+    .select('user_id, currency, wallet_balance, ledger_balance, drift')
+    .order('drift', { ascending: false })
+    .limit(500);
+  if (error) return res.status(500).json({ message: error.message });
+  const desfases = (data || []).filter((r) => Math.abs(Number(r.drift || 0)) >= 0.005);
+  res.json({ total: (data || []).length, con_desfase: desfases.length, filas: desfases.slice(0, 100) });
+});
+
+app.post('/api/wallet/ledger/journals/:id/approve', requireAdmin, async (req, res) => {
+  const id = req.params.id;
+  const { reason } = req.body || {};
+
+  // La comprobación maker-checker y el cierre del asiento los hace la base de
+  // datos en ledger_approve_journal: desde aquí no se puede aprobar moviendo el
+  // saldo a mano.
+  const { data, error } = await supabase.rpc('ledger_approve_journal', {
+    p_journal_id: id,
+    p_admin_id: req.admin.id,
+    p_reason: reason ? String(reason).slice(0, 200) : null,
+  });
+  if (error) return res.status(400).json({ message: error.message, code: 'APPROVE_FAILED' });
+  if (data?.approved === false) {
+    return res.status(400).json({ message: 'El asiento no está pendiente de aprobación', status: data.status });
+  }
+  res.json({ message: 'Asiento aprobado y contabilizado', journal_id: id, status: data.status });
+});
+
+app.post('/api/wallet/ledger/journals/:id/reject', requireAdmin, async (req, res) => {
   const id = req.params.id;
   const { reason } = req.body || {};
   const { data: journal } = await supabase
@@ -3635,41 +3906,31 @@ app.post('/api/wallet/ledger/journals/:id/reject', auth, async (req, res) => {
     .maybeSingle();
   if (!journal) return res.status(404).json({ message: 'Asiento no encontrado' });
   if (journal.status !== 'pending_approval') return res.status(400).json({ message: 'El asiento no está pendiente de aprobación' });
-  if (String(journal.created_by) === String(req.user.id)) {
+  if (String(journal.created_by) === String(req.admin.id)) {
     return res.status(403).json({ message: 'Maker-checker activo: el creador no puede rechazar su propio asiento' });
   }
 
   const updatedAt = new Date().toISOString();
-  await supabase.from('ledger_journals').update({ status: 'rejected' }).eq('id', id);
+  // Rechazar no mueve dinero: el asiento nunca llegó a cerrarse, así que el
+  // disparador de aplicación no intervino. Las líneas quedan intactas y
+  // selladas como 'rejected' para que el intento quede auditable.
+  const { error } = await supabase.from('ledger_journals').update({
+    status: 'rejected',
+    approved_by: req.admin.id,
+    approved_at: updatedAt,
+  }).eq('id', id).eq('status', 'pending_approval');
   await supabase.from('ledger_approvals').upsert({
     journal_id: id,
     requested_by: journal.created_by,
-    approved_by: req.user.id,
+    approved_by: req.admin.id,
     status: 'rejected',
     reason: reason || 'Rechazado por validador',
-    updated_at: updatedAt
+    updated_at: updatedAt,
   }, { onConflict: 'journal_id' });
 
+  if (error) return res.status(500).json({ message: error.message });
   res.json({ message: 'Asiento rechazado', journal_id: id });
 });
-
-const ensureUserCashAccount = async (userId) => {
-  const code = `USR-CASH-${String(userId).slice(0, 8)}`;
-  let { data: acc } = await supabase.from('ledger_accounts').select('*').eq('code', code).maybeSingle();
-  if (!acc) {
-    const { data } = await supabase.from('ledger_accounts').insert({
-      user_id: userId,
-      code,
-      name: 'Caja Usuario EGCHAT',
-      account_type: 'asset',
-      currency: 'XAF',
-      is_system: false,
-      is_active: true
-    }).select().single();
-    acc = data;
-  }
-  return acc;
-};
 
 app.get('/api/cemac/rates', auth, async (_req, res) => {
   try {
@@ -3721,20 +3982,7 @@ app.post('/api/cemac/transfers', auth, walletLimiter, async (req, res) => {
     }
 
     const fee = 750;
-    const total = Number(amount) + fee;
-    
-    // Debitar wallet con fallback
-    let deb = { ok: false, balance: 0, message: 'Error wallet' };
-    try {
-      deb = await debitWalletWithTx(req.user.id, total, 'EGCHAT', `CEMAC-${to_country}-${beneficiary_account}`, 'cemac_transfer');
-    } catch (walletError) {
-      console.warn('Wallet debit failed:', walletError.message);
-    }
-    
-    if (!deb.ok) {
-      return res.status(400).json({ message: deb.message || 'Saldo insuficiente', code: deb.code || 'INSUFFICIENT_BALANCE' });
-    }
-
+    const total = roundAmount(Number(amount) + fee);
     const transferRef = external_id || safeRef('CEMAC');
     let transfer = null;
     
@@ -3779,40 +4027,36 @@ app.post('/api/cemac/transfers', auth, walletLimiter, async (req, res) => {
       transfer = fallbackTransfer;
     }
 
-    // Ledger con fallback
-    let journalId = null;
-    try {
-      await ensureSystemLedgerAccounts();
-      const userCash = await ensureUserCashAccount(req.user.id);
-      const { data: suspense } = await supabase.from('ledger_accounts').select('*').eq('code', 'SYS-SUSPENSE').single();
-      
-      if (suspense?.id && userCash?.id) {
-        const { data: journal } = await supabase.from('ledger_journals').insert({
-          user_id: req.user.id,
-          reference: `CEMAC:${transferRef}`,
-          concept: `Transferencia CEMAC ${from_country}->${to_country}`,
-          total_amount: Number(amount),
-          status: 'posted',
-          requires_approval: false,
-          created_by: req.user.id
-        }).select().single();
-        
-        journalId = journal?.id || null;
-        
-        if (journalId) {
-          try {
-            await supabase.from('ledger_entries').insert([
-              { journal_id: journal.id, account_id: suspense.id, entry_type: 'debit', amount: Number(amount), currency: 'XAF', memo: 'Salida CEMAC' },
-              { journal_id: journal.id, account_id: userCash.id, entry_type: 'credit', amount: Number(amount), currency: 'XAF', memo: 'Debito usuario CEMAC' }
-            ]);
-          } catch (entriesError) {
-            console.warn('Ledger entries failed:', entriesError.message);
-          }
-        }
-      }
-    } catch (ledgerError) {
-      console.warn('Ledger creation failed:', ledgerError.message);
+    // El cargo se asienta después de crear la transferencia y con su referencia
+    // como clave de idempotencia: repetir el mismo pedido devuelve el asiento ya
+    // hecho en lugar de volver a cobrar. La comisión se reconoce como ingreso
+    // del operador y solo lo enviado al beneficiario queda obligado en la cuenta
+    // puente; antes se debitaba el total y se asentaba solo el importe.
+    const asiento = await ledgerPost({
+      userId: req.user.id,
+      operation: 'pago_servicio',
+      key: `CEMAC-${transferRef}`,
+      concept: `Transferencia CEMAC ${from_country}->${to_country} a ${beneficiary_name}`,
+      reference: `CEMAC:${transferRef}`,
+      lines: [
+        { wallet_user_id: req.user.id, entry_type: 'debit', amount: total },
+        { account: 'SYS-SUSPENSE', entry_type: 'credit', amount: roundAmount(Number(amount)) },
+        { account: 'SYS-FEES', entry_type: 'credit', amount: fee },
+      ],
+    });
+    if (!asiento.ok) {
+      await supabase.from('cemac_transfers').update({ status: 'failed' }).eq('transfer_ref', transferRef);
+      return transferErrorResponse(res, asiento.code);
     }
+    const journalId = asiento.journal_id;
+    await supabase.from('transactions').insert({
+      user_id: req.user.id,
+      type: 'cemac_transfer',
+      amount: total,
+      method: 'EGCHAT',
+      reference: `CEMAC:${transferRef}`,
+      status: 'completed',
+    });
     
     // Audit logging con fallback
     try {
@@ -3821,7 +4065,7 @@ app.post('/api/cemac/transfers', auth, walletLimiter, async (req, res) => {
       console.warn('Audit logging failed:', auditError.message);
     }
 
-    res.status(201).json({ transfer, ledger_journal_id: journalId, balance: deb.balance });
+    res.status(201).json({ transfer, ledger_journal_id: journalId, balance: await readWalletBalance(req.user.id) });
   } catch (e) {
     console.error('CEMAC transfer error:', e);
     res.status(500).json({ message: e?.message || 'Error interno', code: 'INTERNAL_ERROR' });
@@ -5071,8 +5315,32 @@ const createServiceOrder = async (userId, provider, serviceType, amount, contrac
   return { orderRef, record: data || insert };
 };
 
-const debitWalletWithTx = async (userId, amount, method, reference, txType = 'payment') => {
-  const deb = await debitWallet(userId, Number(amount || 0));
+// Contrapartida del libro mayor según el tipo de gasto: lo pagado a un proveedor
+// queda obligado en la cuenta puente hasta que se liquide con él.
+const SERVICE_LEDGER = {
+  service_payment: { account: 'SYS-SUSPENSE', operation: 'pago_servicio' },
+  tax_payment: { account: 'SYS-SUSPENSE', operation: 'pago_servicio' },
+  shopping_payment: { account: 'SYS-SUSPENSE', operation: 'pago_servicio' },
+  cemac_transfer: { account: 'SYS-SUSPENSE', operation: 'pago_servicio' },
+  taxi_rate: { account: 'SYS-FEES', operation: 'comision' },
+  payment: { account: 'SYS-SUSPENSE', operation: 'pago_servicio' },
+};
+
+const debitWalletWithTx = async (userId, amount, method, reference, txType = 'payment', opts = {}) => {
+  const amt = Number(amount || 0);
+  // amt = 0 se usa en cargos simbólicos (valorar un taxi): no hay dinero que
+  // asentar, solo queda el apunte del movimiento.
+  let deb = { ok: true, balance: await readWalletBalance(userId) };
+  if (amt > 0) {
+    const mapa = SERVICE_LEDGER[txType] || SERVICE_LEDGER.payment;
+    deb = await debitWallet(userId, amt, {
+      operation: opts.operation || mapa.operation,
+      account: opts.account || mapa.account,
+      concept: opts.concept || `${txType} por ${method || 'EGCHAT'}`,
+      key: opts.key || null,
+      reference,
+    });
+  }
   if (!deb.ok) {
     return {
       ok: false,
@@ -5702,7 +5970,12 @@ app.post('/api/insurance/contract', auth, walletLimiter, async (req, res) => {
 
     // Cobrar antes de emitir: dos peticiones simultáneas no pueden quedarse con
     // dos pólizas pagando una sola vez.
-    const debit = await debitWallet(req.user.id, total_premium);
+    const debit = await debitWallet(req.user.id, total_premium, {
+      operation: 'pago_servicio',
+      account: 'SYS-SUSPENSE',
+      concept: `Prima de seguro ${insurance_type} ${duration_months} meses`,
+      key: req.body?.client_ref ? `INS-${String(req.body.client_ref)}` : null,
+    });
     if (!debit.ok) return transferErrorResponse(res, debit.code);
 
     // Crear pÁƒÂ³liza
@@ -5722,7 +5995,14 @@ app.post('/api/insurance/contract', auth, walletLimiter, async (req, res) => {
       .select()
       .single();
     if (policyError) {
-      await creditWallet(req.user.id, total_premium);
+      // Anulamos la prima con el asiento contrario (mismo origen y destino) para
+      // que el libro refleje el cobro y la devolución, no un saldo suelto.
+      await creditWallet(req.user.id, total_premium, {
+        operation: 'ajuste',
+        account: 'SYS-SUSPENSE',
+        concept: 'Devolución de prima no emitida',
+        key: `INS-VOID-${req.params?.id || Date.now()}`,
+      });
       return res.status(500).json({ message: 'No se pudo emitir la póliza' });
     }
 
@@ -6762,12 +7042,14 @@ app.post('/api/spaces/:id/follow', auth, async (req, res) => {
       .from('space_follows').select('id').eq('space_id', id).eq('user_id', userId).single();
     if (existing) {
       await supabase.from('space_follows').delete().eq('space_id', id).eq('user_id', userId);
-      await supabase.from('spaces').update({ followers_count: supabase.rpc ? undefined : 0 }).eq('id', id);
-      await supabase.rpc('exec_sql', { sql: `UPDATE spaces SET followers_count = GREATEST(0, followers_count - 1) WHERE id = '${id}'` });
+      // El contador lo mueve la base de datos con un delta: antes esta línea
+      // escribía `followers_count: undefined` (no-op) y además un UPDATE en
+      // cadena que se pisaba con los demás seguidores.
+      await supabase.rpc('space_followers_delta', { p_space_id: id, p_delta: -1 });
       res.json({ following: false });
     } else {
       await supabase.from('space_follows').insert({ space_id: id, user_id: userId });
-      await supabase.rpc('exec_sql', { sql: `UPDATE spaces SET followers_count = followers_count + 1 WHERE id = '${id}'` });
+      await supabase.rpc('space_followers_delta', { p_space_id: id, p_delta: 1 });
       res.json({ following: true });
     }
   } catch (e) { res.status(500).json({ message: e.message }); }
@@ -6847,11 +7129,11 @@ app.post('/api/spaces/posts/:postId/like', auth, async (req, res) => {
     const { data: existing } = await supabase.from('space_post_likes').select('id').eq('post_id', postId).eq('user_id', userId).single();
     if (existing) {
       await supabase.from('space_post_likes').delete().eq('post_id', postId).eq('user_id', userId);
-      await supabase.rpc('exec_sql', { sql: `UPDATE space_posts SET likes_count = GREATEST(0, likes_count - 1) WHERE id = '${postId}'` });
+      await supabase.rpc('space_likes_delta', { p_post_id: postId, p_delta: -1 });
       res.json({ liked: false });
     } else {
       await supabase.from('space_post_likes').insert({ post_id: postId, user_id: userId });
-      await supabase.rpc('exec_sql', { sql: `UPDATE space_posts SET likes_count = likes_count + 1 WHERE id = '${postId}'` });
+      await supabase.rpc('space_likes_delta', { p_post_id: postId, p_delta: 1 });
       res.json({ liked: true });
     }
   } catch (e) { res.status(500).json({ message: e.message }); }
@@ -6892,7 +7174,7 @@ app.post('/api/spaces/posts/:postId/comments', auth, async (req, res) => {
       .insert({ post_id: postId, author_id: req.user.id, text: text.trim() })
       .select().single();
     if (error) throw error;
-    await supabase.rpc('exec_sql', { sql: `UPDATE space_posts SET comments_count = comments_count + 1 WHERE id = '${postId}'` });
+    await supabase.rpc('space_comments_delta', { p_post_id: postId, p_delta: 1 });
     const { data: author } = await supabase.from('users').select('full_name, avatar_url').eq('id', req.user.id).single();
     res.status(201).json({ id: data.id, author: author?.full_name || 'Usuario', avatar: (author?.full_name||'U').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(), avatarUrl: author?.avatar_url||'', text: data.text, time: 'ahora' });
   } catch (e) { res.status(500).json({ message: e.message }); }
@@ -9637,5 +9919,55 @@ app.get('/api/kyc/pending', requireAdmin, async (req, res) => {
 // ══════════════════════════════════════════════════════════════════
 // FIN KYC
 // ══════════════════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════════════
+// Canales sin teléfono inteligente (USSD / SMS / IVR)
+// ══════════════════════════════════════════════════════════════════
+// El menú de marcación lee y mueve dinero por la misma primitiva que la app —
+// sendP2PByKind() termina en ledger_post_kind(), la plantilla de asiento que
+// vive dentro de la base de datos—, así que no existe un segundo monedero ni
+// una contabilidad aparte para los teléfonos básicos. Sin operadora firmada,
+// egpayChannelInfo.has_real_channel es false y la app no puede prometer menús
+// USSD reales: sólo funciona el canal de pruebas.
+const { buildChannelRegistry } = require('./egpay-channel-providers');
+const egpayChannelInfo = buildChannelRegistry({ env: process.env, log: console });
+const egpayChannels = require('./egpay-channels')({
+  supabase,
+  money: {
+    sendP2P: sendP2PByKind,
+    balanceOf: readWalletBalance,
+  },
+  resolveUser: async (phone) => findUserByRef(phone),
+  // Se valida contra el hash del usuario y no se guarda: la sesión sólo
+  // recuerda que se superó, nunca el número tecleado.
+  verifyPin: async (userId, pin) => checkPinForOperation(userId, pin),
+  applyRechargeCode: async ({ userId, code }) => redeemRechargeCode({ userId, code }),
+  log: console,
+  sessionTtlMinutes: Number(process.env.CHANNEL_SESSION_TTL_MINUTES || 10),
+  maxPinAttempts: Number(process.env.CHANNEL_MAX_PIN_ATTEMPTS || 3),
+  maxPerPayment: Number(process.env.CHANNEL_MAX_PAYMENT || 250000),
+  maxDaily: Number(process.env.CHANNEL_MAX_DAILY || 500000),
+});
+
+const egpayChannelRoutes = require('./egpayChannelRoutes')({
+  express,
+  supabase,
+  requireAdmin,
+  auth,
+  channels: egpayChannels,
+  channelInfo: egpayChannelInfo,
+  log: console,
+});
+app.use('/api/egpay/channel', egpayChannelRoutes.gateway);
+app.use('/api/wallet', egpayChannelRoutes.user);
+app.use('/api/egpay', egpayChannelRoutes.admin);
+
+// Las sesiones caducadas se devuelven al menú en lote: una cola marcada a
+// medias no mueve dinero, pero impediría empezar un recorrido nuevo.
+if (supabase) {
+  setInterval(() => {
+    egpayChannels.closeStale().catch((e) => console.error('[CANAL] cierre de sesiones:', e.message));
+  }, 5 * 60 * 1000).unref();
+}
 
 module.exports = app;
