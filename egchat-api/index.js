@@ -331,10 +331,11 @@ const emitToUsers = (userIds, payload) => {
   uniq.forEach((id) => emitToUser(id, payload));
 };
 
-// Avisar por SSE a TODOS los participantes de una señal de llamada. Antes se
-// avisaba solo al usuario distinto del que llama, así que el segundo iPhone del
-// que contesta seguía sonando sin que nadie le dijera nada. El emisor también
-// recibe el aviso: cierra sus otras pestañas y dispositivos de una vuelta.
+// Avisar de una señal de llamada a TODOS los dispositivos de los dos
+// participantes. Antes solo se avisaba al otro usuario, así que el segundo
+// iPhone del que contesta seguía timbrando sin que nadie le dijera nada.
+// El SSE llega a las conexiones vivas; el push VoIP es lo único que despierta
+// un iPhone suspendido con CallKit sonando.
 const notifyCallPeer = async (callId, selfUserId, payload) => {
   try {
     const { data } = await supabase
@@ -346,6 +347,7 @@ const notifyCallPeer = async (callId, selfUserId, payload) => {
     const users = [...new Set([data.caller_id, data.target_user_id]
       .filter(Boolean).map((id) => String(id)))];
     emitToUsers(users, payload);
+    sendVoipSignalToUsers(users, callId, payload.type).catch(() => {});
   } catch (e) {
     console.warn('[call/notify-peer]', e.message);
   }
@@ -7735,6 +7737,46 @@ const sendVoipPushToUser = async (userId, call) => {
     return { configured: true, delivered, reason: delivered ? null : (results[0] && results[0].reason) || 'failed' };
   } catch (e) {
     console.error('[voip] error:', e.message);
+    return { configured: true, delivered: false, reason: e.message };
+  }
+};
+
+/**
+ * Push VoIP de señalización (aviso de respuesta o de fin), sin offer: es pequeño
+ * y cabe siempre. La app lo traduce en CallKit: corta el timbre si la llamada
+ * aún no estaba conectada. Sin este push, un iPhone suspendido no se entera de
+ * que otra máquina contestó y sigue sonando hasta que caduca la sesión.
+ */
+const sendVoipSignalToUsers = async (userIds, callId, type) => {
+  try {
+    const apnsJwt = getApnsVoipJwt();
+    if (!apnsJwt) return { configured: false, delivered: false };
+
+    const tokens = [];
+    for (const id of userIds) {
+      const { data } = await supabase
+        .from('expo_push_tokens')
+        .select('token')
+        .eq('user_id', id)
+        .eq('token_type', 'voip')
+        .neq('is_active', false);
+      (data || []).forEach(s => s.token && tokens.push(s.token));
+    }
+    const uniq = [...new Set(tokens)];
+    if (uniq.length === 0) return { configured: true, delivered: false, reason: 'no_voip_token' };
+
+    const payload = {
+      aps: { 'content-available': 1 },
+      callId:           String(callId),
+      'call-uuid':      uuidFromCallId(callId),
+      notificationType: type,
+    };
+    const results   = await Promise.all(uniq.map(t => sendApnsVoip(t, apnsJwt, payload)));
+    const delivered = results.some(r => r.ok);
+    if (!delivered) console.warn(`[voip-signal] ${type} ${callId}: 0/${uniq.length} entregados`);
+    return { configured: true, delivered };
+  } catch (e) {
+    console.error('[voip-signal] error:', e.message);
     return { configured: true, delivered: false, reason: e.message };
   }
 };
