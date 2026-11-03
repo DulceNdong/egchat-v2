@@ -7959,8 +7959,16 @@ app.post('/api/call/ice', auth, async (req, res) => {
 // Polling — estado completo con campos nuevos
 app.get('/api/call/:callId', auth, async (req, res) => {
   try {
-    const { data } = await supabase.from('call_sessions').select('*').eq('call_id', req.params.callId).single();
-    if (!data) return res.status(404).json({ error: 'Llamada no encontrada' });
+    const { data } = await supabase.from('call_sessions').select('*').eq('call_id', req.params.callId).maybeSingle();
+    // Fila ya barrida: se devuelve estado terminal en vez de 404, que el cliente confundía con corte de red.
+    if (!data) {
+      return res.json({
+        offer: null, answer: null, callerCandidates: [], calleeCandidates: [],
+        type: null, callerId: null, targetUserId: null,
+        ended: true, status: 'ended', connectedAt: null, endedAt: null,
+        version: 0, gone: true,
+      });
+    }
     res.json({
       offer:            JSON.parse(data.offer || 'null'),
       answer:           data.answer ? JSON.parse(data.answer) : null,
@@ -8000,10 +8008,6 @@ app.delete('/api/call/:callId', auth, async (req, res) => {
     }
 
     await notifyCallPeer(req.params.callId, req.user.id, { type: 'call_ended', callId: req.params.callId, reason, ts: Date.now() });
-
-    setTimeout(async () => {
-      try { await supabase.from('call_sessions').delete().eq('call_id', req.params.callId); } catch {}
-    }, 30000);
 
     res.json({ ok: true, idempotent: data && data.idempotent ? true : false, duration_seconds: data && data.duration_seconds ? data.duration_seconds : 0 });
   } catch (e) {
