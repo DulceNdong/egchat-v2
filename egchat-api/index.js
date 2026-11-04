@@ -7687,38 +7687,26 @@ async function getTwilioIceServers() {
   }));
 }
 
+// Solo STUN publicos: un TURN abierto y sin probar (openrelay) aporta candidatos
+// muertos que retrasan la negociacion ICE en lugar de ayudar. Con las credenciales
+// de Twilio puestas, el TURN real lo devuelve getTwilioIceServers().
 const FALLBACK_ICE = [
   { urls: ['stun:stun.l.google.com:19302', 'stun:stun2.l.google.com:19302'] },
-  { urls: 'stun:stun.cloudflare.com:3478' },
-  { urls: ['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443'], username: 'openrelayproject', credential: 'openrelayproject' }
+  { urls: 'stun:stun.cloudflare.com:3478' }
 ];
 
 // Ruta principal usada por el frontend
 app.get('/api/turn-token', auth, async (req, res) => {
   try {
-    const accountSid  = process.env.TWILIO_ACCOUNT_SID;
-    const apiKeySid   = process.env.TWILIO_API_KEY_SID;
-    const apiKeySecret = process.env.TWILIO_API_KEY_SECRET;
-
-    const client = require('twilio')(apiKeySid, apiKeySecret, { accountSid });
-    const token = await client.tokens.create({ ttl: 86400 });
-
-    res.json({
-      iceServers: token.iceServers.map(s => ({
-        urls: s.url || s.urls,
-        username: s.username,
-        credential: s.credential,
-      }))
-    });
+    res.json({ iceServers: await getTwilioIceServers() });
   } catch (e) {
-    console.error('TURN token error:', e.message);
-    res.json({
-      iceServers: [
-        { urls: ['stun:stun.l.google.com:19302', 'stun:stun2.l.google.com:19302'] },
-        { urls: 'stun:stun.cloudflare.com:3478' },
-        { urls: ['turn:openrelay.metered.ca:80', 'turn:openrelay.metered.ca:443'], username: 'openrelayproject', credential: 'openrelayproject' }
-      ]
-    });
+    // Sin estas tres variables el SDK de Twilio rechaza el `username` vacío y el
+    // ICE se queda solo con STUN publico: la llamada timbra pero el audio puede no
+    // conectar entre redes distintas. Se nombran las que faltan, nunca sus valores.
+    const faltan = ['TWILIO_ACCOUNT_SID', 'TWILIO_API_KEY_SID', 'TWILIO_API_KEY_SECRET']
+      .filter(k => !process.env[k]);
+    console.error('TURN token error:', e.message, faltan.length ? `· faltan ${faltan.join(', ')} · se devuelven solo STUN publicos` : '· las 3 estan puestas, el fallo es de Twilio');
+    res.json({ iceServers: FALLBACK_ICE });
   }
 });
 
@@ -7838,6 +7826,7 @@ const sendVoipPushToUser = async (userId, call) => {
       .neq('is_active', false);
 
     if (!voipSubs || voipSubs.length === 0) {
+      console.log(`[voip] sin token para user=${String(userId).slice(0, 8)}: la llamada sale por otro canal`);
       return { configured: true, delivered: false, reason: 'no_voip_token' };
     }
 
@@ -7859,7 +7848,8 @@ const sendVoipPushToUser = async (userId, call) => {
 
     const results   = await Promise.all(voipSubs.map(s => sendApnsVoip(s.token, apnsJwt, payload)));
     const delivered = results.some(r => r.ok);
-    if (!delivered) console.warn(`[voip] ${voipSubs.length} token(s), 0 entregados:`, results.map(r => r.reason).join(' | '));
+    if (delivered) console.log(`[voip] entregado por APNs a user=${String(userId).slice(0, 8)} (${voipSubs.length} token(s))`);
+    else console.warn(`[voip] ${voipSubs.length} token(s), 0 entregados:`, results.map(r => r.reason).join(' | '));
     return { configured: true, delivered, reason: delivered ? null : (results[0] && results[0].reason) || 'failed' };
   } catch (e) {
     console.error('[voip] error:', e.message);
@@ -8923,6 +8913,9 @@ app.post('/api/push/register-voip-token', auth, async (req, res) => {
       is_active:  true,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'token' });
+    // Solo longitudes: el token VoIP es un secreto de dispositivo y los logs de
+    // Render son legibles por cualquiera con acceso al servicio.
+    console.log(`[voip] token registrado user=${String(req.user.id).slice(0, 8)} len=${voipToken.length}`);
     res.json({ message: 'Token VoIP registrado' });
   } catch (e) {
     console.error('VoIP token register error:', e.message);
