@@ -5526,24 +5526,95 @@ app.post('/api/servicios/facturas/cargar', auth, requireAdmin, async (req, res) 
 });
 
 // Deuda del usuario en todos los proveedores, para que la app no tenga que
-// adivinar contratos.
+// adivinar contratos. Con estado=todas o estado=pagadas también devuelve lo
+// abonado, así la pantalla de facturas puede enseñar el historial sin inventar.
 app.get('/api/servicios/facturas', auth, async (req, res) => {
-  const { data, error } = await supabase
+  const estado = String(req.query.estado || 'pendientes').toLowerCase();
+  let query = supabase
     .from('service_bills')
-    .select('id, provider, contract_ref, amount, currency, period, concept, due_date, status')
-    .eq('status', 'pending')
+    .select('id, provider, contract_ref, amount, currency, period, concept, due_date, status, paid_at')
     .or(`user_id.eq.${req.user.id},user_id.is.null`)
     .order('due_date', { ascending: true });
+  if (estado === 'pendientes') query = query.eq('status', 'pending');
+  else if (estado === 'pagadas') query = query.eq('status', 'paid');
+
+  const { data, error } = await query;
   if (error) return res.status(502).json({ message: error.message, code: 'BILLS_UNAVAILABLE' });
   const facturas = data || [];
+  const pendientes = facturas.filter(f => f.status === 'pending');
   res.json({
     facturas,
-    total: facturas.reduce((s, f) => s + Number(f.amount || 0), 0),
-    por_proveedor: facturas.reduce((acc, f) => {
+    total: pendientes.reduce((s, f) => s + Number(f.amount || 0), 0),
+    por_proveedor: pendientes.reduce((acc, f) => {
       acc[f.provider] = (acc[f.provider] || 0) + Number(f.amount || 0);
       return acc;
     }, {}),
   });
+});
+
+// Servicios que aun no tienen canal de cobro (matricula, reserva de hotel,
+// vuelo, inversion...). La solicitud queda registrada en service_orders con
+// importe 0 para que el comercio la revise: aqui no sale dinero de la cartera
+// y, sin fila insertada, la app no puede dar por confirmada nada.
+const SOLICITUD_SERVICIOS = [
+  'educacion', 'hoteles', 'restaurantes', 'comida', 'vuelos', 'inversiones',
+  'bancos', 'internet', 'canales', 'lavanderia', 'belleza', 'gasolineras', 'tienda',
+  'recarga',
+];
+
+app.post('/api/servicios/solicitud', auth, async (req, res) => {
+  const { provider, tipo, referencia, datos, external_id } = req.body || {};
+  const servicio = String(provider || '').toLowerCase();
+  if (!SOLICITUD_SERVICIOS.includes(servicio)) {
+    return res.status(400).json({ message: 'Servicio no reconocido', code: 'VALIDATION_ERROR' });
+  }
+
+  // Repetir la misma referencia no duplica la solicitud.
+  const ref = String(external_id || '').trim() || safeRef(servicio.toUpperCase());
+  const { data: previa } = await supabase.from('service_orders')
+    .select('order_ref, status').eq('order_ref', ref).eq('user_id', req.user.id).maybeSingle();
+  if (previa) {
+    return res.json({ solicitudId: previa.order_ref, status: previa.status, idempotent: true, message: 'La solicitud ya estaba registrada' });
+  }
+
+  const { data: orden, error } = await supabase.from('service_orders').insert({
+    order_ref: ref,
+    user_id: req.user.id,
+    provider: servicio,
+    service_type: String(tipo || 'solicitud'),
+    contract_ref: referencia ? String(referencia) : null,
+    amount: 0,
+    status: 'pending',
+    payload: datos || {},
+    response: { needs_confirmation: true },
+  }).select('order_ref, status, created_at').maybeSingle();
+  if (error || !orden) {
+    console.error('Solicitud de servicio:', error?.message);
+    return res.status(502).json({ message: 'No se pudo registrar la solicitud', code: 'REQUEST_NOT_SAVED' });
+  }
+
+  await logAudit(req.user.id, 'service_request', servicio, orden.order_ref, { tipo, referencia });
+  res.status(201).json({
+    solicitudId: orden.order_ref,
+    status: orden.status,
+    message: 'Solicitud registrada. El comercio debe confirmarla; todavia no se ha cobrado nada.',
+  });
+});
+
+// Listado de solicitudes del usuario para que la app enseñe el historial desde
+// la base de datos y no desde un array que se pierde al cerrar la pantalla.
+app.get('/api/servicios/solicitudes', auth, async (req, res) => {
+  const provider = String(req.query.provider || '').toLowerCase();
+  let query = supabase
+    .from('service_orders')
+    .select('order_ref, provider, service_type, contract_ref, amount, status, payload, response, created_at')
+    .eq('user_id', req.user.id)
+    .order('created_at', { ascending: false })
+    .limit(50);
+  if (provider) query = query.eq('provider', provider);
+  const { data, error } = await query;
+  if (error) return res.status(502).json({ message: 'No se pudieron listar las solicitudes', code: 'REQUESTS_UNAVAILABLE' });
+  res.json(data || []);
 });
 
 app.post('/api/servicios/correos/enviar', auth, walletLimiter, async (req, res) => {
@@ -5894,6 +5965,49 @@ app.get('/api/taxi/rides', auth, async (req, res) => {
   } catch (error) {
     console.error('Taxi rides error:', error);
     res.status(500).json({ message: 'Error al obtener viajes', code: 'INTERNAL_ERROR' });
+  }
+});
+
+// Alta de conductor. No existe flota que asignar todavía, así que la solicitud
+// se registra como orden de servicio (importe 0: no mueve dinero) y el operador
+// la revisa desde service_orders. Sin fila no hay solicitud: antes la app
+// confirmaba el alta con solo haber llamado a la ruta.
+app.post('/api/taxi/drivers/register', auth, async (req, res) => {
+  try {
+    const { name, phone, license, vehicle } = req.body || {};
+    if (!name || !phone) {
+      return res.status(400).json({ message: 'Nombre y telefono requeridos', code: 'VALIDATION_ERROR' });
+    }
+    if (!vehicle || !vehicle.plate) {
+      return res.status(400).json({ message: 'Matricula requerida', code: 'VALIDATION_ERROR' });
+    }
+
+    const ref = safeRef('DRV');
+    const { data: orden, error } = await supabase.from('service_orders').insert({
+      order_ref: ref,
+      user_id: req.user.id,
+      provider: 'taxi',
+      service_type: 'conductor',
+      contract_ref: String(vehicle.plate),
+      amount: 0,
+      status: 'pending',
+      payload: { name, phone, license: license || null, vehicle },
+      response: { status: 'pending_review' },
+    }).select('order_ref, status, created_at').maybeSingle();
+    if (error || !orden) {
+      console.error('Taxi driver register:', error?.message);
+      return res.status(502).json({ message: 'No se pudo registrar la solicitud', code: 'APPLICATION_NOT_SAVED' });
+    }
+
+    await logAudit(req.user.id, 'taxi_driver_register', 'taxi', orden.order_ref, { plate: vehicle.plate });
+    res.status(201).json({
+      driverId: orden.order_ref,
+      status: orden.status,
+      message: 'Solicitud registrada. El equipo de MiTaxi la revisara y te contactara.',
+    });
+  } catch (error) {
+    console.error('Taxi driver register error:', error);
+    res.status(500).json({ message: 'Error al registrar conductor', code: 'INTERNAL_ERROR' });
   }
 });
 
@@ -6358,55 +6472,109 @@ app.get('/api/news/favorites', auth, async (req, res) => {
 // ════════════════════════════════════════════════════════════════════
 
 const ASEGURADORAS = [
-  { id: '1', name: 'COGE Seguros', products: ['Vida', 'Salud', 'Auto', 'Hogar'] },
-  { id: '2', name: 'SIAT Guinea', products: ['Auto', 'Empresarial', 'Transporte'] },
-  { id: '3', name: 'Allianz GE', products: ['Vida', 'Salud', 'Viaje'] },
+  { id: 'coge', name: 'COGE Seguros' },
+  { id: 'siat', name: 'SIAT Guinea' },
+  { id: 'allianz', name: 'Allianz GE' },
 ];
 
-app.get('/api/seguros/companias', auth, async (req, res) => res.json(ASEGURADORAS));
+app.get('/api/seguros/companias', auth, async (_req, res) => res.json(ASEGURADORAS));
 
+// La prima no la decide el orden de un array: la lee el servidor de
+// service_tariffs (service = compañía, variant = producto) y es exactamente esa
+// cifra la que insurance_take_out() asienta al contratar.
 app.get('/api/seguros/companias/:companyId/productos', auth, async (req, res) => {
-  const company = ASEGURADORAS.find(a => a.id === req.params.companyId) || ASEGURADORAS[0];
-  res.json(company.products.map((p, i) => ({ id: String(i+1), name: p, price: (i+1)*5000, coverage: '12 meses' })));
-});
-app.get('/seguros/companias/:companyId/productos', auth, async (req, res) => {
-  const company = ASEGURADORAS.find(a => a.id === req.params.companyId) || ASEGURADORAS[0];
-  res.json(company.products.map((p, i) => ({ id: String(i + 1), name: p, price: (i + 1) * 5000, coverage: '12 meses' })));
+  const company = ASEGURADORAS.find(a => a.id === req.params.companyId);
+  if (!company) return res.status(404).json({ message: 'Aseguradora no encontrada', code: 'COMPANY_NOT_FOUND' });
+  const { data, error } = await supabase
+    .from('service_tariffs')
+    .select('variant, amount, currency, concept')
+    .eq('service', company.id).eq('active', true)
+    .order('variant');
+  if (error || !data) return res.status(502).json({ message: 'Primas no disponibles', code: 'TARIFFS_UNAVAILABLE' });
+  res.json(data.map(p => ({
+    id: p.variant,
+    name: p.concept ? p.concept.split(' - ')[1] || p.variant : p.variant,
+    price: Number(p.amount),
+    currency: p.currency,
+    coverage: '12 meses',
+  })));
 });
 
-app.post('/api/seguros/solicitar', auth, async (req, res) => {
+app.post('/api/seguros/solicitar', auth, walletLimiter, async (req, res) => {
   const { companyId, producto, datos, external_id } = req.body || {};
   if (!companyId || !producto) return res.status(400).json({ message: 'companyId y producto requeridos', code: 'VALIDATION_ERROR' });
-  const solicitudId = external_id || safeRef('SEG');
-  await supabase.from('service_orders').upsert({
-    order_ref: solicitudId,
-    user_id: req.user.id,
-    provider: 'seguros',
-    service_type: 'solicitud',
-    contract_ref: String(companyId),
-    amount: 0,
-    status: 'pending',
-    payload: { producto, datos: datos || null },
-    response: { message: 'Solicitud de seguro enviada. Te contactaremos en 24h.' }
-  }, { onConflict: 'order_ref' });
-  await logAudit(req.user.id, 'insurance_request', 'seguros', solicitudId, { companyId, producto });
-  res.json({ solicitudId, status: 'pending', message: 'Solicitud de seguro enviada. Te contactaremos en 24h.' });
-});
+  if (!ASEGURADORAS.some(a => a.id === companyId)) return res.status(400).json({ message: 'Aseguradora no encontrada', code: 'COMPANY_NOT_FOUND' });
 
-app.post('/api/seguros/solicitudes/:solicitudId/documentos', auth, async (req, res) => {
-  const { solicitudId } = req.params;
-  const { tipo } = req.body || {};
-  res.status(201).json({
-    solicitudId,
-    tipo: tipo || 'documento',
-    status: 'uploaded',
-    message: 'Documento recibido'
+  const ref = String(external_id || '').trim() || safeRef('POL');
+  const { data, error } = await supabase.rpc('insurance_take_out', {
+    p_user_id: req.user.id,
+    p_company: String(companyId),
+    p_product: String(producto),
+    p_ref: ref,
+  });
+  if (error) {
+    console.error('insurance_take_out error:', error.message);
+    const fallo = tariffError(error.message);
+    return res.status(fallo.http).json(fallo);
+  }
+  const r = data || {};
+  if (!r.ok) {
+    return res.status(r.code === 'TARIFF_NOT_FOUND' ? 400 : 500).json({
+      message: r.code === 'TARIFF_NOT_FOUND' ? 'Prima no disponible para ese producto' : 'No se pudo emitir la póliza',
+      code: r.code || 'POLICY_FAILED',
+    });
+  }
+
+  const balance = await readWalletBalance(req.user.id);
+  await createServiceOrder(req.user.id, 'seguros', 'solicitar', Number(r.premium), r.policy_ref,
+    { companyId, producto, datos: datos || null }, { ...r, balance });
+  await logAudit(req.user.id, 'insurance_request', 'seguros', r.policy_id, { companyId, producto, premium: r.premium, journal_id: r.journal_id });
+  res.json({
+    solicitudId: r.policy_ref,
+    policyId: r.policy_id,
+    premium: Number(r.premium),
+    currency: r.currency,
+    expires_at: r.expires_at,
+    balance,
+    journal_id: r.journal_id,
+    status: r.status,
+    message: `Póliza emitida por ${Number(r.premium).toLocaleString()} ${r.currency || 'XAF'}`,
   });
 });
-app.post('/seguros/solicitudes/:solicitudId/documentos', auth, async (req, res) => {
-  const { solicitudId } = req.params;
-  const { tipo } = req.body || {};
-  res.status(201).json({ solicitudId, tipo: tipo || 'documento', status: 'uploaded', message: 'Documento recibido' });
+
+app.get('/api/seguros/polizas', auth, async (req, res) => {
+  const { data: polizas, error } = await supabase
+    .from('insurance_policies')
+    .select('id, policy_ref, company, product, premium, currency, status, insured, journal_id, starts_at, expires_at, created_at')
+    .eq('user_id', req.user.id)
+    .order('created_at', { ascending: false });
+  if (error) return res.status(502).json({ message: 'No se pudieron listar las pólizas', code: 'POLICIES_UNAVAILABLE' });
+  res.json(polizas || []);
+});
+
+// Abrir un siniestro es un registro, no un abono: aquí no sale dinero de la
+// cartera. La liquidación la hace el operador con su propio asiento.
+app.post('/api/seguros/polizas/:policyId/siniestros', auth, async (req, res) => {
+  const { amount, notes } = req.body || {};
+  const reclamado = roundAmount(Number(amount || 0));
+  if (!(reclamado > 0)) return res.status(400).json({ message: 'Importe reclamado requerido', code: 'VALIDATION_ERROR' });
+
+  const { data: pol } = await supabase.from('insurance_policies')
+    .select('id, policy_ref, status').eq('id', req.params.policyId).eq('user_id', req.user.id).maybeSingle();
+  if (!pol) return res.status(404).json({ message: 'Póliza no encontrada', code: 'POLICY_NOT_FOUND' });
+
+  const claimRef = safeRef('SIN');
+  const { data: claim, error } = await supabase.from('insurance_claims').insert({
+    claim_ref: claimRef,
+    policy_id: pol.id,
+    user_id: req.user.id,
+    amount_claimed: reclamado,
+    notes: notes ? String(notes) : null,
+  }).select('id, claim_ref, policy_id, amount_claimed, status, created_at').maybeSingle();
+  if (error || !claim) return res.status(502).json({ message: 'No se pudo registrar el siniestro', code: 'CLAIM_FAILED' });
+
+  await logAudit(req.user.id, 'insurance_claim', 'seguros', claim.id, { policy_ref: pol.policy_ref, amount_claimed: reclamado });
+  res.status(201).json({ ...claim, message: 'Siniestro registrado. La aseguradora lo revisará.' });
 });
 
 // ════════════════════════════════════════════════════════════════════
