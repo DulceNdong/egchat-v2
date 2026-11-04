@@ -141,6 +141,50 @@ alter table public.stories add column if not exists replies    jsonb default '[]
 alter table public.stories add column if not exists expires_at timestamptz;
 alter table public.stories add column if not exists created_at timestamptz default now();
 
+-- ── moments: el muro de la app, que lo pedia en /api/moments y no existia ─────
+-- `app/moments.tsx` y `app/channels.tsx` llaman a /api/moments y /api/channels.
+-- Los dos devuelven 404 en produccion: no hay ruta ni tabla. Aqui se crea el
+-- almacen; las rutas van en index.js detras de este lote.
+-- No hay contadores de likes ni de comentarios: se cuentan al leer. Un numero
+-- escrito aparte es un numero que puede mentir, y `space_*_delta` ya demuestra
+-- que mantenerlo cuesta.
+create table if not exists public.moments (
+  id         uuid default gen_random_uuid() primary key,
+  user_id    uuid,
+  text       text,
+  images     jsonb default '[]'::jsonb,
+  created_at timestamptz default now()
+);
+
+create table if not exists public.moment_likes (
+  id         uuid default gen_random_uuid() primary key,
+  moment_id  uuid,
+  user_id    uuid,
+  created_at timestamptz default now()
+);
+
+create table if not exists public.moment_comments (
+  id         uuid default gen_random_uuid() primary key,
+  moment_id  uuid,
+  user_id    uuid,
+  text       text,
+  created_at timestamptz default now()
+);
+
+alter table public.moments add column if not exists user_id    uuid;
+alter table public.moments add column if not exists text       text;
+alter table public.moments add column if not exists images     jsonb default '[]'::jsonb;
+alter table public.moments add column if not exists created_at timestamptz default now();
+
+alter table public.moment_likes add column if not exists moment_id  uuid;
+alter table public.moment_likes add column if not exists user_id    uuid;
+alter table public.moment_likes add column if not exists created_at timestamptz default now();
+
+alter table public.moment_comments add column if not exists moment_id  uuid;
+alter table public.moment_comments add column if not exists user_id    uuid;
+alter table public.moment_comments add column if not exists text       text;
+alter table public.moment_comments add column if not exists created_at timestamptz default now();
+
 -- ── relaciones: un solo seguimiento y un solo like por usuario y post ────────
 -- Las claves unicas son lo que impide que un doble clic cuente dos veces.
 do $$ begin
@@ -153,6 +197,11 @@ do $$ begin
                  where conrelid = 'public.space_post_likes'::regclass and contype = 'u') then
     alter table public.space_post_likes add constraint space_post_likes_post_id_user_id_key
       unique (post_id, user_id);
+  end if;
+  if not exists (select 1 from pg_constraint
+                 where conrelid = 'public.moment_likes'::regclass and contype = 'u') then
+    alter table public.moment_likes add constraint moment_likes_moment_id_user_id_key
+      unique (moment_id, user_id);
   end if;
 end $$;
 
@@ -180,6 +229,14 @@ begin
         where s.owner_id is not null and not exists (select 1 from public.users u where u.id = s.owner_id))
     + (select count(*) from public.stories t
         where not exists (select 1 from public.users u where u.id = t.user_id))
+    + (select count(*) from public.moments m
+        where not exists (select 1 from public.users u where u.id = m.user_id))
+    + (select count(*) from public.moment_likes l
+        where not exists (select 1 from public.users u where u.id = l.user_id)
+           or not exists (select 1 from public.moments m where m.id = l.moment_id))
+    + (select count(*) from public.moment_comments c
+        where not exists (select 1 from public.users u where u.id = c.user_id)
+           or not exists (select 1 from public.moments m where m.id = c.moment_id))
   into h;
 
   if h > 0 then
@@ -237,6 +294,31 @@ begin
     alter table public.stories add constraint stories_user_id_fkey
       foreign key (user_id) references public.users(id) on delete cascade;
   end if;
+  if not exists (select 1 from pg_constraint
+                 where conrelid = 'public.moments'::regclass and conname = 'moments_user_id_fkey') then
+    alter table public.moments add constraint moments_user_id_fkey
+      foreign key (user_id) references public.users(id) on delete cascade;
+  end if;
+  if not exists (select 1 from pg_constraint
+                 where conrelid = 'public.moment_likes'::regclass and conname = 'moment_likes_moment_id_fkey') then
+    alter table public.moment_likes add constraint moment_likes_moment_id_fkey
+      foreign key (moment_id) references public.moments(id) on delete cascade;
+  end if;
+  if not exists (select 1 from pg_constraint
+                 where conrelid = 'public.moment_likes'::regclass and conname = 'moment_likes_user_id_fkey') then
+    alter table public.moment_likes add constraint moment_likes_user_id_fkey
+      foreign key (user_id) references public.users(id) on delete cascade;
+  end if;
+  if not exists (select 1 from pg_constraint
+                 where conrelid = 'public.moment_comments'::regclass and conname = 'moment_comments_moment_id_fkey') then
+    alter table public.moment_comments add constraint moment_comments_moment_id_fkey
+      foreign key (moment_id) references public.moments(id) on delete cascade;
+  end if;
+  if not exists (select 1 from pg_constraint
+                 where conrelid = 'public.moment_comments'::regclass and conname = 'moment_comments_user_id_fkey') then
+    alter table public.moment_comments add constraint moment_comments_user_id_fkey
+      foreign key (user_id) references public.users(id) on delete cascade;
+  end if;
 end $$;
 
 -- ── indices de las lecturas que hace la app ──────────────────────────────────
@@ -248,6 +330,10 @@ create index if not exists idx_space_likes_post        on public.space_post_like
 create index if not exists idx_space_comments_post     on public.space_post_comments (post_id, created_at);
 create index if not exists idx_stories_user_id         on public.stories (user_id);
 create index if not exists idx_stories_expires_at      on public.stories (expires_at);
+create index if not exists idx_moments_created         on public.moments (created_at desc);
+create index if not exists idx_moments_user            on public.moments (user_id, created_at desc);
+create index if not exists idx_moment_likes_moment     on public.moment_likes (moment_id);
+create index if not exists idx_moment_comments_moment  on public.moment_comments (moment_id, created_at);
 
 -- El unico acceso legitimo es el API con la clave de servicio: RLS sin politicas,
 -- igual que en S1/S2/S3. `space_*_delta` ya estan revocadas a anon/authenticated.
@@ -257,11 +343,16 @@ alter table public.space_posts          enable row level security;
 alter table public.space_post_likes     enable row level security;
 alter table public.space_post_comments  enable row level security;
 alter table public.stories              enable row level security;
+alter table public.moments              enable row level security;
+alter table public.moment_likes         enable row level security;
+alter table public.moment_comments      enable row level security;
 
 -- ── autocomprobacion ─────────────────────────────────────────────────────────
--- `columnas` tiene que dar 8 en spaces, 8 en space_posts, 4 en space_follows y
--- space_post_likes, 5 en space_post_comments y 9 en stories. `huerfanas_cero` es
--- el numero de filas sin dueno: si no es 0, las claves foraneas no se crearon.
+-- `columnas` tiene que dar 9 en spaces, 8 en space_posts, 4 en space_follows y
+-- space_post_likes, 5 en space_post_comments, 9 en stories, 5 en moments, 4 en
+-- moment_likes y 5 en moment_comments. `claves_foraneas` tiene que dar 1 en spaces,
+-- stories y moments, 2 en el resto. `huerfanas_cero` es el numero de filas sin
+-- dueno: si no es 0, las claves foraneas no se crearon.
 select x.tabla,
        (to_regclass('public.' || x.tabla) is not null) as existe,
        (select count(*) from information_schema.columns c
@@ -270,7 +361,8 @@ select x.tabla,
          where k.conrelid = ('public.' || x.tabla)::regclass and k.contype = 'f') as claves_foraneas
   from (values
     ('spaces'), ('space_follows'), ('space_posts'),
-    ('space_post_likes'), ('space_post_comments'), ('stories')
+    ('space_post_likes'), ('space_post_comments'), ('stories'),
+    ('moments'), ('moment_likes'), ('moment_comments')
   ) x(tabla)
  order by x.tabla;
 

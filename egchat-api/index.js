@@ -7157,7 +7157,8 @@ app.get('/api/users/:userId', auth, async (req, res) => {
 // salia vacia sin que nadie supiera por que.
 const ensureSpacesSchema = async () => {
   const faltan = [];
-  for (const t of ['spaces', 'space_follows', 'space_posts', 'space_post_likes', 'space_post_comments', 'stories']) {
+  for (const t of ['spaces', 'space_follows', 'space_posts', 'space_post_likes', 'space_post_comments', 'stories',
+                   'moments', 'moment_likes', 'moment_comments']) {
     try {
       const { error } = await supabase.from(t).select('id').limit(1);
       if (error) faltan.push(`${t}: ${error.message}`);
@@ -7387,19 +7388,337 @@ app.post('/api/spaces/posts/:postId/comments', auth, async (req, res) => {
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
-// DELETE /api/spaces/posts/:postId — eliminar post (solo autor o admin del espacio)
+// DELETE /api/spaces/posts/:postId — eliminar post (autor o dueno del espacio)
 app.delete('/api/spaces/posts/:postId', auth, async (req, res) => {
   try {
     const { postId } = req.params;
-    const { error } = await supabase.from('space_posts').delete().eq('id', postId).eq('author_id', req.user.id);
+    const userId = req.user.id;
+    const { data: post } = await supabase
+      .from('space_posts').select('id, author_id, space_id').eq('id', postId).single();
+    if (!post) return res.status(404).json({ error: 'NO_ENCONTRADO', message: 'Ese post no existe.' });
+
+    let puede = post.author_id === userId;
+    if (!puede) {
+      const { data: espacio } = await supabase
+        .from('spaces').select('owner_id').eq('id', post.space_id).single();
+      puede = espacio && espacio.owner_id === userId;
+    }
+    if (!puede) return res.status(403).json({ error: 'NO_ES_TUYO', message: 'Solo el autor o el dueño del canal pueden borrarlo.' });
+
+    const { data: borrados, error } = await supabase
+      .from('space_posts').delete().eq('id', postId).select('id');
     if (error) throw error;
-    res.json({ ok: true });
+    if (!borrados || borrados.length === 0) {
+      return res.status(403).json({ error: 'NO_ES_TUYO', message: 'No se ha podido borrar el post.' });
+    }
+    res.json({ ok: true, id: borrados[0].id });
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
 // ════════════════════════════════════════════════════════════════════
-// STORIES / ESTADOS
+// MOMENTOS / MURO DE ESPACIO DULCE
 // ════════════════════════════════════════════════════════════════════
+// `app/moments.tsx` y la seccion de muro de `app/stories.tsx` llaman a estas
+// seis rutas. Hasta ahora no existian: la pantalla se quedaba en vacio y el
+// cliente lo tapaba con su caché local. Las tablas las crea
+// migrations/2026-11-05_espacio_dulce_lote_e1.sql.
+// Los likes y los comentarios se cuentan al leer, no se guardan contados: un
+// numero escrito aparte es un numero que puede mentir.
+
+// Contactos del usuario, con el mismo criterio que usa GET /api/stories:
+// tabla contacts por cualquiera de sus dos puntas mas los compañeros de chat.
+const contactosDeUsuario = async (userId) => {
+  const ids = new Set();
+  const { data: contacts } = await supabase
+    .from('contacts')
+    .select('contact_user_id, contact_id')
+    .or(`user_id.eq.${userId},contact_id.eq.${userId}`)
+    .eq('is_blocked', false);
+  (contacts || []).forEach(c => {
+    if (c.contact_user_id && c.contact_user_id !== userId) ids.add(c.contact_user_id);
+    if (c.contact_id && c.contact_id !== userId) ids.add(c.contact_id);
+  });
+
+  const { data: chatParts } = await supabase
+    .from('chat_participants').select('chat_id').eq('user_id', userId);
+  if (chatParts && chatParts.length > 0) {
+    const { data: otherParts } = await supabase
+      .from('chat_participants')
+      .select('user_id')
+      .in('chat_id', chatParts.map(c => c.chat_id))
+      .neq('user_id', userId);
+    (otherParts || []).forEach(p => ids.add(p.user_id));
+  }
+  return Array.from(ids);
+};
+
+const momentoSinComentarios = (m, usersMap, likedSet) => {
+  const autor = usersMap[m.user_id] || {};
+  let images = m.images;
+  if (typeof images === 'string') { try { images = JSON.parse(images); } catch { images = []; } }
+  return {
+    id: m.id,
+    user_id: m.user_id,
+    user_name: autor.full_name || 'Usuario',
+    user_avatar: autor.avatar_url || '',
+    text: m.text || '',
+    images: Array.isArray(images) ? images : [],
+    likes: 0,
+    liked_by_me: likedSet.has(m.id),
+    comments: [],
+    created_at: m.created_at,
+  };
+};
+
+app.get('/api/moments', auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const autores = [userId, ...(await contactosDeUsuario(userId))];
+
+    const { data: moments, error } = await supabase
+      .from('moments')
+      .select('*')
+      .in('user_id', autores)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (error) return espacioFallo(res, error);
+    if (!moments || moments.length === 0) return res.json([]);
+
+    const ids = moments.map(m => m.id);
+    const userMap = {};
+    const authorIds = [...new Set(moments.map(m => m.user_id))];
+    const [likesRes, commentsRes, authorsRes] = await Promise.all([
+      supabase.from('moment_likes').select('moment_id, user_id').in('moment_id', ids),
+      supabase.from('moment_comments').select('*').in('moment_id', ids).order('created_at', { ascending: true }),
+      supabase.from('users').select('id, full_name, avatar_url').in('id', authorIds),
+    ]);
+    if (authorsRes.error) return espacioFallo(res, authorsRes.error);
+    (authorsRes.data || []).forEach(u => { userMap[u.id] = u; });
+
+    const likesCount = {};
+    (likesRes.data || []).forEach(l => { likesCount[l.moment_id] = (likesCount[l.moment_id] || 0) + 1; });
+    const likedMine = new Set((likesRes.data || []).filter(l => l.user_id === userId).map(l => l.moment_id));
+
+    const commentNames = {};
+    const cIds = [...new Set((commentsRes.data || []).map(c => c.user_id))];
+    if (cIds.length > 0) {
+      const { data: cUsers } = await supabase.from('users').select('id, full_name').in('id', cIds);
+      (cUsers || []).forEach(u => { commentNames[u.id] = u.full_name || 'Usuario'; });
+    }
+
+    const out = moments.map(m => {
+      const p = momentoSinComentarios(m, userMap, likedMine);
+      p.likes = likesCount[m.id] || 0;
+      p.comments = (commentsRes.data || [])
+        .filter(c => c.moment_id === m.id)
+        .map(c => ({
+          id: c.id, user_id: c.user_id, user_name: commentNames[c.user_id] || 'Usuario',
+          text: c.text, created_at: c.created_at,
+        }));
+      return p;
+    });
+    res.json(out);
+  } catch (e) { espacioFallo(res, e); }
+});
+
+app.post('/api/moments', auth, async (req, res) => {
+  try {
+    const { text, images } = req.body;
+    const limpio = (text || '').trim();
+    const fotos = Array.isArray(images) ? images.filter(u => typeof u === 'string' && u.length > 0) : [];
+    if (!limpio && fotos.length === 0) return res.status(400).json({ message: 'texto o foto requeridos' });
+
+    const { data, error } = await supabase
+      .from('moments')
+      .insert({ user_id: req.user.id, text: limpio, images: fotos })
+      .select().single();
+    if (error) return espacioFallo(res, error);
+
+    const { data: me } = await supabase
+      .from('users').select('id, full_name, avatar_url').eq('id', req.user.id).single();
+    res.status(201).json(momentoSinComentarios(data, { [req.user.id]: me || {} }, new Set()));
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.delete('/api/moments/:id', auth, async (req, res) => {
+  try {
+    // `.eq('user_id', ...)` ya filtra, pero si no borra nada habria que decirlo:
+    // responder `ok` con cero filas eliminadas es mentirle a la pantalla.
+    const { data: borrados, error } = await supabase
+      .from('moments').delete().eq('id', req.params.id).eq('user_id', req.user.id).select('id');
+    if (error) throw error;
+    if (!borrados || borrados.length === 0) {
+      return res.status(403).json({ error: 'NO_ES_TUYO', message: 'Ese momento no es tuyo o ya no existe.' });
+    }
+    res.json({ ok: true, id: borrados[0].id });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.post('/api/moments/:id/like', auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const { data: existing } = await supabase
+      .from('moment_likes').select('id').eq('moment_id', id).eq('user_id', userId).single();
+    if (existing) {
+      await supabase.from('moment_likes').delete().eq('id', existing.id);
+    } else {
+      const { error } = await supabase.from('moment_likes').insert({ moment_id: id, user_id: userId });
+      if (error) throw error;
+    }
+    const { count } = await supabase
+      .from('moment_likes').select('id', { count: 'exact', head: true }).eq('moment_id', id);
+    res.json({ liked: !existing, likes: count || 0 });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.get('/api/moments/:id/comments', auth, async (req, res) => {
+  try {
+    const { data: comments, error } = await supabase
+      .from('moment_comments').select('*').eq('moment_id', req.params.id).order('created_at', { ascending: true });
+    if (error) return espacioFallo(res, error);
+    if (!comments || comments.length === 0) return res.json([]);
+    const ids = [...new Set(comments.map(c => c.user_id))];
+    const { data: users } = await supabase.from('users').select('id, full_name').in('id', ids);
+    const names = {};
+    (users || []).forEach(u => { names[u.id] = u.full_name || 'Usuario'; });
+    res.json(comments.map(c => ({
+      id: c.id, user_id: c.user_id, user_name: names[c.user_id] || 'Usuario',
+      text: c.text, created_at: c.created_at,
+    })));
+  } catch (e) { espacioFallo(res, e); }
+});
+
+app.post('/api/moments/:id/comments', auth, async (req, res) => {
+  try {
+    const limpio = (req.body?.text || '').trim();
+    if (!limpio) return res.status(400).json({ message: 'texto requerido' });
+    const { data, error } = await supabase
+      .from('moment_comments')
+      .insert({ moment_id: req.params.id, user_id: req.user.id, text: limpio })
+      .select().single();
+    if (error) return espacioFallo(res, error);
+    const { data: me } = await supabase.from('users').select('full_name').eq('id', req.user.id).single();
+    res.status(201).json({
+      id: data.id, user_id: req.user.id, user_name: me?.full_name || 'Usuario',
+      text: data.text, created_at: data.created_at,
+    });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// ════════════════════════════════════════════════════════════════════
+// CONTENIDO NUEVO Y AVISOS DE ESPACIO DULCE
+// ════════════════════════════════════════════════════════════════════
+
+// Lo nuevo de las ultimas 24 horas, para el punto verde de la barra de
+// mensajeria. La app llama a estas dos rutas cada 30 segundos: si responden 404
+// el indicador nunca sale y el usuario no se entera de que alguien publico.
+const desdeHace24h = () => new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+
+const nombresAutores = async (userIds) => {
+  const map = {};
+  if (userIds.length === 0) return map;
+  const { data } = await supabase.from('users').select('id, full_name').in('id', userIds);
+  (data || []).forEach(u => { map[u.id] = u.full_name || 'Usuario'; });
+  return map;
+};
+
+app.get('/api/moments/contacts-new', auth, async (req, res) => {
+  try {
+    const contactos = await contactosDeUsuario(req.user.id);
+    if (contactos.length === 0) return res.json([]);
+    const { data, error } = await supabase
+      .from('moments')
+      .select('id, user_id, created_at')
+      .in('user_id', contactos)
+      .gte('created_at', desdeHace24h())
+      .order('created_at', { ascending: false });
+    if (error) return espacioFallo(res, error);
+    const nombres = await nombresAutores([...new Set((data || []).map(m => m.user_id))]);
+    res.json((data || []).map(m => ({ ...m, user_name: nombres[m.user_id] || 'Usuario' })));
+  } catch (e) { espacioFallo(res, e); }
+});
+
+app.get('/api/stories/contacts-new', auth, async (req, res) => {
+  try {
+    const now = new Date().toISOString();
+    const { data: mine } = await supabase
+      .from('stories')
+      .select('user_id')
+      .eq('user_id', req.user.id)
+      .gte('created_at', desdeHace24h())
+      .gt('expires_at', now);
+    const ignorados = new Set((mine || []).map(s => s.user_id));
+    const contactos = (await contactosDeUsuario(req.user.id)).filter(id => !ignorados.has(id));
+    if (contactos.length === 0) return res.json([]);
+    const { data, error } = await supabase
+      .from('stories')
+      .select('id, user_id, created_at')
+      .in('user_id', contactos)
+      .gte('created_at', desdeHace24h())
+      .gt('expires_at', now)
+      .order('created_at', { ascending: false });
+    if (error) return espacioFallo(res, error);
+    const nombres = await nombresAutores([...new Set((data || []).map(s => s.user_id))]);
+    res.json((data || []).map(s => ({ ...s, user_name: nombres[s.user_id] || 'Usuario' })));
+  } catch (e) { espacioFallo(res, e); }
+});
+
+// El aviso sale del servidor porque la lista de contactos y sus tokens de push
+// solo viven aqui. El autor se excluye a si mismo y el dueno de la publicacion
+// es el unico que puede dispararlo: si no, cualquiera avisaria a la agenda de
+// otro usuario de un contenido que no es suyo.
+const notificarContactos = async (userId, tabla, idParam, ruta, texto) => {
+  const { data: fila } = await supabase.from(tabla).select('id, user_id').eq('id', idParam).single();
+  if (!fila) return { estado: 404, cuerpo: { error: 'NO_ENCONTRADO', message: `Ese ${ruta} no existe.` } };
+  if (fila.user_id !== userId) return { estado: 403, cuerpo: { error: 'NO_ES_TUYO', message: `Ese ${ruta} no es tuyo.` } };
+
+  const destinatarios = await contactosDeUsuario(userId);
+  await Promise.allSettled(
+    destinatarios.map(contactoId => sendPushToUser(contactoId, texto))
+  );
+  // No se cuenta como "enviados": sendPushToUser se traga sus propios errores y
+  // un fulfilled aqui no significa que el telefono haya sonado. Lo que si es
+  // cierto es a cuantos contactos se dirigio el aviso.
+  return {
+    estado: 200,
+    cuerpo: { ok: true, destinatarios: destinatarios.length },
+  };
+};
+
+app.post('/api/moments/:id/notify', auth, async (req, res) => {
+  try {
+    const nombre = (req.body?.authorName || 'Un contacto').toString().slice(0, 60);
+    const preview = (req.body?.preview || 'Nuevo momento').toString().slice(0, 120);
+    const r = await notificarContactos(req.user.id, 'moments', req.params.id, 'momento', {
+      title: `${nombre} publico un momento`,
+      body: preview,
+      notificationType: 'moment_new',
+      url: '/moments',
+      tag: `momento-${req.params.id}`,
+      momentId: req.params.id,
+      senderName: nombre,
+    });
+    res.status(r.estado).json(r.cuerpo);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.post('/api/stories/:storyId/notify', auth, async (req, res) => {
+  try {
+    const nombre = (req.body?.authorName || 'Un contacto').toString().slice(0, 60);
+    const r = await notificarContactos(req.user.id, 'stories', req.params.storyId, 'estado', {
+      title: `${nombre} publico un estado`,
+      body: 'Toca para verlo',
+      notificationType: 'story_new',
+      url: '/stories',
+      tag: `estado-${req.params.storyId}`,
+      storyId: req.params.storyId,
+      senderName: nombre,
+    });
+    res.status(r.estado).json(r.cuerpo);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
 // La tabla `stories` la crea tambien
 // migrations/2026-11-05_espacio_dulce_lote_e1.sql y su presencia la comprueba
 // ensureSpacesSchema arriba. Antes intentaba crearse ella sola con `exec_sql`, que
