@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AIRLINES, Airline } from '../../data/serviciosDiarios';
+import { serviciosAPI } from '../../api';
 import { FinancialModuleShell, SegmentTabs } from './FinancialModuleUI';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
-import { PayMethodPicker } from './PublicModuleUI';
 import { t as tr } from '../../translations';
 
 type FlightScreen = 'airlines' | 'routes' | 'book' | 'ok';
@@ -17,20 +17,56 @@ export const VuelosModal: React.FC<Props> = ({ visible, onClose }) => {
   const [route, setRoute] = useState<Airline['rutas'][0] | null>(null);
   const [trip, setTrip] = useState('Ida');
   const [clase, setClase] = useState('Turista');
-  const [form, setForm] = useState({ name: '', dni: '', phone: '', date: '', pax: '1', payMethod: 'egpay' });
+  const [form, setForm] = useState({ name: '', dni: '', phone: '', date: '', pax: '1' });
+  const [ref, setRef] = useState('');
+  const [recibo, setRecibo] = useState('');
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     if (!visible) {
       setView('airlines'); setTab('nacional'); setAirline(null); setRoute(null);
-      setTrip('Ida'); setClase('Turista');
-      setForm({ name: '', dni: '', phone: '', date: '', pax: '1', payMethod: 'egpay' });
+      setTrip('Ida'); setClase('Turista'); setRecibo('');
+      setForm({ name: '', dni: '', phone: '', date: '', pax: '1' });
     }
   }, [visible]);
 
   const airlines = AIRLINES.filter(a => tab === 'nacional' ? a.nacional : !a.nacional);
+  // Estimación multiplicando tarifas del directorio: es orientativa. La
+  // aerolínea confirma la tarifa real; desde EGChat no se cobra nada.
   const total = route ? Math.round(route.precio * (clase === 'Business' ? 1.8 : 1) * (trip === 'Ida y vuelta' ? 2 : 1) * parseInt(form.pax || '1')) : 0;
   const setF = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
-  const canBook = form.name && form.dni && form.phone && form.date && form.payMethod;
+  const canBook = form.name && form.dni && form.phone && form.date;
+
+  const enviar = async () => {
+    if (!route || !airline || sending) return;
+    setSending(true);
+    try {
+      const res = await serviciosAPI.solicitud({
+        provider: 'vuelos',
+        tipo: 'reserva',
+        referencia: `${airline.id}-${route.origen}-${route.destino}`,
+        datos: {
+          aerolinea: airline.nombre,
+          ruta: `${route.origen} → ${route.destino}`,
+          viaje: trip,
+          clase,
+          pasajero: form.name,
+          documento: form.dni,
+          telefono: form.phone,
+          fecha_salida: form.date,
+          pasajeros: parseInt(form.pax, 10) || 1,
+          estimacion_xaf: total,
+        },
+        external_id: ref || `VUE-${airline.id}-${Date.now()}`,
+      });
+      setRecibo(res.solicitudId);
+      setView('ok');
+    } catch (e: any) {
+      Alert.alert(tr('error'), e?.message || 'No se pudo registrar la solicitud de vuelo.');
+    } finally {
+      setSending(false);
+    }
+  };
 
   const fixedTop = view === 'airlines' ? (
     <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
@@ -89,10 +125,10 @@ export const VuelosModal: React.FC<Props> = ({ visible, onClose }) => {
                 </View>
                 <View style={{ alignItems: 'flex-end' }}>
                   <Text style={[st.routePrice, { color: airline.color }]}>{r.precio.toLocaleString()}</Text>
-                  <Text style={st.routeMeta}>XAF/pax</Text>
+                  <Text style={st.routeMeta}>XAF/pax · orientativo</Text>
                 </View>
               </View>
-              <TouchableOpacity style={[st.bookBtn, { backgroundColor: airline.color }]} onPress={() => { setRoute(r); setView('book'); }}>
+              <TouchableOpacity style={[st.bookBtn, { backgroundColor: airline.color }]} onPress={() => { setRoute(r); setRef(`VUE-${airline.id}-${Date.now()}`); setView('book'); }}>
                 <Text style={st.bookBtnText}>{tr('xtReservarEsteVuelo')}</Text>
               </TouchableOpacity>
             </View>
@@ -126,20 +162,29 @@ export const VuelosModal: React.FC<Props> = ({ visible, onClose }) => {
           <FormField placeholder={tr('xtFechaSalidaDDMMAAAA')} value={form.date} onChangeText={v => setF('date', v)} />
           <FormField placeholder="Nº pasajeros" value={form.pax} onChangeText={v => setF('pax', v)} keyboardType="numeric" />
           <View style={st.totalBox}>
-            <Text style={st.totalLbl}>{tr('xtTotalEstimado')}</Text>
+            <Text style={st.totalLbl}>{tr('xtTotalEstimado')} — orientativo</Text>
             <Text style={st.totalVal}>{total.toLocaleString()} XAF</Text>
+            <Text style={st.notice}>
+              La aerolínea confirma la tarifa final al aceptar la solicitud. Desde EGChat no se
+              cobra ni se emite billete.
+            </Text>
           </View>
-          <PayMethodPicker value={form.payMethod} onChange={v => setF('payMethod', v)} accent="#1B3A6B" />
-          <PrimaryButton label={tr('xtReservarVuelo')} onPress={() => setView('ok')} color="#1B3A6B" disabled={!canBook} />
+          <PrimaryButton
+            label={sending ? 'Enviando…' : 'Enviar solicitud a la aerolínea'}
+            onPress={enviar}
+            color="#1B3A6B"
+            disabled={!canBook || sending}
+          />
         </View>
       )}
 
       {view === 'ok' && route && (
         <View style={st.success}>
-          <Text style={{ fontSize: 48 }}>✅</Text>
-          <Text style={st.successTitle}>{tr('svcBookingConfirmed')}</Text>
+          <Text style={{ fontSize: 48 }}>📨</Text>
+          <Text style={st.successTitle}>Solicitud registrada</Text>
           <Text style={st.successSub}>{route.origen} → {route.destino}</Text>
-          <Text style={st.totalVal}>{total.toLocaleString()} XAF</Text>
+          <Text style={st.successSub}>Estimación: {total.toLocaleString()} XAF</Text>
+          <Text style={st.refText}>{recibo}</Text>
           <PrimaryButton label={tr('xtVerMasVuelos')} onPress={() => setView('airlines')} color="#1B3A6B" />
         </View>
       )}
@@ -173,6 +218,8 @@ const st = StyleSheet.create({
   payChip: { flex: 1, borderRadius: 10, padding: 10, alignItems: 'center', borderWidth: 1.5, borderColor: '#E5E7EB' },
   payChipActive: { backgroundColor: '#EFF5FD', borderColor: '#00b4e6' },
   totalBox: { backgroundColor: '#EFF5FD', borderRadius: 10, padding: 12, marginBottom: 12 },
+  notice: { fontSize: 11, color: '#5A7090', lineHeight: 16, marginTop: 6 },
+  refText: { fontSize: 12, fontWeight: '800', color: '#1A2B4A', backgroundColor: '#F9FAFB', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
   totalLbl: { fontSize: 11, color: '#1B3A6B', fontWeight: '600' },
   totalVal: { fontSize: 22, fontWeight: '900', color: '#1B3A6B' },
   success: { alignItems: 'center', paddingVertical: 30, gap: 8 },

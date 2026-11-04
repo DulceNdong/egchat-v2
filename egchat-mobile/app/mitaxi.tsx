@@ -9,14 +9,14 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { MIcon } from '../src/components/ui/MIcon';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
-import { taxiAPI, walletAPI } from '../src/api';
+import { taxiAPI, walletAPI, serviciosAPI, Tarifa } from '../src/api';
 import { subscribe, getState } from '../src/store/appStore';
 import { toast } from '../src/components/Toast';
 import { MiTaxiMap } from '../src/components/mitaxi/MiTaxiMap';
 import {
   MALABO_CENTER, MITAXI_PLACE_NAMES, MapCoord,
   findPlaceCoords, isCurrentLocationLabel,
-  calcDistanceKm, estimateFare,
+  calcDistanceKm,
 } from '../src/data/mitaxiPlaces';
 import { t as tr } from '../src/translations';
 
@@ -30,20 +30,20 @@ const CARD   = '#FFFFFF';
 const GREEN  = '#10B981';
 const RED    = '#EF4444';
 
-const RIDES = [
+// Los id coinciden con service_tariffs.variant: el importe lo fija la tabla, no
+// la distancia ni esta pantalla.
+type RideVariant = 'moto' | 'basic' | 'premium';
+
+const RIDES: Array<{ id: RideVariant; name: string; sub: string; desc: string; color: string; icon: string; eta: number }> = [
   { id: 'moto',    name: 'Moto',    get sub() { return tr('xtPasajero1'); },  get desc() { return tr('xtMotocicletaRapida'); },       color: '#F97316', icon: '🏍️', eta: 2 },
-  { id: 'taxi',    name: 'Taxi',    get sub() { return tr('xtPasajeros4'); }, get desc() { return tr('xtTaxiSedanEstandar'); },       color: '#EAB308', icon: '🚕', eta: 4 },
-  { id: 'suv',     get name() { return tr('xtConfort'); }, get sub() { return tr('xtSUV4Plazas'); },get desc() { return tr('xtSUVComodoYEspacioso'); },   color: '#6366F1', icon: '🚙', eta: 5 },
-  { id: 'vip',     name: 'VIP',     get sub() { return tr('xtPremium4Plazas'); },get desc() { return tr('xtVehiculoEjecutivo'); },      color: '#7C3AED', icon: '🚘', eta: 7 },
-  { id: 'cargo',   name: 'Cargo',   get sub() { return tr('xtPickupDina'); }, get desc() { return tr('xtPickupYCamionetas'); },      color: '#0EA5E9', icon: '🛻', eta: 8 },
-  { id: 'van',     name: 'Van',     get sub() { return tr('xtPasajeros8'); }, get desc() { return tr('xtVanGrandeParaGrupos'); },   color: '#10B981', icon: '🚐', eta: 9 },
-  { id: 'minivan', name: 'MiniVan', get sub() { return tr('xtPasajeros6'); }, get desc() { return tr('xtMinivanFamiliar'); },         color: '#EC4899', icon: '🚐', eta: 6 },
+  { id: 'basic',   name: 'Taxi',    get sub() { return tr('xtPasajeros4'); }, get desc() { return tr('xtTaxiSedanEstandar'); },       color: '#EAB308', icon: '🚕', eta: 4 },
+  { id: 'premium', get name() { return tr('xtConfort'); }, get sub() { return tr('xtSUV4Plazas'); }, get desc() { return tr('xtSUVComodoYEspacioso'); }, color: '#6366F1', icon: '🚙', eta: 5 },
 ];
 
+// El viaje solo se cobra por el monedero: la ruta debitaba la tarifa de la
+// tabla y no habia forma de pagar en efectivo o con tarjeta.
 const PAYMENT_METHODS = [
   { id: 'wallet', get label() { return tr('svcEgchatWallet'); }, icon: '💳' },
-  { id: 'cash',   get label() { return tr('xtEfectivo'); },         icon: '💵' },
-  { id: 'card',   get label() { return tr('xtTarjeta'); },          icon: '🏦' },
 ];
 
 type RideOption = typeof RIDES[number];
@@ -88,11 +88,12 @@ export default function MiTaxiScreen() {
   const [destLocation, setDestLoc]    = useState<MapCoord | null>(null);
   const [driverLocation, setDriverLoc]= useState<MapCoord | null>(null);
   const [balance, setBalance]         = useState(0);
-  const [paymentMethod, setPayment]   = useState<'wallet'|'cash'|'card'>('wallet');
+  const [paymentMethod, setPayment]   = useState<'wallet'>('wallet');
   const [showPayment, setShowPayment] = useState(false);
   const [showDriver, setShowDriver]   = useState(false);
   const [history, setHistory]         = useState<any[]>([]);
   const [loadingHistory, setLoadHist] = useState(false);
+  const [tarifas, setTarifas]         = useState<Tarifa[]>([]);
 
   // Ciudad real desde el appStore (mismo dato que usa el clima)
   const [cityName, setCityName] = useState<string>(() => {
@@ -111,11 +112,18 @@ export default function MiTaxiScreen() {
   }, []);
   const pollRef      = useRef<ReturnType<typeof setInterval> | null>(null);
   const gpsWatchRef  = useRef<Location.LocationSubscription | null>(null);
-  const estTimer     = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const canGo   = origin.trim().length > 0 && dest.trim().length > 0;
   const accent  = selected.color;
-  const minFare = estimateFare(selected.id, Math.max(1, distanceKm));
+
+  // service_tariffs (service='taxi'): el importe lo fija la tabla del servidor.
+  const tarifa = useCallback((variant: string) => {
+    const t = tarifas.find(x => x.variant === variant);
+    return t ? Number(t.amount) : 0;
+  }, [tarifas]);
+
+  const sinTarifas = tarifas.length === 0;
+  const minFare = tarifa(selected.id);
 
   const loadBalance = useCallback(() => {
     walletAPI.getBalance().then(r => setBalance(r.balance || 0)).catch(() => {});
@@ -158,31 +166,30 @@ export default function MiTaxiScreen() {
     gpsWatchRef.current?.remove();
   }; }, []);
 
-  // Resolver destino y estimar tarifa cuando cambian campos
+  // Resolver destino y fijar la tarifa de la tabla cuando cambian campos
   useEffect(() => {
-    if (!dest.trim()) { setDestLoc(null); setEstFare(0); setDistKm(0); return; }
+    if (!dest.trim()) { setDestLoc(null); setDistKm(0); return; }
     const timer = setTimeout(async () => {
       const coords = await resolvePlace(dest, userLocation);
       if (coords) {
         setDestLoc(coords);
-        if (userLocation) {
-          const km = calcDistanceKm(userLocation, coords);
-          setDistKm(km);
-          setEstFare(estimateFare(selected.id, km));
-        }
+        if (userLocation) setDistKm(calcDistanceKm(userLocation, coords));
       }
     }, 350);
     return () => clearTimeout(timer);
-  }, [dest, userLocation, selected.id, resolvePlace]);
+  }, [dest, userLocation, resolvePlace]);
 
-  // Re-estimar cuando cambia tipo de vehículo
+  // Lo que se paga es la tarifa fija de la tabla para ese tipo de viaje.
+  useEffect(() => { setEstFare(tarifa(selected.id)); }, [selected.id, tarifa]);
+
   useEffect(() => {
-    if (destLocation && userLocation) {
-      const km = calcDistanceKm(userLocation, destLocation);
-      setDistKm(km);
-      setEstFare(estimateFare(selected.id, km));
-    }
-  }, [selected.id]);
+    (async () => {
+      try {
+        const res = await serviciosAPI.tarifas();
+        setTarifas((res.tarifas || []).filter(x => x.service === 'taxi'));
+      } catch { /* sin tarifas la pantalla avisa y no deja pedir */ }
+    })();
+  }, []);
 
   const onSuggest = (text: string, field: FocusField) => {
     if (field === 'o') setOrigin(text); else setDest(text);
@@ -224,7 +231,6 @@ export default function MiTaxiScreen() {
             phone: st.driver.phone });
         }
         if (st.fare) setFare(st.fare);
-        if (st.distanceKm) setDistKm(st.distanceKm);
         if (st.driver_location) setDriverLoc({ latitude: st.driver_location.lat, longitude: st.driver_location.lng });
         if (st.status === 'matched' || st.status === 'processing') { setStep('matched'); animateDriverToUser(); }
         else if (st.status === 'riding' || st.status === 'in_progress') setStep('riding');
@@ -238,6 +244,12 @@ export default function MiTaxiScreen() {
 
   const requestRide = async () => {
     if (!canGo) return;
+    // Sin la tarifa leida de la tabla no se pide el viaje: el servidor cobra un
+    // importe que la pantalla no puede mostrar antes de debitarse.
+    if (!minFare) {
+      Alert.alert('Tarifa no disponible', 'No se pudo leer la tarifa de la tabla. Revisa tu conexión e inténtalo de nuevo.');
+      return;
+    }
     if (paymentMethod === 'wallet' && balance < (estimatedFare || minFare)) {
       Alert.alert(tr('svcInsufficientBalance'), `Necesitas al menos ${(estimatedFare||minFare).toLocaleString()} XAF. Recarga tu monedero.`,
         [{ text: 'Recargar', onPress: () => router.push('/(tabs)/monedero' as any) }, { text: tr('cancel'), style: 'cancel' }]);
@@ -252,11 +264,10 @@ export default function MiTaxiScreen() {
       const res = await taxiAPI.requestRide(
         { address: origin, lat: origCoords?.latitude, lng: origCoords?.longitude },
         { address: dest,   lat: destCoords?.latitude,  lng: destCoords?.longitude  },
-        selected.id, paymentMethod,
+        selected.id,
       );
       setRideId(res.rideId);
       setFare(res.tarifa || estimatedFare || minFare);
-      if (res.distanceKm) setDistKm(res.distanceKm);
       const n = res.driver?.name || 'Carlos Nguema';
       setDriver({ name: n, rating: res.driver?.rating||4.9, plate: res.driver?.plate||'GE-1234',
         vehicle: res.driver?.vehicle||selected.name, phone: res.driver?.phone,
@@ -285,7 +296,7 @@ export default function MiTaxiScreen() {
 
   const loadHistory = async () => {
     setLoadHist(true);
-    try { const rides = await taxiAPI.getRides(1, 20); setHistory(rides || []); } catch {}
+    try { const rides = await taxiAPI.getRides(); setHistory(rides || []); } catch {}
     setLoadHist(false);
   };
 
@@ -347,11 +358,12 @@ export default function MiTaxiScreen() {
         </View>
       )}
 
-      {/* Estimación de distancia y precio */}
-      {estimatedFare > 0 && distanceKm > 0 && (
+      {/* Precio cerrado: lo fija service_tariffs al pedir el viaje. Los
+          kilometros salen del GPS real y son solo orientativos del trayecto. */}
+      {estimatedFare > 0 && (
         <View style={[s.estimateBar, { borderColor: accent + '40' }]}>
-          <Text style={s.estimateTxt}>📍 {distanceKm.toFixed(1)} km</Text>
-          <Text style={[s.estimateFare, { color: accent }]}>~{estimatedFare.toLocaleString()} XAF</Text>
+          <Text style={s.estimateTxt}>{distanceKm > 0 ? `📍 ${distanceKm.toFixed(1)} km` : `🚕 ${selected.name}`}</Text>
+          <Text style={[s.estimateFare, { color: accent }]}>{estimatedFare.toLocaleString()} XAF</Text>
           <Text style={s.estimateTxt}>🕐 {selected.eta} min</Text>
         </View>
       )}
@@ -368,7 +380,7 @@ export default function MiTaxiScreen() {
               <Text style={[s.rideChipName, { color: active ? r.color : TEXT }]}>{r.name}</Text>
               <Text style={s.rideChipEta}>{r.eta} min</Text>
               <Text style={[s.rideChipPrice, { color: active ? r.color : TEXT }]}>
-                {estimateFare(r.id, Math.max(1, distanceKm)).toLocaleString()}
+                {tarifa(r.id).toLocaleString()}
               </Text>
             </TouchableOpacity>
           );

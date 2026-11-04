@@ -1,189 +1,77 @@
 // Módulo Mis Facturas — paridad ServiciosModules.tsx web — CONECTADO CON BACKEND REAL
+//
+// Las deudas las carga el operador (`/api/servicios/facturas/cargar`, solo admin);
+// la app lee `service_bills` y paga por `factura_id` en la ruta del proveedor.
+// Aquí no se crea ni se borra ninguna factura, y el importe nunca lo escribe el
+// usuario: se paga lo que dice la fila.
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { getApiBase, getToken, walletAPI } from '../../api';
+import { serviciosAPI, BillFactura, walletAPI } from '../../api';
 import { toast } from '../Toast';
 import { FinancialModuleShell, SummaryCard, FilterChips, StatusPill } from './FinancialModuleUI';
-import { FormField, PrimaryButton } from './ServiceModuleUI';
+import { PrimaryButton } from './ServiceModuleUI';
 import { PayMethodPicker } from './PublicModuleUI';
 import { t as tr } from '../../translations';
 
-type FScreen = 'home' | 'add' | 'detail' | 'pay' | 'success';
+type FScreen = 'home' | 'detail' | 'pay' | 'success';
+type FilterId = 'todas' | 'pendiente' | 'vencida' | 'pagada';
 
-interface Bill {
-  id: string;
-  service: string;
-  provider: string;
-  amount: number;
-  due_date: string;
-  reference: string;
-  category_id: string;
-  icon: string;
-  color: string;
-  status: 'pendiente' | 'vencida' | 'pagada';
-  paid_at?: string;
-  created_at: string;
-}
+const PROVIDERS: Record<string, { name: string; icon: string; color: string; pay: (id: string) => Promise<any> }> = {
+  segesa: { name: 'SEGESA', icon: '⚡', color: '#1A3A6B', pay: id => serviciosAPI.pagarElectricidad(id) },
+  snge: { name: 'SNGE', icon: '💧', color: '#0A4A8A', pay: id => serviciosAPI.pagarAgua(id) },
+  dgi: { name: 'DGI', icon: '🏛️', color: '#1B3A6B', pay: id => serviciosAPI.pagarDGI(id) },
+};
 
-interface BillCategory {
-  id: string;
-  name: string;
-  icon: string;
-  provider: string;
-  color: string;
-}
+const prov = (p: string) => PROVIDERS[p] || { name: (p || '').toUpperCase(), icon: '📄', color: '#C47D2A', pay: () => Promise.reject(new Error('Proveedor sin ruta de pago')) };
 
-interface Props { 
-  visible: boolean; 
-  onClose: () => void; 
-  userBalance?: number; 
-}
-
-const FILTER_OPTS = [
-  { id: 'todas', label: tr('all') }, 
+const FILTER_OPTS: { id: FilterId; label: string }[] = [
+  { id: 'todas', label: tr('all') },
   { id: 'pendiente', label: tr('kyPending') },
-  { id: 'vencida', label: 'Vencida' }, 
+  { id: 'vencida', label: 'Vencida' },
   { id: 'pagada', label: 'Pagada' },
 ];
 
-// APIs para backend real
-const billsAPI = {
-  async getCategories(): Promise<BillCategory[]> {
-    try {
-      const BASE = getApiBase();
-      const token = await getToken();
-      const res = await fetch(`${BASE}/api/services/bills/categories`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) return res.json();
-    } catch (error) {
-      // Error loading categories - using fallback
-    }
-    return [];
-  },
-
-  async getBills(status?: string): Promise<Bill[]> {
-    try {
-      const BASE = getApiBase();
-      const token = await getToken();
-      const url = `${BASE}/api/services/bills${status && status !== 'todas' ? `?status=${status}` : ''}`;
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) return res.json();
-    } catch (error) {
-      // Error loading bills - using fallback
-    }
-    return [];
-  },
-
-  async createBill(billData: any) {
-    const BASE = getApiBase();
-    const token = await getToken();
-    const res = await fetch(`${BASE}/api/services/bills`, {
-      method: 'POST',
-      headers: { 
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(billData)
-    });
-    
-    if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.message || tr('xtErrorAlCrearFactura'));
-    }
-    
-    return res.json();
-  },
-
-  async payBill(billId: string, paymentMethod: string = 'EGCHAT') {
-    const BASE = getApiBase();
-    const token = await getToken();
-    const res = await fetch(`${BASE}/api/services/bills/${billId}/pay`, {
-      method: 'POST',
-      headers: { 
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ paymentMethod })
-    });
-    
-    if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.message || tr('xtErrorAlPagarFactura'));
-    }
-    
-    return res.json();
-  },
-
-  async deleteBill(billId: string) {
-    const BASE = getApiBase();
-    const token = await getToken();
-    const res = await fetch(`${BASE}/api/services/bills/${billId}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    
-    if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.message || tr('xtErrorAlEliminarFactura'));
-    }
-    
-    return res.json();
-  }
+const isOverdue = (b: BillFactura) => {
+  if (b.status !== 'pending' || !b.due_date) return false;
+  const due = new Date(b.due_date).getTime();
+  return !Number.isNaN(due) && due < Date.now();
 };
 
-export const FacturasModal: React.FC<Props> = ({ visible, onClose, userBalance = 100000 }) => {
+const stateOf = (b: BillFactura): FilterId =>
+  b.status === 'paid' ? 'pagada' : isOverdue(b) ? 'vencida' : 'pendiente';
+
+interface Props {
+  visible: boolean;
+  onClose: () => void;
+}
+
+export const FacturasModal: React.FC<Props> = ({ visible, onClose }) => {
   const [screen, setScreen] = useState<FScreen>('home');
-  const [bills, setBills] = useState<Bill[]>([]);
-  const [categories, setCategories] = useState<BillCategory[]>([]);
-  const [selected, setSelected] = useState<Bill | null>(null);
-  const [filter, setFilter] = useState<'todas' | 'pendiente' | 'vencida' | 'pagada'>('todas');
-  const [form, setForm] = useState({ service: '', provider: '', amount: '', dueDate: '', reference: '', categoryId: '' });
+  const [bills, setBills] = useState<BillFactura[]>([]);
+  const [selected, setSelected] = useState<BillFactura | null>(null);
+  const [filter, setFilter] = useState<FilterId>('todas');
   const [payMethod, setPayMethod] = useState('egpay');
-  const [balance, setBalance] = useState(userBalance);
+  const [balance, setBalance] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [recibo, setRecibo] = useState<{ importe: number; balance: number } | null>(null);
 
-  useEffect(() => { 
+  useEffect(() => {
     if (visible) {
-      setBalance(userBalance);
-      loadData();
+      loadBalance();
+      loadBills();
+    } else {
+      setScreen('home'); setSelected(null); setRecibo(null);
     }
-  }, [visible, userBalance]);
-  
-  useEffect(() => { 
-    if (!visible) { 
-      setScreen('home'); 
-      setSelected(null); 
-    } 
   }, [visible]);
 
-  const loadData = async () => {
+  const loadBills = async () => {
     setLoadingData(true);
     try {
-      const [billsData, categoriesData] = await Promise.all([
-        billsAPI.getBills(filter),
-        billsAPI.getCategories()
-      ]);
-      setBills(billsData);
-      setCategories(categoriesData);
-    } catch (error) {
-      toast.error(tr('xtErrorCargandoDatos'));
-    } finally {
-      setLoadingData(false);
-    }
-  };
-
-  const loadBills = async (status?: string) => {
-    setLoadingData(true);
-    try {
-      const data = await billsAPI.getBills(status);
-      setBills(data);
-    } catch (error) {
-      toast.error(tr('xtErrorCargandoFacturas'));
+      const res = await serviciosAPI.facturas('todas');
+      setBills(res.facturas || []);
+    } catch (e: any) {
+      toast.error(e?.message || 'No se pudieron cargar las facturas.');
     } finally {
       setLoadingData(false);
     }
@@ -192,23 +80,19 @@ export const FacturasModal: React.FC<Props> = ({ visible, onClose, userBalance =
   const loadBalance = async () => {
     try {
       const result = await walletAPI.getBalance();
-      setBalance(result.balance || 0);
-    } catch (error) {
-      // Error loading balance - continue with cached value
-    }
+      setBalance(Number(result.balance ?? 0));
+    } catch { /* sigue con el saldo en caché */ }
   };
 
-  // Calcular estadísticas
-  const pending = bills.filter(b => b.status !== 'pagada');
-  const totalPending = pending.reduce((s, b) => s + b.amount, 0);
-  const overdue = bills.filter(b => b.status === 'vencida');
-  const filtered = filter === 'todas' ? bills : bills.filter(b => b.status === filter);
-  
-  const setF = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
+  const pendiente = bills.filter(b => b.status === 'pending');
+  const totalPending = pendiente.reduce((s, b) => s + Number(b.amount || 0), 0);
+  const overdue = bills.filter(isOverdue);
+  const filtered = filter === 'todas' ? bills : bills.filter(b => stateOf(b) === filter);
 
-  const back = () => { 
-    if (screen === 'home') onClose(); 
-    else setScreen('home'); 
+  const back = () => {
+    if (screen === 'home') onClose();
+    else if (screen === 'success') { setSelected(null); setRecibo(null); setScreen('home'); loadBalance(); }
+    else setScreen('home');
   };
 
   const payBill = async () => {
@@ -216,74 +100,20 @@ export const FacturasModal: React.FC<Props> = ({ visible, onClose, userBalance =
       toast.error(tr('xtSeleccionaMetodoDePago'));
       return;
     }
-
-    if (selected.amount > balance) {
-      toast.error(tr('svcInsufficientBalance'));
-      return;
-    }
-
     setLoading(true);
     try {
-      // El backend espera 'EGCHAT' para el pago con monedero EGPAY
-      const backendMethod = payMethod === 'egpay' ? 'EGCHAT' : payMethod;
-      const result = await billsAPI.payBill(selected.id, backendMethod);
-      setBalance(result.balance || balance - selected.amount);
-      
-      // Actualizar la factura en el estado local
-      setBills(p => p.map(b => b.id === selected.id ? { ...b, status: 'pagada' as const } : b));
-      
+      const res = await prov(selected.provider).pay(selected.id);
+      setRecibo({ importe: Number(res.importe), balance: Number(res.balance) });
+      setBalance(Number(res.balance));
+      setBills(p => p.map(b => b.id === selected.id ? { ...b, status: 'paid', paid_at: new Date().toISOString() } : b));
       setScreen('success');
       toast.success(tr('xtPagoCompletado'));
-    } catch (error: any) {
-      toast.error(error.message || tr('xtErrorAlProcesarPago'));
+    } catch (e: any) {
+      toast.error(e?.message || tr('xtErrorAlProcesarPago'));
     } finally {
       setLoading(false);
     }
   };
-
-  const addBill = async () => {
-    const cat = categories.find(c => c.id === form.categoryId);
-    if (!form.service.trim() || !form.amount.trim() || !form.dueDate.trim()) {
-      toast.error(tr('xtCompletaTodosLosCamposRequeridos'));
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const billData = {
-        service: form.service.trim(),
-        provider: form.provider.trim() || cat?.provider || '',
-        amount: form.amount.trim(),
-        dueDate: form.dueDate.trim(),
-        reference: form.reference.trim(),
-        categoryId: form.categoryId || 'otros'
-      };
-
-      await billsAPI.createBill(billData);
-      
-      setForm({ service: '', provider: '', amount: '', dueDate: '', reference: '', categoryId: '' });
-      setScreen('home');
-      toast.success(tr('xtFacturaCreadaCorrectamente'));
-      
-      // Recargar facturas
-      loadBills(filter);
-    } catch (error: any) {
-      toast.error(error.message || tr('xtErrorAlCrearFactura'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleFilterChange = (newFilter: string) => {
-    setFilter(newFilter as typeof filter);
-    loadBills(newFilter === 'todas' ? undefined : newFilter);
-  };
-
-  const headerAction = screen === 'home' ? (
-    <TouchableOpacity style={s.addBtn} onPress={() => setScreen('add')}>
-      <Text style={s.addBtnText}>{tr('xtAnadir2')}</Text>
-    </TouchableOpacity>
-  ) : undefined;
 
   const fixedTop = screen === 'home' ? (
     <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
@@ -292,25 +122,19 @@ export const FacturasModal: React.FC<Props> = ({ visible, onClose, userBalance =
         amount={totalPending}
         colors={['#C47D2A', '#D97706']}
         stats={[
-          { v: bills.filter(b => b.status === 'pendiente').length, l: 'Pendientes' },
+          { v: bills.filter(b => stateOf(b) === 'pendiente').length, l: 'Pendientes' },
           { v: overdue.length, l: 'Vencidas' },
-          { v: bills.filter(b => b.status === 'pagada').length, l: 'Pagadas' },
+          { v: bills.filter(b => b.status === 'paid').length, l: 'Pagadas' },
         ]}
       />
-      <FilterChips 
-        options={FILTER_OPTS} 
-        value={filter} 
-        onChange={handleFilterChange} 
-        activeColor="#C47D2A" 
-      />
+      <FilterChips options={FILTER_OPTS} value={filter} onChange={id => setFilter(id as FilterId)} activeColor="#C47D2A" />
     </View>
   ) : undefined;
 
   const titles: Record<FScreen, string> = {
-    home: tr('xtMisFacturas'), 
-    add: tr('xtNuevaFactura'), 
-    detail: selected?.service || tr('xtFactura'),
-    pay: tr('xtPagarFactura'), 
+    home: tr('xtMisFacturas'),
+    detail: selected ? prov(selected.provider).name : tr('xtFactura'),
+    pay: tr('xtPagarFactura'),
     success: tr('xtPagoCompletado2'),
   };
 
@@ -318,45 +142,37 @@ export const FacturasModal: React.FC<Props> = ({ visible, onClose, userBalance =
     <FinancialModuleShell
       visible={visible}
       title={titles[screen]}
-      subtitle={screen === 'home' ? `${pending.length} pendientes — ${overdue.length} vencidas` : undefined}
+      subtitle={screen === 'home' ? `${pendiente.length} pendientes — ${overdue.length} vencidas` : undefined}
       onBack={back}
       onClose={onClose}
-      headerAction={headerAction}
       fixedTop={fixedTop}
-      onRefresh={screen === 'home' ? () => {
-        setRefreshKey(k => k + 1);
-        loadBills(filter);
-      } : undefined}
+      onRefresh={screen === 'home' ? loadBills : undefined}
     >
       {screen === 'home' && (
-        <View key={refreshKey}>
+        <View>
           {loadingData ? (
-            <View style={s.loading}>
-              <Text>Cargando facturas...</Text>
-            </View>
+            <View style={s.loading}><Text>Cargando facturas...</Text></View>
           ) : filtered.length === 0 ? (
             <View style={s.empty}>
               <Text style={{ fontSize: 40 }}>📋</Text>
               <Text style={s.emptyTitle}>{tr('xtSinFacturas')}</Text>
-              <TouchableOpacity style={s.addBtn} onPress={() => setScreen('add')}>
-                <Text style={s.addBtnText}>{tr('svcAddBill')}</Text>
-              </TouchableOpacity>
+              <Text style={s.emptySub}>Las deudas las carga el proveedor; pulsa actualizar.</Text>
             </View>
           ) : filtered.map(b => (
             <TouchableOpacity key={b.id} style={s.billRow} onPress={() => { setSelected(b); setScreen('detail'); }}>
-              <View style={[s.billIcon, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.07)' }]}>
-                <Text style={{ fontSize: 22 }}>{b.icon}</Text>
+              <View style={s.billIcon}>
+                <Text style={{ fontSize: 22 }}>{prov(b.provider).icon}</Text>
               </View>
               <View style={{ flex: 1 }}>
                 <View style={s.billTop}>
-                  <Text style={s.billService}>{b.service}</Text>
-                  <Text style={[s.billAmt, b.status === 'pagada' && { color: '#16A34A' }, b.status === 'vencida' && { color: '#DC2626' }]}>
-                    {b.amount.toLocaleString()} XAF
+                  <Text style={s.billService}>{prov(b.provider).name}</Text>
+                  <Text style={[s.billAmt, b.status === 'paid' && { color: '#16A34A' }, isOverdue(b) && { color: '#DC2626' }]}>
+                    {Number(b.amount).toLocaleString()} {b.currency || 'XAF'}
                   </Text>
                 </View>
                 <View style={s.billBottom}>
-                  <Text style={s.billMeta}>{b.provider} — Vence {new Date(b.due_date).toLocaleDateString('es')}</Text>
-                  <StatusPill status={b.status} />
+                  <Text style={s.billMeta}>{b.contract_ref} — {b.due_date ? `Vence ${new Date(b.due_date).toLocaleDateString('es')}` : (b.period || '—')}</Text>
+                  <StatusPill status={stateOf(b)} />
                 </View>
               </View>
             </TouchableOpacity>
@@ -364,52 +180,17 @@ export const FacturasModal: React.FC<Props> = ({ visible, onClose, userBalance =
         </View>
       )}
 
-      {screen === 'add' && (
-        <View>
-          <Text style={s.catLbl}>{tr('xtCategoria')}</Text>
-          <View style={s.catGrid}>
-            {categories.map(c => (
-              <TouchableOpacity
-                key={c.id}
-                style={[s.catCell, form.categoryId === c.id && { backgroundColor: 'transparent', borderBottomWidth: 2, borderBottomColor: c.color }]}
-                onPress={() => { 
-                  setF('categoryId', c.id); 
-                  setF('service', c.name); 
-                  setF('provider', c.provider); 
-                }}
-              >
-                <Text style={{ fontSize: 20 }}>{c.icon}</Text>
-                <Text style={[s.catLabel, form.categoryId === c.id && { color: c.color }]}>{c.name}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <FormField placeholder={tr('xtNombreDelServicio')} value={form.service} onChangeText={v => setF('service', v)} />
-          <FormField placeholder="Proveedor / Empresa" value={form.provider} onChangeText={v => setF('provider', v)} />
-          <FormField placeholder={tr('svcRefContractLower')} value={form.reference} onChangeText={v => setF('reference', v)} />
-          <FormField placeholder={tr('walAmountXaf')} value={form.amount} onChangeText={v => setF('amount', v)} keyboardType="numeric" />
-          <FormField placeholder={tr('xtFechaDeVencimientoAAAAMMDD')} value={form.dueDate} onChangeText={v => setF('dueDate', v)} />
-          <PrimaryButton 
-            label={loading ? 'Guardando...' : tr('xtGuardarFactura')} 
-            color="#C47D2A" 
-            disabled={!form.service.trim() || !form.amount.trim() || !form.dueDate.trim() || loading} 
-            onPress={addBill} 
-          />
-        </View>
-      )}
-
       {screen === 'detail' && selected && (
         <View>
           <View style={s.detailCard}>
-            <View style={[s.billIcon, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.07)', width: 56, height: 56 }]}>
-              <Text style={{ fontSize: 28 }}>{selected.icon}</Text>
-            </View>
-            <Text style={s.detailName}>{selected.service}</Text>
-            <Text style={s.detailProv}>{selected.provider}</Text>
+            <View style={[s.billIcon, { width: 56, height: 56 }]}><Text style={{ fontSize: 28 }}>{prov(selected.provider).icon}</Text></View>
+            <Text style={s.detailName}>{prov(selected.provider).name}</Text>
+            <Text style={s.detailProv}>{selected.concept || selected.contract_ref}</Text>
             {[
-              [tr('xtReferencia'), selected.reference || '—'], 
-              [tr('xtVencimiento'), new Date(selected.due_date).toLocaleDateString('es')], 
-              [tr('mznStatusField'), selected.status], 
-              [tr('walAmount'), `${selected.amount.toLocaleString()} XAF`]
+              [tr('xtReferencia'), selected.contract_ref || '—'],
+              [tr('xtVencimiento'), selected.due_date ? new Date(selected.due_date).toLocaleDateString('es') : '—'],
+              [tr('mznStatusField'), stateOf(selected)],
+              [tr('walAmount'), `${Number(selected.amount).toLocaleString()} ${selected.currency || 'XAF'}`],
             ].map(([l, v]) => (
               <View key={l} style={s.detailRow}>
                 <Text style={s.detailLbl}>{l}</Text>
@@ -417,11 +198,12 @@ export const FacturasModal: React.FC<Props> = ({ visible, onClose, userBalance =
               </View>
             ))}
           </View>
-          {selected.status !== 'pagada' ? (
-            <PrimaryButton label={tr('xtPagarAhora')} color={selected.color} onPress={() => setScreen('pay')} />
+          {selected.status !== 'paid' ? (
+            <PrimaryButton label={tr('xtPagarAhora')} color={prov(selected.provider).color} onPress={() => setScreen('pay')} />
           ) : (
             <View style={s.paidBanner}>
               <Text style={s.paidText}>{tr('xtEstaFacturaYaEstaPagada')}</Text>
+              {selected.paid_at && <Text style={s.paidDate}>{new Date(selected.paid_at).toLocaleString('es')}</Text>}
             </View>
           )}
         </View>
@@ -431,33 +213,28 @@ export const FacturasModal: React.FC<Props> = ({ visible, onClose, userBalance =
         <View>
           <View style={s.detailCard}>
             <Text style={s.payTitle}>{tr('djhConfirmPayout')}</Text>
-            <Text style={s.payAmt}>{selected.amount.toLocaleString()} XAF</Text>
-            <Text style={s.balHint}>Saldo monedero: {balance.toLocaleString()} XAF</Text>
+            <Text style={[s.payAmt, { color: prov(selected.provider).color }]}>{Number(selected.amount).toLocaleString()} XAF</Text>
+            <Text style={s.balHint}>
+              {`Saldo monedero: ${balance === null ? 'sin datos' : `${balance.toLocaleString()} XAF`}`}
+            </Text>
           </View>
           <PayMethodPicker value={payMethod} onChange={setPayMethod} accent="#C47D2A" />
           <PrimaryButton
             label={loading ? tr('processing') : tr('djhConfirmPayout')}
             color="#C47D2A"
-            disabled={!payMethod || selected.amount > balance || loading}
+            disabled={!payMethod || loading || (balance !== null && Number(selected.amount) > balance)}
             onPress={payBill}
           />
         </View>
       )}
 
-      {screen === 'success' && selected && (
+      {screen === 'success' && selected && recibo && (
         <View style={s.success}>
           <Text style={{ fontSize: 52 }}>✅</Text>
           <Text style={s.successTitle}>{tr('svcPaymentDone')}</Text>
-          <Text style={s.successSub}>{selected.service} — {selected.amount.toLocaleString()} XAF</Text>
-          <PrimaryButton 
-            label="Listo" 
-            onPress={() => { 
-              setSelected(null); 
-              setScreen('home');
-              loadBalance();
-            }} 
-            color="#C47D2A" 
-          />
+          <Text style={s.successSub}>{prov(selected.provider).name} — {recibo.importe.toLocaleString()} XAF</Text>
+          <Text style={s.successSub}>Saldo restante: {recibo.balance.toLocaleString()} XAF</Text>
+          <PrimaryButton label="Listo" onPress={back} color="#C47D2A" />
         </View>
       )}
     </FinancialModuleShell>
@@ -466,21 +243,16 @@ export const FacturasModal: React.FC<Props> = ({ visible, onClose, userBalance =
 
 const s = StyleSheet.create({
   loading: { alignItems: 'center', paddingVertical: 30 },
-  addBtn: { backgroundColor: '#C47D2A', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 7 },
-  addBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   billRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: '#F0F2F5' },
-  billIcon: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  billIcon: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(0,0,0,0.07)' },
   billTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 },
   billService: { fontSize: 14, fontWeight: '700', color: '#111827' },
   billAmt: { fontSize: 14, fontWeight: '800', color: '#111827' },
   billBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   billMeta: { fontSize: 11, color: '#9CA3AF' },
-  empty: { alignItems: 'center', paddingVertical: 40, gap: 12 },
+  empty: { alignItems: 'center', paddingVertical: 40, gap: 10 },
   emptyTitle: { fontSize: 14, fontWeight: '600', color: '#374151' },
-  catLbl: { fontSize: 12, fontWeight: '600', color: '#9CA3AF', marginBottom: 8 },
-  catGrid: { flexDirection: 'row', flexWrap: 'wrap', backgroundColor: '#F0F2F5', borderRadius: 14, overflow: 'hidden', marginBottom: 12 },
-  catCell: { width: '25%', backgroundColor: '#fff', alignItems: 'center', padding: 12, marginBottom: 1 },
-  catLabel: { fontSize: 9, fontWeight: '600', color: '#374151', textAlign: 'center', marginTop: 4 },
+  emptySub: { fontSize: 12, color: '#9CA3AF' },
   detailCard: { backgroundColor: '#fff', borderRadius: 16, padding: 18, marginBottom: 12, alignItems: 'center' },
   detailName: { fontSize: 18, fontWeight: '800', color: '#111827', marginTop: 12 },
   detailProv: { fontSize: 12, color: '#9CA3AF', marginBottom: 12 },
@@ -489,13 +261,11 @@ const s = StyleSheet.create({
   detailVal: { fontSize: 13, fontWeight: '700', color: '#111827' },
   paidBanner: { backgroundColor: '#F0FAF5', borderRadius: 12, padding: 14, alignItems: 'center' },
   paidText: { color: '#16A34A', fontWeight: '700', fontSize: 14 },
+  paidDate: { color: '#16A34A', fontSize: 11, marginTop: 4 },
   payTitle: { fontSize: 14, fontWeight: '700', color: '#111', marginBottom: 8 },
-  payAmt: { fontSize: 28, fontWeight: '900', color: '#C47D2A', marginBottom: 8 },
+  payAmt: { fontSize: 28, fontWeight: '900', marginBottom: 8 },
   balHint: { fontSize: 12, color: '#8A9BB5' },
-  payOpt: { backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 8, borderWidth: 1.5, borderColor: 'transparent' },
-  payOptActive: { borderColor: '#C47D2A', backgroundColor: '#FDF6EE' },
-  payOptText: { fontSize: 13, fontWeight: '600', color: '#1A2B4A' },
   success: { alignItems: 'center', paddingVertical: 40, gap: 8 },
   successTitle: { fontSize: 16, fontWeight: '700', color: '#111' },
-  successSub: { fontSize: 13, color: '#888', marginBottom: 16 },
+  successSub: { fontSize: 13, color: '#888' },
 });

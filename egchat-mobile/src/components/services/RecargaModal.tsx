@@ -1,7 +1,12 @@
-// Módulo Recarga Tel. — paridad ServiciosModules.tsx web — CONECTADO CON BACKEND REAL
+// Módulo Recarga Tel. — GETESA, GECOMSA y MUNI
+//
+// EGChat no tiene canal con las operadoras, así que aquí no se recarga ningún
+// teléfono ni se cobra nada: se registra la solicitud (importe 0) y la
+// operadora la confirma. Antes este archivo traía tarifas inventadas en
+// JavaScript y un saldo de 100 000 XAF que no era el del usuario.
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { walletAPI, getApiBase, getToken } from '../../api';
+import { serviciosAPI, walletAPI, Solicitud, Tarifa } from '../../api';
 import { toast } from '../Toast';
 import {
   ServiceModuleShell, ServiceHomeGrid, ServiceBanner, OperatorGrid,
@@ -11,188 +16,97 @@ import { t as tr } from '../../translations';
 
 type RScreen = 'home' | 'operators' | 'packages' | 'confirm' | 'success' | 'history' | 'myLines' | 'support';
 
-interface MobileOperator {
-  id: string;
-  name: string;
-  code: string;
-  color: string;
-}
+interface MobileOperator { id: string; name: string; code: string; color: string }
 
-interface MobilePackage {
-  id: string;
-  name: string;
-  type: string;
-  price: number;
-  validity: string;
-  desc: string;
-}
+interface Props { visible: boolean; onClose: () => void; }
 
-interface Props {
-  visible: boolean;
-  onClose: () => void;
-  userBalance?: number;
-}
+const DEFAULT_OPERATORS: MobileOperator[] = [
+  { id: 'getesa', name: 'GETESA', code: 'GET', color: '#003F8A' },
+  { id: 'gecomsa', name: 'GECOMSA', code: 'GEC', color: '#00873E' },
+  { id: 'muni', name: 'MUNI', code: 'MUN', color: '#E8320A' },
+];
 
-// APIs para backend real
-const mobileAPI = {
-  async getOperators(): Promise<MobileOperator[]> {
-    try {
-      const BASE = getApiBase();
-      const token = await getToken();
-      const res = await fetch(`${BASE}/api/services/mobile/operators`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) return res.json();
-    } catch (error) {
-      // Error loading operators - using fallback
-    }
-    return [];
-  },
+const MOTIVOS = [
+  { id: 'saldo', label: 'Saldo' },
+  { id: 'datos', label: 'Datos' },
+  { id: 'minutos', label: 'Minutos' },
+];
 
-  async getPackages(operatorId: string): Promise<MobilePackage[]> {
-    try {
-      const BASE = getApiBase();
-      const token = await getToken();
-      const res = await fetch(`${BASE}/api/services/mobile/operators/${operatorId}/packages`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) return res.json();
-    } catch (error) {
-      // Error loading packages - using fallback
-    }
-    return [];
-  },
+const MIN_IMPORTE = 100;
 
-  async processRecharge(operatorId: string, packageId: string, phone: string, amount: number) {
-    const BASE = getApiBase();
-    const token = await getToken();
-    const res = await fetch(`${BASE}/api/services/mobile/recharge`, {
-      method: 'POST',
-      headers: { 
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ operatorId, packageId, phone, amount })
-    });
-    
-    if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.message || tr('xtErrorAlProcesarRecarga'));
-    }
-    
-    return res.json();
-  },
-
-  async getHistory() {
-    try {
-      const BASE = getApiBase();
-      const token = await getToken();
-      const res = await fetch(`${BASE}/api/services/mobile/history`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) return res.json();
-    } catch (error) {
-      // Error loading history - using fallback
-    }
-    return [];
-  }
-};
-
-export const RecargaModal: React.FC<Props> = ({ visible, onClose, userBalance: initialBalance = 100000 }) => {
+export const RecargaModal: React.FC<Props> = ({ visible, onClose }) => {
   const [screen, setScreen] = useState<RScreen>('home');
-  const [operators, setOperators] = useState<MobileOperator[]>([]);
   const [selectedOperator, setSelectedOperator] = useState<MobileOperator | null>(null);
-  const [packages, setPackages] = useState<MobilePackage[]>([]);
-  const [selectedPackage, setSelectedPackage] = useState<MobilePackage | null>(null);
+  const [motivo, setMotivo] = useState('saldo');
+  const [tarifas, setTarifas] = useState<Tarifa[]>([]);
   const [phone, setPhone] = useState('');
-  const [balance, setBalance] = useState(initialBalance);
-  const [history, setHistory] = useState<Array<any>>([]);
+  const [monto, setMonto] = useState('');
+  const [balance, setBalance] = useState<number | null>(null);
+  const [solicitudes, setSolicitudes] = useState<Solicitud[]>([]);
+  const [recibo, setRecibo] = useState('');
+  const [ref, setRef] = useState('');
   const [lines, setLines] = useState<Array<{ number: string; op: string }>>([]);
   const [newLine, setNewLine] = useState('');
   const [loading, setLoading] = useState(false);
-  const [loadingData, setLoadingData] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  useEffect(() => { 
-    if (visible) {
-      setBalance(initialBalance);
-      loadOperators();
-    }
-  }, [visible, initialBalance]);
-  
-  useEffect(() => { 
-    if (!visible) { 
-      setScreen('home'); 
-      setSelectedOperator(null); 
-      setSelectedPackage(null); 
-      setPhone(''); 
-    } 
+  useEffect(() => {
+    if (visible) { cargarSaldo(); cargarSolicitudes(); cargarTarifas(); return; }
+    setScreen('home'); setSelectedOperator(null); setPhone(''); setMonto('');
+    setRecibo(''); setRef(''); setMotivo('saldo'); setLoading(false);
   }, [visible]);
 
-  const DEFAULT_OPERATORS = [
-    { id: 'getesa',  name: 'GETESA',  code: 'GET', color: '#003F8A' },
-    { id: 'gecomsa', name: 'GECOMSA', code: 'GEC', color: '#00873E' },
-    { id: 'muni',    name: 'MUNI',    code: 'MUN', color: '#E8320A' },
-  ];
-
-  const loadOperators = async () => {
-    // Siempre usar los operadores locales — GETESA, GECOMSA, MUNI
-    setOperators(DEFAULT_OPERATORS);
-    setLoadingData(false);
-  };
-
-  const loadPackages = async (operatorId: string) => {
-    setLoadingData(true);
+  const cargarSaldo = async () => {
     try {
-      const data = await mobileAPI.getPackages(operatorId);
-      if (data && data.length > 0) {
-        setPackages(data);
-      } else {
-        // Paquetes por defecto si el backend no los tiene
-        setPackages([
-          { id: 'p1', name: '100 MB', type: 'datos',    price: 500,   validity: '1 día',   desc: tr('xtPaqueteBasicoDeDatos') },
-          { id: 'p2', name: '500 MB', type: 'datos',    price: 1000,  validity: '3 días',  desc: tr('xtPaqueteEstandarDeDatos') },
-          { id: 'p3', name: '1 GB',   type: 'datos',    price: 2000,  validity: '7 días',  desc: tr('xtPaqueteSemanalDeDatos') },
-          { id: 'p4', name: '3 GB',   type: 'datos',    price: 5000,  validity: '15 días', desc: tr('xtPaqueteQuincenalDeDatos') },
-          { id: 'p5', name: '5 GB',   type: 'datos',    price: 8000,  validity: '30 días', desc: tr('xtPaqueteMensualDeDatos') },
-          { id: 'p6', name: '500 XAF',type: 'saldo',    price: 500,   validity: '30 días', desc: tr('xtRecargaDeSaldo') },
-          { id: 'p7', name: '1000 XAF',type:'saldo',    price: 1000,  validity: '30 días', desc: tr('xtRecargaDeSaldo') },
-          { id: 'p8', name: '2000 XAF',type:'saldo',    price: 2000,  validity: '30 días', desc: tr('xtRecargaDeSaldo') },
-          { id: 'p9', name: '100 min',type: 'minutos',  price: 1500,  validity: '7 días',  desc: tr('xtPaqueteDeMinutos') },
-        ]);
-      }
-    } catch (error) {
-      setPackages([
-        { id: 'p1', name: '100 MB', type: 'datos',  price: 500,  validity: '1 día',   desc: tr('xtPaqueteBasicoDeDatos') },
-        { id: 'p2', name: '500 MB', type: 'datos',  price: 1000, validity: '3 días',  desc: tr('xtPaqueteEstandarDeDatos') },
-        { id: 'p3', name: '1 GB',   type: 'datos',  price: 2000, validity: '7 días',  desc: tr('xtPaqueteSemanalDeDatos') },
-        { id: 'p4', name: '500 XAF',type: 'saldo',  price: 500,  validity: '30 días', desc: tr('xtRecargaDeSaldo') },
-        { id: 'p5', name: '1000 XAF',type:'saldo',  price: 1000, validity: '30 días', desc: tr('xtRecargaDeSaldo') },
-      ]);
-    } finally {
-      setLoadingData(false);
+      const r = await walletAPI.getBalance();
+      setBalance(Number(r.balance) || 0);
+    } catch {
+      setBalance(null);
     }
   };
 
-  const loadHistory = async () => {
-    setLoadingData(true);
+  const cargarSolicitudes = async () => {
+    try { setSolicitudes(await serviciosAPI.solicitudes('recarga')); } catch { setSolicitudes([]); }
+  };
+
+  // Solo tarifas publicadas en service_tariffs; sin filas, el importe lo escribe el usuario.
+  const cargarTarifas = async () => {
     try {
-      const data = await mobileAPI.getHistory();
-      setHistory(data);
-    } catch (error) {
-      toast.error(tr('xtErrorCargandoHistorial'));
-      setHistory([]);
-    } finally {
-      setLoadingData(false);
+      const res = await serviciosAPI.tarifas();
+      setTarifas((res.tarifas || []).filter(x => x.service === 'recarga'));
+    } catch {
+      setTarifas([]);
     }
   };
 
-  const loadBalance = async () => {
+  const importe = parseInt(monto.replace(/[^0-9]/g, ''), 10) || 0;
+  const puedeEnviar = !!selectedOperator && !!phone.trim() && importe >= MIN_IMPORTE && !loading;
+
+  const solicitar = async () => {
+    if (!puedeEnviar) return;
+    setLoading(true);
     try {
-      const result = await walletAPI.getBalance();
-      setBalance(result.balance || 0);
-    } catch (error) {
-      // Error loading balance - continue with cached value
+      const res = await serviciosAPI.solicitud({
+        provider: 'recarga',
+        tipo: 'recarga',
+        referencia: selectedOperator?.id,
+        datos: {
+          operador: selectedOperator?.name || null,
+          numero: phone.trim(),
+          motivo,
+          importe_declarado: importe,
+        },
+        external_id: ref || `REA-${selectedOperator?.id || 'op'}-${Date.now()}`,
+      });
+      setRecibo(res.solicitudId);
+      setRef('');
+      setMonto('');
+      await cargarSolicitudes();
+      setScreen('success');
+    } catch (e: any) {
+      toast.error(e?.message || 'No se pudo registrar la solicitud de recarga.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -200,80 +114,24 @@ export const RecargaModal: React.FC<Props> = ({ visible, onClose, userBalance: i
 
   const titles: Record<RScreen, string> = {
     home: 'Recarga Tel.', operators: 'Operadores',
-    packages: `${selectedOperator?.name || ''} — Paquetes`, confirm: 'Confirmar',
-    get success() { return tr('svcCompleted'); }, get history() { return tr('history'); }, get myLines() { return tr('xtMisLineas'); }, get support() { return tr('svcSupport'); },
+    packages: `${selectedOperator?.name || ''} — Recarga`, confirm: 'Confirmar',
+    success: tr('svcCompleted'), history: tr('history'), myLines: tr('xtMisLineas'), support: tr('svcSupport'),
   };
 
   const goBack = () => {
     if (screen === 'home') onClose();
     else if (screen === 'packages') setScreen('operators');
     else if (screen === 'confirm') setScreen('packages');
+    else if (screen === 'success') setScreen('history');
     else setScreen('home');
   };
 
   const homeItems = [
-    { id: 'operators', label: tr('xtRecargarSaldo'), desc: 'Elige operador', color: '#2E9E6B', bg: '#F0FAF5', icon: Ico.signal('#2E9E6B') },
-    { id: 'operators', label: 'Comprar Datos', desc: tr('xtPaquetesDeDatos'), color: '#1485EE', bg: '#EFF5FD', icon: Ico.wifi('#1485EE') },
-    { id: 'operators', label: 'Comprar Minutos', desc: tr('xtPaquetesDeLlamadas'), color: '#C47D2A', bg: '#FDF6EE', icon: Ico.phone('#C47D2A') },
-    { id: 'history', label: tr('history'), desc: `${history.length} recargas`, color: '#6B5BD6', bg: '#F3F1FD', icon: Ico.clock('#6B5BD6') },
+    { id: 'operators', label: tr('xtRecargarSaldo'), desc: 'Solicitud a la operadora', color: '#2E9E6B', bg: '#F0FAF5', icon: Ico.signal('#2E9E6B') },
+    { id: 'history', label: tr('history'), desc: `${solicitudes.length} solicitudes`, color: '#6B5BD6', bg: '#F3F1FD', icon: Ico.clock('#6B5BD6') },
     { id: 'myLines', label: tr('xtMisLineas'), desc: `${lines.length} guardadas`, color: '#0E7FA8', bg: '#EDF7FB', icon: Ico.mobile('#0E7FA8') },
     { id: 'support', label: 'Soporte', desc: 'Reportar fallo', color: '#C0392B', bg: '#FDF2F2', icon: Ico.headset('#C0392B') },
   ];
-
-  const confirmRecharge = async () => {
-    if (!selectedPackage || !selectedOperator || !phone.trim()) {
-      toast.error('Datos incompletos');
-      return;
-    }
-
-    if (selectedPackage.price > balance) {
-      toast.error(tr('svcInsufficientBalance'));
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const result = await mobileAPI.processRecharge(
-        selectedOperator.id, 
-        selectedPackage.id, 
-        phone.trim(), 
-        selectedPackage.price
-      );
-      
-      setBalance(result.balance || balance - selectedPackage.price);
-      setScreen('success');
-      toast.success(tr('walRechargeDone'));
-      
-      // Actualizar historial
-      loadHistory();
-    } catch (error: any) {
-      toast.error(error.message || tr('xtErrorAlProcesarRecarga'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const selectOperator = async (operator: MobileOperator) => {
-    setSelectedOperator(operator);
-    setScreen('packages');
-    await loadPackages(operator.id);
-  };
-
-  const selectPackage = (pkg: MobilePackage) => {
-    setSelectedPackage(pkg);
-    setScreen('confirm');
-  };
-
-  const handleItemPress = (id: string) => {
-    if (id === 'operators') {
-      setScreen('operators');
-    } else if (id === 'history') {
-      loadHistory();
-      setScreen('history');
-    } else {
-      setScreen(id as RScreen);
-    }
-  };
 
   return (
     <ServiceModuleShell
@@ -285,92 +143,108 @@ export const RecargaModal: React.FC<Props> = ({ visible, onClose, userBalance: i
     >
       {screen === 'home' && (
         <View>
-          <ServiceHomeGrid items={homeItems} onPress={handleItemPress} />
+          <ServiceHomeGrid items={homeItems} onPress={id => setScreen(id as RScreen)} />
+          <Text style={s.nota}>
+            EGChat no tiene canal directo con GETESA, GECOMSA ni MUNI. Aquí se registra la solicitud: la
+            operadora la confirma y el cargo se hace después desde el monedero. Al enviar no se debita nada.
+          </Text>
           <ServiceBanner
             key={refreshKey}
             label="Operadores disponibles"
-            count={operators.length}
+            count={DEFAULT_OPERATORS.length}
             suffix="GETESA — GECOMSA — MUNI"
             colors={['#2E9E6B', '#1B7A52']}
-            onRefresh={() => {
-              setRefreshKey(k => k + 1);
-              loadOperators();
-            }}
+            onRefresh={() => { setRefreshKey(k => k + 1); cargarSolicitudes(); cargarSaldo(); }}
           />
         </View>
       )}
 
       {screen === 'operators' && (
-        loadingData ? (
-          <View style={s.loading}>
-            <Text>Cargando operadores...</Text>
-          </View>
-        ) : (
-          <OperatorGrid 
-            items={operators.map(op => ({ ...op, color: op.color }))} 
-            onSelect={id => {
-              const operator = operators.find(op => op.id === id);
-              if (operator) selectOperator(operator);
-            }} 
-          />
-        )
+        <OperatorGrid
+          items={DEFAULT_OPERATORS.map(op => ({ ...op, color: op.color }))}
+          onSelect={id => {
+            const op = DEFAULT_OPERATORS.find(o => o.id === id);
+            if (!op) return;
+            setSelectedOperator(op);
+            setRef(`REA-${op.id}-${Date.now()}`);
+            setScreen('packages');
+          }}
+        />
       )}
 
-      {screen === 'packages' && (
+      {screen === 'packages' && selectedOperator && (
         <View>
           <View style={s.phoneRow}>
             <Text style={s.phoneEmoji}>📞</Text>
             <View style={{ flex: 1 }}>
-              <FormField 
-                placeholder={tr('kyPhoneNumber')} 
-                value={phone} 
-                onChangeText={setPhone} 
-                keyboardType="phone-pad" 
+              <FormField
+                placeholder={tr('kyPhoneNumber')}
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
               />
             </View>
           </View>
-          
-          {loadingData ? (
-            <View style={s.loading}>
-              <Text>Cargando paquetes...</Text>
-            </View>
-          ) : (
+          <View style={s.chipRow}>
+            {MOTIVOS.map(m => (
+              <TouchableOpacity
+                key={m.id}
+                style={[s.chip, motivo === m.id && { backgroundColor: '#F0FAF5', borderColor: color }]}
+                onPress={() => setMotivo(m.id)}
+              >
+                <Text style={[s.chipText, motivo === m.id && { color, fontWeight: '700' }]}>{m.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <FormField placeholder="Importe que pides (XAF)" value={monto} onChangeText={setMonto} keyboardType="numeric" />
+          {tarifas.length > 0 && (
             <View style={s.pkgCard}>
+              <Text style={s.tarifaTitulo}>Tarifas publicadas por la operadora</Text>
               <View style={s.pkgGrid}>
-                {packages.map(p => (
+                {tarifas.map(t => (
                   <TouchableOpacity
-                    key={p.id}
-                    style={[s.pkgCell, !phone && s.pkgCellDisabled]}
-                    onPress={() => { if (phone.trim()) selectPackage(p); }}
+                    key={t.variant}
+                    style={[s.pkgCell, !phone.trim() && s.pkgCellDisabled]}
+                    onPress={() => { if (phone.trim()) setMonto(String(Number(t.amount))); }}
                     activeOpacity={phone.trim() ? 0.7 : 1}
                   >
                     <View style={[s.pkgIcon, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.07)' }]}>
                       {Ico.mobile(color)}
                     </View>
-                    <Text style={s.pkgName} numberOfLines={2}>{p.name}</Text>
-                    <Text style={[s.pkgPrice, { color }]}>{p.price.toLocaleString()} XAF</Text>
-                    <Text style={s.pkgValid}>{p.validity}</Text>
+                    <Text style={s.pkgName} numberOfLines={2}>{t.variant}</Text>
+                    <Text style={[s.pkgPrice, { color }]}>{Number(t.amount).toLocaleString()} XAF</Text>
+                    {!!t.concept && <Text style={s.pkgValid}>{t.concept}</Text>}
                   </TouchableOpacity>
                 ))}
               </View>
             </View>
           )}
-          
+          <Text style={s.nota}>
+            El importe lo escribes tú: es lo que pides a {selectedOperator.name}, no una tarifa de EGChat.
+            {balance === null
+              ? ' No hemos podido leer tu saldo del monedero.'
+              : ` Saldo actual del monedero: ${balance.toLocaleString()} XAF.`}
+          </Text>
           {!phone.trim() && <Text style={s.warn}>{tr('svcEnterNumberWarn')}</Text>}
+          <PrimaryButton
+            label={loading ? tr('processing') : 'Solicitar recarga'}
+            onPress={() => setScreen('confirm')}
+            disabled={!phone.trim() || importe < MIN_IMPORTE}
+            color={color}
+          />
         </View>
       )}
 
-      {screen === 'confirm' && selectedPackage && selectedOperator && (
+      {screen === 'confirm' && selectedOperator && (
         <View>
           <View style={s.confirmCard}>
             {[
-              [tr('mznOperatorLabel'), selectedOperator.name], 
-              [tr('svcNumberLabel'), phone], 
-              [tr('xtPaquete'), selectedPackage.name],
-              [tr('mznDescription'), selectedPackage.desc], 
-              [tr('xtValidez'), selectedPackage.validity],
-              [tr('svcPriceWord'), `${selectedPackage.price.toLocaleString()} XAF`], 
-              [tr('xtSaldoActual'), `${balance.toLocaleString()} XAF`],
+              [tr('mznOperatorLabel'), selectedOperator.name],
+              [tr('svcNumberLabel'), phone],
+              ['Qué pides', MOTIVOS.find(m => m.id === motivo)?.label || motivo],
+              ['Importe solicitado', `${importe.toLocaleString()} XAF`],
+              ['Saldo del monedero', balance === null ? 'sin datos' : `${balance.toLocaleString()} XAF`],
+              ['Estado', 'Pendiente de confirmar'],
             ].map(([l, v]) => (
               <View key={l} style={s.confirmRow}>
                 <Text style={s.confirmLabel}>{l}</Text>
@@ -378,33 +252,37 @@ export const RecargaModal: React.FC<Props> = ({ visible, onClose, userBalance: i
               </View>
             ))}
           </View>
-          {selectedPackage.price > balance && (
-            <Text style={s.insufficient}>{tr('svcInsufficientBalance')}</Text>
+          {balance !== null && importe > balance && (
+            <Text style={s.insufficient}>
+              Pides más de lo que hay en el monedero. Puedes registrar la solicitud igualmente; el cargo
+              solo se intenta si la operadora la confirma.
+            </Text>
           )}
+          <Text style={s.nota}>
+            Referencia de esta solicitud: {ref || '—'}. Repetir el mismo envío no duplica la solicitud.
+          </Text>
           <PrimaryButton
-            label={loading ? tr('processing') : tr('walConfirmRecharge')}
-            onPress={confirmRecharge}
-            disabled={selectedPackage.price > balance || loading}
+            label={loading ? tr('processing') : 'Registrar solicitud'}
+            onPress={solicitar}
+            disabled={!puedeEnviar}
             color={color}
           />
         </View>
       )}
 
-      {screen === 'success' && selectedPackage && selectedOperator && (
+      {screen === 'success' && selectedOperator && (
         <View style={s.success}>
-          <View style={s.successCircle}><Text style={{ fontSize: 32 }}>✅</Text></View>
-          <Text style={s.successTitle}>{tr('xtRecargaExitosa')}</Text>
-          <Text style={s.successSub}>{selectedPackage.name} → {phone}</Text>
-          <Text style={s.successSub}>{selectedOperator.name} — {selectedPackage.price.toLocaleString()} XAF</Text>
-          <TouchableOpacity 
-            style={[s.doneBtn, { backgroundColor: color }]} 
-            onPress={() => { 
-              setScreen('home'); 
-              setSelectedPackage(null); 
-              setSelectedOperator(null);
-              setPhone(''); 
-              loadBalance();
-            }}
+          <View style={s.successCircle}><Text style={{ fontSize: 32 }}>📨</Text></View>
+          <Text style={s.successTitle}>Solicitud registrada</Text>
+          <Text style={s.successSub}>{selectedOperator.name} — {phone}</Text>
+          <Text style={s.successSub}>{importe.toLocaleString()} XAF pedidos — Referencia: {recibo}</Text>
+          <Text style={s.nota}>
+            No se ha cobrado nada. La operadora confirma la recarga y entonces el cargo sale del monedero
+            por el libro mayor.
+          </Text>
+          <TouchableOpacity
+            style={[s.doneBtn, { backgroundColor: color }]}
+            onPress={() => { setRecibo(''); setPhone(''); setSelectedOperator(null); setScreen('home'); }}
           >
             <Text style={s.doneBtnText}>Listo</Text>
           </TouchableOpacity>
@@ -412,29 +290,25 @@ export const RecargaModal: React.FC<Props> = ({ visible, onClose, userBalance: i
       )}
 
       {screen === 'history' && (
-        loadingData ? (
-          <View style={s.loading}>
-            <Text>{tr('xtCargandoHistorial')}</Text>
-          </View>
-        ) : history.length === 0 ? (
+        solicitudes.length === 0 ? (
           <EmptyState emoji="📋" title={tr('xtSinHistorial')} desc={tr('xtTusRecargasApareceranAqui')} />
-        ) : (
-          history.map((h, i) => (
-            <View key={h.id || i} style={s.orderCard}>
-              <View style={s.orderTop}>
-                <View>
-                  <Text style={s.orderTitle}>{h.response?.operator || 'Recarga'}</Text>
-                  <Text style={s.orderSub}>{h.contract_ref} — {h.response?.package || h.service_type}</Text>
-                </View>
-                <StatusBadge status={h.status} />
+        ) : solicitudes.map(h => (
+          <View key={h.order_ref} style={s.orderCard}>
+            <View style={s.orderTop}>
+              <View>
+                <Text style={s.orderTitle}>{h.payload?.operador || 'Recarga'}</Text>
+                <Text style={s.orderSub}>
+                  {h.payload?.numero || h.contract_ref} — {Number(h.payload?.importe_declarado || 0).toLocaleString()} XAF pedidos
+                </Text>
               </View>
-              <View style={s.orderBottom}>
-                <Text style={s.orderDate}>📅 {new Date(h.created_at).toLocaleDateString('es')}</Text>
-                <Text style={s.orderAmount}>-{h.amount.toLocaleString()} XAF</Text>
-              </View>
+              <StatusBadge status={h.status === 'pending' ? 'pendiente' : h.status} />
             </View>
-          ))
-        )
+            <View style={s.orderBottom}>
+              <Text style={s.orderDate}>📅 {new Date(h.created_at).toLocaleDateString('es')}</Text>
+              <Text style={s.orderAmount}>{Number(h.amount) > 0 ? `${Number(h.amount).toLocaleString()} XAF` : 'Sin cobro'}</Text>
+            </View>
+          </View>
+        ))
       )}
 
       {screen === 'myLines' && (
@@ -443,11 +317,19 @@ export const RecargaModal: React.FC<Props> = ({ visible, onClose, userBalance: i
             <FormField placeholder={tr('xtAnadirNumero240')} value={newLine} onChangeText={setNewLine} keyboardType="phone-pad" />
             <TouchableOpacity
               style={s.addBtn}
-              onPress={() => { if (newLine.trim()) { setLines(p => [...p, { number: newLine.trim(), op: 'GETESA' }]); setNewLine(''); } }}
+              onPress={() => {
+                if (!newLine.trim()) return;
+                setLines(p => [...p, { number: newLine.trim(), op: selectedOperator?.name || 'sin operador' }]);
+                setNewLine('');
+              }}
             >
               <Text style={s.addBtnText}>+</Text>
             </TouchableOpacity>
           </View>
+          <Text style={s.nota}>
+            Números que guardas en este teléfono para escribirlos más rápido. EGChat no puede comprobar a
+            qué línea pertenece cada uno.
+          </Text>
           {lines.length === 0 ? (
             <Text style={s.noLines}>{tr('xtSinLineasGuardadas')}</Text>
           ) : lines.map((l, i) => (
@@ -472,6 +354,11 @@ export const RecargaModal: React.FC<Props> = ({ visible, onClose, userBalance: i
 
 const s = StyleSheet.create({
   loading: { alignItems: 'center', paddingVertical: 30 },
+  nota: { fontSize: 12, color: '#6B7280', lineHeight: 17, marginBottom: 10 },
+  tarifaTitulo: { fontSize: 11, fontWeight: '700', color: '#6B7280', padding: 10 },
+  chipRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  chip: { backgroundColor: '#F9FAFB', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1.5, borderColor: 'transparent' },
+  chipText: { fontSize: 12, color: '#555' },
   phoneRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   phoneEmoji: { fontSize: 16 },
   pkgCard: { backgroundColor: '#fff', borderRadius: 14, overflow: 'hidden', marginBottom: 8 },

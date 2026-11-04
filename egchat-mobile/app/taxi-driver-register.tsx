@@ -35,6 +35,7 @@ export default function TaxiDriverRegisterScreen() {
   const insets = useSafeAreaInsets();
   const [tab, setTab]          = useState<Tab>('info');
   const [submitted, setSubmit] = useState(false);
+  const [sentRef, setSentRef]  = useState('');
   const [loading, setLoading]  = useState(false);
 
   const [form, setForm] = useState({
@@ -66,7 +67,7 @@ export default function TaxiDriverRegisterScreen() {
     if (!form.name || !form.phone || !form.plate || !reqDone) return;
     setLoading(true);
     try {
-      await taxiAPI.registerDriver({
+      const res = await taxiAPI.registerDriver({
         name:    form.name,
         phone:   form.phone,
         license: form.license,
@@ -77,8 +78,11 @@ export default function TaxiDriverRegisterScreen() {
           color: form.color,
           plate: form.plate,
           type:  form.type,
+          docs:  Object.keys(docs),
         },
       });
+      // Solo se confirma alta si el servidor registro la solicitud.
+      setSentRef(res.driverId);
       setSubmit(true);
     } catch (e: any) {
       toast.error(e?.message || tr('xtNoSePudoEnviarLaSolicitud'));
@@ -93,9 +97,11 @@ export default function TaxiDriverRegisterScreen() {
           <View style={s.successIcon}>
             <MIcon name="check" size={40} color={GREEN} />
           </View>
-          <Text style={s.successTitle}>Solicitud enviada</Text>
+          <Text style={s.successTitle}>Solicitud registrada</Text>
           <Text style={s.successSub}>
-            Tu solicitud esta siendo revisada.{'\n'}Te contactaremos en 24-48 horas.
+            Queda como solicitud pendiente de revision.{'\n'}
+            Referencia: {sentRef}{'\n'}
+            El equipo de MiTaxi te contactara despues de revisarla.
           </Text>
           <TouchableOpacity style={s.successBtn} onPress={() => router.back()}>
             <Text style={s.successBtnTxt}>{tr('backHome')}</Text>
@@ -233,7 +239,7 @@ export default function TaxiDriverRegisterScreen() {
           <>
             <View style={s.docsNote}>
               <Text style={s.docsNoteTitle}>Documentos requeridos</Text>
-              <Text style={s.docsNoteSub}>{tr('xtLosMarcadosConSonObligatorios')}</Text>
+              <Text style={s.docsNoteSub}>{tr('xtLosMarcadosConSonObligatorios')} {'\n'}Aqui declaras los que tienes; la copia fisica se entrega al aprobar la solicitud.</Text>
             </View>
             {DOCS.map(doc => (
               <View key={doc.key} style={[s.docCard, !!docs[doc.key] && s.docCardDone]}>
@@ -246,14 +252,14 @@ export default function TaxiDriverRegisterScreen() {
                     }
                   </View>
                   <Text style={s.docDesc}>{doc.desc}</Text>
-                  {!!docs[doc.key] && <Text style={s.docUploaded}>Subido: {docs[doc.key]}</Text>}
+                  {!!docs[doc.key] && <Text style={s.docUploaded}>Declarado: {docs[doc.key]}</Text>}
                 </View>
                 <TouchableOpacity
                   style={[s.uploadBtn, !!docs[doc.key] && s.uploadBtnDone]}
                   onPress={() => pickDoc(doc.key)}
                 >
                   <Text style={[s.uploadBtnTxt, !!docs[doc.key] && s.uploadBtnTxtDone]}>
-                    {docs[doc.key] ? tr('change') : tr('xtSubir')}
+                    {docs[doc.key] ? tr('change') : 'Declarar'}
                   </Text>
                 </TouchableOpacity>
               </View>

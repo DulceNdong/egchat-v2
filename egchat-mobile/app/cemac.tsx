@@ -35,14 +35,25 @@ export default function CemacScreen() {
   const [transferOpen, setTransferOpen] = useState(false);
   const [xfer, setXfer] = useState({ from: 'GQ', to: 'CM', name: '', account: '', amount: '' });
   const [xferLoading, setXferLoading] = useState(false);
+  const [transferRef, setTransferRef] = useState('');
   const [fromCur, setFromCur] = useState('XAF');
   const [toCur, setToCur] = useState('EUR');
   const [amt, setAmt] = useState('');
+  // La comision CEMAC vive en service_tariffs; el 750 literal de antes podia
+  // quedarse corto si el operador la cambiaba.
+  const [comision, setComision] = useState<number | null>(null);
+  const [limites, setLimites] = useState<{ min: number; max: number }>({ min: 1000, max: 1000000 });
 
   const t = T[lang || appLang];
 
   useEffect(() => {
     walletAPI.getBalance().then(r => setBalance(r.balance || 0)).catch(() => {});
+    cemacAPI.getRates().then(r => {
+      if (r?.transfer_fee_flat != null) setComision(Number(r.transfer_fee_flat));
+      if (r?.min_amount || r?.max_amount) {
+        setLimites({ min: Number(r.min_amount) || 0, max: Number(r.max_amount) || Infinity });
+      }
+    }).catch(() => {});
   }, []);
 
   const enterCountry = (code: CountryCode) => {
@@ -66,10 +77,27 @@ export default function CemacScreen() {
 
   const sendTransfer = async () => {
     const amount = parseInt(xfer.amount, 10);
-    if (!xfer.name.trim() || !xfer.account.trim() || !amount || amount > balance) {
+    if (!xfer.name.trim() || !xfer.account.trim() || !amount) {
       toast.error(tr('xtDatosIncompletosOSaldoInsuficiente'));
       return;
     }
+    if (comision == null) {
+      toast.error('No se pudo leer la comisión CEMAC. Revisa la conexión e inténtalo de nuevo.');
+      return;
+    }
+    if (amount < limites.min || amount > limites.max) {
+      toast.error(`El importe debe estar entre ${limites.min.toLocaleString()} y ${limites.max.toLocaleString()} XAF.`);
+      return;
+    }
+    const total = amount + comision;
+    if (total > balance) {
+      toast.error(`Necesitas ${total.toLocaleString()} XAF (importe + comisión) y tienes ${balance.toLocaleString()}.`);
+      return;
+    }
+    // Misma referencia en un reintento: el servidor devuelve la transferencia ya
+    // creada en vez de volver a cobrar.
+    const ref = transferRef || `CEM-${Date.now()}`;
+    if (!transferRef) setTransferRef(ref);
     setXferLoading(true);
     try {
       await cemacAPI.createTransfer({
@@ -78,14 +106,16 @@ export default function CemacScreen() {
         beneficiary_name: xfer.name.trim(),
         beneficiary_account: xfer.account.trim(),
         amount,
+        external_id: ref,
       });
-      toast.success('Transferencia enviada');
+      toast.success(`Transferencia enviada — ${total.toLocaleString()} XAF`);
       setTransferOpen(false);
+      setTransferRef('');
       setXfer({ from: 'GQ', to: 'CM', name: '', account: '', amount: '' });
       const r = await walletAPI.getBalance();
       setBalance(r.balance || 0);
-    } catch {
-      toast.error(tr('xtNoSePudoEnviarLaTransferencia'));
+    } catch (e: any) {
+      toast.error(e?.message || tr('xtNoSePudoEnviarLaTransferencia'));
     } finally {
       setXferLoading(false);
     }
@@ -342,11 +372,26 @@ export default function CemacScreen() {
             <TextInput style={s.search} value={xfer.name} onChangeText={v => setXfer(p => ({ ...p, name: v }))} placeholder={t.recipient} placeholderTextColor="#888" />
             <TextInput style={s.search} value={xfer.account} onChangeText={v => setXfer(p => ({ ...p, account: v }))} placeholder={tr('xtCuentaIBAN')} placeholderTextColor="#888" />
             <TextInput style={s.search} value={xfer.amount} onChangeText={v => setXfer(p => ({ ...p, amount: v }))} placeholder={t.amount} keyboardType="numeric" placeholderTextColor="#888" />
+            <View style={s.feeBox}>
+              <Text style={s.feeLine}>
+                Comisión CEMAC: {comision == null ? '—' : `${comision.toLocaleString()} XAF`}
+              </Text>
+              <Text style={s.feeTotal}>
+                A debitar del monedero:{` ${comision == null ? '—' : (Math.max(0, parseInt(xfer.amount, 10) || 0) + comision).toLocaleString()} XAF`}
+              </Text>
+              <Text style={s.feeHint}>
+                Saldo: {balance.toLocaleString()} XAF · permitido {limites.min.toLocaleString()}–{limites.max.toLocaleString()} XAF
+              </Text>
+            </View>
             <View style={s.modalBtns}>
               <TouchableOpacity style={s.cancelBtn} onPress={() => setTransferOpen(false)}>
                 <Text style={s.cancelBtnText}>{t.cancel}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={s.primaryBtn} onPress={sendTransfer} disabled={xferLoading}>
+              <TouchableOpacity
+                style={s.primaryBtn}
+                onPress={sendTransfer}
+                disabled={xferLoading || comision == null || (parseInt(xfer.amount, 10) || 0) + comision > balance}
+              >
                 {xferLoading ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryBtnText}>{t.send}</Text>}
               </TouchableOpacity>
             </View>
@@ -483,4 +528,8 @@ const s = StyleSheet.create({
   modalBtns: { flexDirection: 'row', gap: 10, marginTop: 8 },
   cancelBtn: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#f3f4f6', alignItems: 'center' },
   cancelBtnText: { color: '#666', fontWeight: '700' },
+  feeBox: { backgroundColor: '#F0FAF5', borderRadius: 12, padding: 12, marginTop: 10 },
+  feeLine: { fontSize: 12, color: '#374151', fontWeight: '600' },
+  feeTotal: { fontSize: 14, color: '#065F46', fontWeight: '900', marginTop: 4 },
+  feeHint: { fontSize: 11, color: '#6B7280', marginTop: 4 },
 });

@@ -1,7 +1,13 @@
 // Módulo Canales TV — paridad ServiciosModules.tsx web
+//
+// La suscripción y el aviso de pago se registran como solicitudes (importe 0).
+// Antes el pedido vivía en un array local que se borraba al cerrar y el pago se
+// anunciaba como confirmado sin cobrar nada.
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { CHANNEL_COMPANIES, CHANNEL_PACKAGES, ChannelPackage } from '../../data/serviciosBasicos';
+import { serviciosAPI, Solicitud } from '../../api';
+import { toast } from '../Toast';
 import {
   ServiceModuleShell, ServiceHomeGrid, ServiceBanner, OperatorGrid,
   StatusBadge, SupportScreen, EmptyState, PrimaryButton, FormField, Ico, LogoThumb,
@@ -10,6 +16,11 @@ import { useTranslation } from '../../context/LanguageContext';
 
 type CScreen = 'home' | 'companies' | 'packages' | 'detail' | 'subscribe' | 'paySubscription' | 'orders' | 'myChannels' | 'support';
 
+const TIPO_LABEL: Record<string, string> = {
+  suscripcion: 'Suscripcion',
+  aviso_pago: 'Aviso de pago',
+};
+
 interface Props { visible: boolean; onClose: () => void; }
 
 export const CanalesModal: React.FC<Props> = ({ visible, onClose }) => {
@@ -17,15 +28,71 @@ export const CanalesModal: React.FC<Props> = ({ visible, onClose }) => {
   const [screen, setScreen] = useState<CScreen>('home');
   const [company, setCompany] = useState('');
   const [pkg, setPkg] = useState<ChannelPackage | null>(null);
-  const [orders, setOrders] = useState<Array<{ id: string; company: string; pkg: string; status: string; date: string; price: string }>>([]);
+  const [orders, setOrders] = useState<Solicitud[]>([]);
   const [form, setForm] = useState({ name: '', phone: '', address: '', city: '', notes: '' });
   const [payRef, setPayRef] = useState('');
-  const [payOk, setPayOk] = useState(false);
+  const [payAmt, setPayAmt] = useState('');
+  const [recibo, setRecibo] = useState('');
+  const [ref, setRef] = useState('');
+  const [sending, setSending] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    if (!visible) { setScreen('home'); setCompany(''); setPkg(null); setPayOk(false); }
+    if (visible) { cargarSolicitudes(); return; }
+    setScreen('home'); setCompany(''); setPkg(null); setRecibo(''); setSending(false);
   }, [visible]);
+
+  const cargarSolicitudes = async () => {
+    try { setOrders(await serviciosAPI.solicitudes('canales')); } catch { setOrders([]); }
+  };
+
+  const suscribir = async () => {
+    if (sending) return;
+    setSending(true);
+    try {
+      await serviciosAPI.solicitud({
+        provider: 'canales',
+        tipo: 'suscripcion',
+        referencia: company || undefined,
+        datos: {
+          ...form,
+          compania: selCo?.name || company || null,
+          paquete: pkg?.name || null,
+          precio_catalogo: pkg?.price || null,
+        },
+        external_id: ref || `CAN-${company || 'sucursal'}-${Date.now()}`,
+      });
+      setForm({ name: '', phone: '', address: '', city: '', notes: '' });
+      setRef('');
+      await cargarSolicitudes();
+      setScreen('orders');
+    } catch (e: any) {
+      toast.error(e?.message || 'No se pudo registrar la suscripción.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const avisarPago = async () => {
+    if (sending) return;
+    const amt = parseInt(payAmt, 10);
+    setSending(true);
+    try {
+      const res = await serviciosAPI.solicitud({
+        provider: 'canales',
+        tipo: 'aviso_pago',
+        referencia: payRef,
+        datos: { contrato: payRef, importe_declarado: amt, compania: selCo?.name || company },
+        external_id: `CANPAGO-${payRef}-${Date.now()}`,
+      });
+      setRecibo(res.solicitudId);
+      await cargarSolicitudes();
+    } catch (e: any) {
+      toast.error(e?.message || 'No se pudo registrar el aviso de pago.');
+    } finally {
+      setSending(false);
+    }
+  };
 
   const selCo = CHANNEL_COMPANIES.find(c => c.id === company);
   const coPkgs = company ? (CHANNEL_PACKAGES[company] || []) : [];
@@ -134,6 +201,10 @@ export const CanalesModal: React.FC<Props> = ({ visible, onClose }) => {
             </View>
             <Text style={[st.detailPrice, { color }]}>{pkg.price}</Text>
             <Text style={st.detailDesc}>{pkg.desc}</Text>
+            <Text style={st.payNote}>
+              {pkg.price} es el precio del catalogo. Al enviar se registra la solicitud: la compania
+              confirma la tarifa y el cobro se hace despues. Desde EGChat no se debita nada.
+            </Text>
             <Text style={st.channelsTitle}>{t('svcIncludedChannels')}:</Text>
             <View style={st.channelsWrap}>
               {pkg.channels.map((ch, i) => (
@@ -143,7 +214,11 @@ export const CanalesModal: React.FC<Props> = ({ visible, onClose }) => {
               ))}
             </View>
           </View>
-          <PrimaryButton label={t('svcSubscribeNow')} onPress={() => setScreen('subscribe')} color={color} />
+          <PrimaryButton
+            label={t('svcSubscribeNow')}
+            onPress={() => { setRef(`CAN-${company || 'sucursal'}-${Date.now()}`); setScreen('subscribe'); }}
+            color={color}
+          />
         </View>
       )}
 
@@ -168,30 +243,29 @@ export const CanalesModal: React.FC<Props> = ({ visible, onClose }) => {
             />
           ))}
           <PrimaryButton
-            label={t('svcConfirmSubscription')}
-            onPress={() => {
-              if (form.name && form.phone) {
-                setOrders(p => [...p, {
-                  id: `co${Date.now()}`, company: selCo?.name || '',
-                  pkg: pkg?.name || '', status: 'pendiente',
-                  date: new Date().toLocaleDateString('es'), price: pkg?.price || '—',
-                }]);
-                setForm({ name: '', phone: '', address: '', city: '', notes: '' });
-                setScreen('orders');
-              }
-            }}
-            disabled={!form.name || !form.phone}
+            label={sending ? 'Enviando…' : t('svcConfirmSubscription')}
+            onPress={suscribir}
+            disabled={!form.name || !form.phone || sending}
             color="#10B981"
           />
+          <Text style={st.payNote}>
+            Queda registrada como solicitud con tu referencia {ref || '—'}. La compania confirma el alta y
+            el primer cobro se hace despues desde el monedero. No se ha debitado nada.
+          </Text>
         </View>
       )}
 
       {screen === 'paySubscription' && (
-        !payOk ? (
+        !recibo ? (
           <View>
             <View style={st.confirmCard}>
               <Text style={st.payTitle}>{t('svcPaySubscriptionTitle')}</Text>
+              <Text style={st.payNote}>
+                Este es un aviso, no un cobro. La compania revisa el contrato y confirma la deuda real;
+                el monedero no se debita hasta esa confirmacion.
+              </Text>
               <FormField placeholder={t('svcRefContractPh')} value={payRef} onChangeText={setPayRef} />
+              <FormField placeholder={t('svcAmountToPayXaf')} value={payAmt} onChangeText={setPayAmt} keyboardType="numeric" />
               <Text style={st.payHint}>{t('svcSelectPackageToPay')}:</Text>
               {CHANNEL_COMPANIES.slice(0, 4).map(c => (
                 <TouchableOpacity
@@ -205,18 +279,24 @@ export const CanalesModal: React.FC<Props> = ({ visible, onClose }) => {
               ))}
             </View>
             <PrimaryButton
-              label={t('svcConfirmPayment')}
-              onPress={() => { if (payRef && company) setPayOk(true); }}
-              disabled={!payRef || !company}
+              label={sending ? 'Registrando…' : t('svcConfirmPayment')}
+              onPress={avisarPago}
+              disabled={!payRef || !company || !payAmt || sending}
               color="#F59E0B"
             />
           </View>
         ) : (
           <View style={st.success}>
-            <Text style={{ fontSize: 52, marginBottom: 12 }}>✅</Text>
-            <Text style={st.successTitle}>{t('svcPaymentConfirmed')}</Text>
-            <Text style={st.successSub}>{t('svcRefShortLabel')}: {payRef}</Text>
-            <TouchableOpacity style={[st.doneBtn, { backgroundColor: '#8B5CF6' }]} onPress={() => { setPayOk(false); setPayRef(''); setScreen('home'); }}>
+            <Text style={{ fontSize: 52, marginBottom: 12 }}>📨</Text>
+            <Text style={st.successTitle}>Aviso registrado</Text>
+            <Text style={st.successSub}>
+              Referencia: {recibo} — {parseInt(payAmt, 10).toLocaleString()} XAF declarados
+            </Text>
+            <Text style={st.payNote}>No se ha cobrado nada. La compania confirmara la factura y el importe real.</Text>
+            <TouchableOpacity
+              style={[st.doneBtn, { backgroundColor: '#8B5CF6' }]}
+              onPress={() => { setRecibo(''); setPayRef(''); setPayAmt(''); setScreen('home'); }}
+            >
               <Text style={st.doneBtnText}>{t('done')}</Text>
             </TouchableOpacity>
           </View>
@@ -227,17 +307,19 @@ export const CanalesModal: React.FC<Props> = ({ visible, onClose }) => {
         orders.length === 0 ? (
           <EmptyState emoji="📋" title={t('svcNoOrdersYet')} desc={t('svcSubscribeToSeeOrders')} />
         ) : orders.map(o => (
-          <View key={o.id} style={st.orderCard}>
+          <View key={o.order_ref} style={st.orderCard}>
             <View style={st.orderTop}>
               <View>
-                <Text style={st.orderTitle}>{o.pkg}</Text>
-                <Text style={st.orderSub}>{o.company}</Text>
+                <Text style={st.orderTitle}>{TIPO_LABEL[o.service_type] || o.service_type}</Text>
+                <Text style={st.orderSub}>
+                  {o.payload?.compania || CHANNEL_COMPANIES.find(c => c.id === o.contract_ref)?.name || o.contract_ref || 'Canales'}
+                </Text>
               </View>
-              <StatusBadge status={o.status} />
+              <StatusBadge status={o.status === 'pending' ? 'pendiente' : o.status} />
             </View>
             <View style={st.orderBottom}>
-              <Text style={st.orderDate}>📅 {o.date}</Text>
-              <Text style={st.orderPrice}>{o.price}</Text>
+              <Text style={st.orderDate}>📅 {new Date(o.created_at).toLocaleDateString('es')}</Text>
+              <Text style={st.orderPrice}>{Number(o.amount) > 0 ? `${Number(o.amount).toLocaleString()} XAF` : 'Sin cobro'}</Text>
             </View>
           </View>
         ))
@@ -284,6 +366,7 @@ const st = StyleSheet.create({
   confirmCard: { backgroundColor: '#fff', borderRadius: 14, padding: 16, marginBottom: 12 },
   payTitle: { fontSize: 14, fontWeight: '700', color: '#111', marginBottom: 12 },
   payHint: { fontSize: 12, color: '#888', marginBottom: 8 },
+  payNote: { fontSize: 12, color: '#6B7280', lineHeight: 17, marginBottom: 10 },
   payCompany: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#F9FAFB', borderRadius: 10, padding: 10, marginBottom: 6, borderWidth: 1.5, borderColor: 'transparent' },
   payCompanyName: { fontSize: 13, fontWeight: '600', color: '#111' },
   success: { alignItems: 'center', paddingVertical: 40 },

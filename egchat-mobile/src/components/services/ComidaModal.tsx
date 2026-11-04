@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Linking, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FOOD_DELIVERY } from '../../data/serviciosDiarios';
+import { serviciosAPI } from '../../api';
 import { FinancialModuleShell } from './FinancialModuleUI';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
 import { useTranslation } from '../../context/LanguageContext';
@@ -14,12 +15,43 @@ export const ComidaModal: React.FC<Props> = ({ visible, onClose }) => {
   const [view, setView] = useState<ComidaScreen>('list');
   const [selected, setSelected] = useState<typeof FOOD_DELIVERY[0] | null>(null);
   const [form, setForm] = useState({ name: '', phone: '', address: '', notes: '' });
+  const [ref, setRef] = useState('');
+  const [recibo, setRecibo] = useState('');
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     if (!visible) { setView('list'); setSelected(null); setForm({ name: '', phone: '', address: '', notes: '' }); }
   }, [visible]);
 
   const setF = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
+
+  // El pedido se registra como solicitud (importe 0): el repartidor no cobra
+  // aquí, el local confirma y paga se acuerda con él.
+  const enviar = async () => {
+    if (!selected || sending) return;
+    setSending(true);
+    try {
+      const res = await serviciosAPI.solicitud({
+        provider: 'comida',
+        tipo: 'pedido',
+        referencia: selected.id,
+        datos: {
+          local: selected.nombre,
+          cliente: form.name,
+          telefono: form.phone,
+          direccion: form.address,
+          notas: form.notes || null,
+        },
+        external_id: ref || `COM-${selected.id}-${Date.now()}`,
+      });
+      setRecibo(res.solicitudId);
+      setView('ok');
+    } catch (e: any) {
+      Alert.alert(t('error'), e?.message || 'No se pudo registrar el pedido.');
+    } finally {
+      setSending(false);
+    }
+  };
 
   return (
     <FinancialModuleShell
@@ -43,7 +75,11 @@ export const ComidaModal: React.FC<Props> = ({ visible, onClose }) => {
             <TouchableOpacity
               key={f.id}
               style={st.row}
-              onPress={() => { setSelected(f); setView('order'); }}
+              onPress={() => {
+                setSelected(f);
+                setRef(`COM-${f.id}-${Date.now()}`);
+                setView('order');
+              }}
               activeOpacity={0.85}
             >
               <Text style={{ fontSize: 28 }}>{f.icon}</Text>
@@ -69,12 +105,12 @@ export const ComidaModal: React.FC<Props> = ({ visible, onClose }) => {
           <FormField placeholder={t('name')} value={form.name} onChangeText={v => setF('name', v)} />
           <FormField placeholder={t('phone')} value={form.phone} onChangeText={v => setF('phone', v)} keyboardType="phone-pad" />
           <FormField placeholder={t("svcDeliveryAddress")} value={form.address} onChangeText={v => setF('address', v)} />
-          <FormField placeholder={t("svcOrderNotesOptional")} value={form.notes} onChangeText={v => setF('notes', v)} />
+          <FormField placeholder={t("svcNotesOptional")} value={form.notes} onChangeText={v => setF('notes', v)} />
           <PrimaryButton
-            label={t('svcConfirmOrder')}
-            onPress={() => setView('ok')}
+            label={sending ? 'Enviando…' : t('svcConfirmOrder')}
+            onPress={enviar}
             color="#C0392B"
-            disabled={!form.name || !form.phone || !form.address}
+            disabled={!form.name || !form.phone || !form.address || sending}
           />
           <TouchableOpacity style={st.callLink} onPress={() => Linking.openURL(`tel:${selected.tel}`)}>
             <Text style={st.callLinkText}>{t('svcOrCallDirect')}</Text>
@@ -84,11 +120,16 @@ export const ComidaModal: React.FC<Props> = ({ visible, onClose }) => {
 
       {view === 'ok' && selected && (
         <View style={st.success}>
-          <Text style={{ fontSize: 48 }}>✅</Text>
-          <Text style={st.successTitle}>{t('svcOrderSent')}</Text>
+          <Text style={{ fontSize: 48 }}>📨</Text>
+          <Text style={st.successTitle}>Pedido registrado</Text>
           <Text style={st.successSub}>{selected.nombre}</Text>
           <Text style={st.successSub}>{t('svcEstimatedDelivery')}: {selected.time}</Text>
-          <PrimaryButton label={t('svcOrderAgain')} onPress={() => { setView('list'); setSelected(null); }} color="#C0392B" />
+          <Text style={st.refText}>{recibo}</Text>
+          <Text style={st.notice}>
+            No se ha cobrado nada. El local recibe la solicitud y te llama para confirmar el
+            importe y el pago.
+          </Text>
+          <PrimaryButton label={t('svcOrderAgain')} onPress={() => { setView('list'); setSelected(null); setRecibo(''); }} color="#C0392B" />
         </View>
       )}
     </FinancialModuleShell>
@@ -109,4 +150,6 @@ const st = StyleSheet.create({
   success: { alignItems: 'center', paddingVertical: 30, gap: 8 },
   successTitle: { fontSize: 20, fontWeight: '900', color: '#111827' },
   successSub: { fontSize: 13, color: '#9CA3AF' },
+  refText: { fontSize: 12, fontWeight: '800', color: '#1A2B4A', backgroundColor: '#F9FAFB', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  notice: { fontSize: 11.5, color: '#8A9BB5', textAlign: 'center', lineHeight: 16, paddingHorizontal: 20, marginTop: 4 },
 });
