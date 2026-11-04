@@ -7673,12 +7673,24 @@ const updateUserVersions = async () => {
 const TWILIO_ACCOUNT_SID  = process.env.TWILIO_ACCOUNT_SID  || '';
 const TWILIO_API_KEY_SID  = process.env.TWILIO_API_KEY_SID  || '';
 const TWILIO_API_KEY_SECRET = process.env.TWILIO_API_KEY_SECRET || '';
+const TWILIO_AUTH_TOKEN   = process.env.TWILIO_AUTH_TOKEN   || '';
 
 async function getTwilioIceServers() {
-  if (!TWILIO_ACCOUNT_SID || !TWILIO_API_KEY_SID || !TWILIO_API_KEY_SECRET) {
+  // La via limpia es una API key propia de NTS. Si no existe, el SDK tambien acepta
+  // el token maestro de SMS como credenciales REST, asi que el TURN funciona sin
+  // secretos nuevos: se avisa en el log, no es un reemplazo silencioso.
+  const conApiKey = !!(TWILIO_ACCOUNT_SID && TWILIO_API_KEY_SID && TWILIO_API_KEY_SECRET);
+  if (!conApiKey && !(TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN)) {
     throw new Error('Twilio credentials not configured');
   }
-  const client = require('twilio')(TWILIO_API_KEY_SID, TWILIO_API_KEY_SECRET, { accountSid: TWILIO_ACCOUNT_SID });
+  if (!conApiKey) {
+    console.warn('[turn] sin API key de NTS: los tokens salen del token maestro de SMS (TWILIO_AUTH_TOKEN)');
+  }
+  const client = require('twilio')(
+    conApiKey ? TWILIO_API_KEY_SID : TWILIO_ACCOUNT_SID,
+    conApiKey ? TWILIO_API_KEY_SECRET : TWILIO_AUTH_TOKEN,
+    { accountSid: TWILIO_ACCOUNT_SID }
+  );
   const token = await client.tokens.create({ ttl: 86400 });
   return token.iceServers.map(s => ({
     urls: s.url || s.urls,
@@ -7700,12 +7712,14 @@ app.get('/api/turn-token', auth, async (req, res) => {
   try {
     res.json({ iceServers: await getTwilioIceServers() });
   } catch (e) {
-    // Sin estas tres variables el SDK de Twilio rechaza el `username` vacío y el
-    // ICE se queda solo con STUN publico: la llamada timbra pero el audio puede no
-    // conectar entre redes distintas. Se nombran las que faltan, nunca sus valores.
-    const faltan = ['TWILIO_ACCOUNT_SID', 'TWILIO_API_KEY_SID', 'TWILIO_API_KEY_SECRET']
-      .filter(k => !process.env[k]);
-    console.error('TURN token error:', e.message, faltan.length ? `· faltan ${faltan.join(', ')} · se devuelven solo STUN publicos` : '· las 3 estan puestas, el fallo es de Twilio');
+    // Sin ninguna de las dos vias el SDK rechaza el `username` vacio y el ICE se queda
+    // solo con STUN publico: la llamada timbra pero el audio puede no conectar entre
+    // redes distintas. Se nombran las variables, nunca sus valores.
+    const conApiKey   = process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_API_KEY_SID && process.env.TWILIO_API_KEY_SECRET;
+    const conMaestro  = process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN;
+    console.error('TURN token error:', e.message, (conApiKey || conMaestro)
+      ? '· las credenciales estan puestas, el fallo es de Twilio'
+      : '· faltan TWILIO_API_KEY_SID+API_KEY_SECRET y tampoco hay TWILIO_AUTH_TOKEN util · se devuelven solo STUN publicos');
     res.json({ iceServers: FALLBACK_ICE });
   }
 });
