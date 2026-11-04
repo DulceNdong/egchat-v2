@@ -153,6 +153,7 @@ create table if not exists public.moments (
   user_id    uuid,
   text       text,
   images     jsonb default '[]'::jsonb,
+  videos     jsonb default '[]'::jsonb,
   created_at timestamptz default now()
 );
 
@@ -174,6 +175,7 @@ create table if not exists public.moment_comments (
 alter table public.moments add column if not exists user_id    uuid;
 alter table public.moments add column if not exists text       text;
 alter table public.moments add column if not exists images     jsonb default '[]'::jsonb;
+alter table public.moments add column if not exists videos     jsonb default '[]'::jsonb;
 alter table public.moments add column if not exists created_at timestamptz default now();
 
 alter table public.moment_likes add column if not exists moment_id  uuid;

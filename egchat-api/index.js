@@ -7527,20 +7527,53 @@ app.get('/api/moments', auth, async (req, res) => {
 
 app.post('/api/moments', auth, async (req, res) => {
   try {
-    const { text, images } = req.body;
+    const { text, images, videos } = req.body;
     const limpio = (text || '').trim();
     const fotos = Array.isArray(images) ? images.filter(u => typeof u === 'string' && u.length > 0) : [];
-    if (!limpio && fotos.length === 0) return res.status(400).json({ message: 'texto o foto requeridos' });
+    const clips = Array.isArray(videos) ? videos.filter(u => typeof u === 'string' && u.length > 0) : [];
+    if (!limpio && fotos.length === 0 && clips.length === 0)
+      return res.status(400).json({ message: 'texto o foto requeridos' });
 
     const { data, error } = await supabase
       .from('moments')
-      .insert({ user_id: req.user.id, text: limpio, images: fotos })
+      .insert({ user_id: req.user.id, text: limpio, images: fotos, videos: clips })
       .select().single();
     if (error) return espacioFallo(res, error);
 
     const { data: me } = await supabase
       .from('users').select('id, full_name, avatar_url').eq('id', req.user.id).single();
     res.status(201).json(momentoSinComentarios(data, { [req.user.id]: me || {} }, new Set()));
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// PATCH /api/moments/:id — editar el propio. El boton de editar existe en la app
+// y llamaba a esta ruta: sin ella el modal guardaba, la pantalla mostraba el
+// texto nuevo y al volver a abrir el momento seguia igual.
+app.patch('/api/moments/:id', auth, async (req, res) => {
+  try {
+    const { data: actual } = await supabase
+      .from('moments').select('id, user_id').eq('id', req.params.id).single();
+    if (!actual) return res.status(404).json({ error: 'NO_ENCONTRADO', message: 'Ese momento no existe.' });
+    if (actual.user_id !== req.user.id) {
+      return res.status(403).json({ error: 'NO_ES_TUYO', message: 'Solo el autor edita su momento.' });
+    }
+
+    const cambios = {};
+    if (typeof req.body?.text === 'string') cambios.text = req.body.text.trim();
+    if (Array.isArray(req.body?.images)) cambios.images = req.body.images.filter(u => typeof u === 'string' && u.length > 0);
+    if (Array.isArray(req.body?.videos)) cambios.videos = req.body.videos.filter(u => typeof u === 'string' && u.length > 0);
+    if (Object.keys(cambios).length === 0)
+      return res.status(400).json({ message: 'nada que guardar' });
+
+    const { data, error } = await supabase
+      .from('moments').update(cambios).eq('id', req.params.id).select().single();
+    if (error) throw error;
+
+    const { data: autor } = await supabase
+      .from('users').select('id, full_name, avatar_url').eq('id', data.user_id).single();
+    const { data: misLikes } = await supabase
+      .from('moment_likes').select('id').eq('moment_id', data.id).eq('user_id', req.user.id).maybeSingle();
+    res.json(momentoSinComentarios(data, { [data.user_id]: autor || {} }, new Set(misLikes ? [data.id] : [])));
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
