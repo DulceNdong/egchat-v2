@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { superAPI } from '../../api';
+import { superAPI, ProductoServicio } from '../../api';
+import { toast } from '../Toast';
 import {
-  DAILY_CITIES, SUPERMARKETS, FEATURED_PRODUCTS, cityName, cityStoreCount,
+  DAILY_CITIES, SUPERMARKETS, cityName, cityStoreCount,
   Supermarket, Product,
 } from '../../data/serviciosDiarios';
 import { FinancialModuleShell, FilterChips } from './FinancialModuleUI';
@@ -20,6 +21,7 @@ export const SupermercadoModal: React.FC<Props> = ({ visible, onClose }) => {
   const [screen, setScreen] = useState<Screen>('home');
   const [cityId, setCityId] = useState<string | null>(null);
   const [store, setStore] = useState<Supermarket | null>(null);
+  const [catalog, setCatalog] = useState<Product[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState('');
   const [cart, setCart] = useState<Array<{ product: Product; qty: number }>>([]);
@@ -27,15 +29,48 @@ export const SupermercadoModal: React.FC<Props> = ({ visible, onClose }) => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
-  const [orderId, setOrderId] = useState('');
+  const [loadingCatalog, setLoadingCatalog] = useState(false);
+  const [catalogError, setCatalogError] = useState('');
+  const [externalId, setExternalId] = useState('');
+  const [recibo, setRecibo] = useState<{ total: number; balance: number | null; eta: string } | null>(null);
   const [orderHistory, setOrderHistory] = useState<SuperOrder[]>([]);
 
   useEffect(() => {
     if (!visible) {
-      setScreen('home'); setCityId(null); setStore(null); setProducts([]);
-      setSearch(''); setCart([]); setAddress(''); setName(''); setPhone(''); setOrderId('');
+      setScreen('home'); setCityId(null); setStore(null); setProducts([]); setCatalog([]);
+      setSearch(''); setCart([]); setAddress(''); setName(''); setPhone('');
+      setExternalId(''); setRecibo(null); setCatalogError('');
+      return;
     }
+    loadCatalog();
   }, [visible]);
+
+  // El precio lo fija service_products en el servidor: la app solo muestra lo que
+  // devuelve la tabla. Sin catalogo no hay compra posible, y eso se dice.
+  const loadCatalog = async () => {
+    setLoadingCatalog(true); setCatalogError('');
+    try {
+      const rows: ProductoServicio[] = await superAPI.getProducts('1');
+      const mapped = (rows || []).map(p => toProduct(p));
+      setCatalog(mapped);
+      if (!mapped.length) setCatalogError('El catalogo de productos no esta disponible ahora mismo.');
+    } catch (e: any) {
+      setCatalog([]);
+      setCatalogError(e?.message || 'No se pudo cargar el catalogo de productos.');
+    } finally {
+      setLoadingCatalog(false);
+    }
+  };
+
+  const toProduct = (p: ProductoServicio): Product => ({
+    id: p.id,
+    sm_ids: SUPERMARKETS.map(sm => sm.id),
+    nombre: p.name,
+    marca: p.category || '',
+    precio: Number(p.price) || 0,
+    img: '🛒',
+    destacado: true,
+  });
 
   const cartTotal = cart.reduce((s, i) => s + i.product.precio * i.qty, 0);
   const cartCount = cart.reduce((s, i) => s + i.qty, 0);
@@ -47,20 +82,34 @@ export const SupermercadoModal: React.FC<Props> = ({ visible, onClose }) => {
     });
   };
 
+  const loadHistory = async () => {
+    try {
+      const rows = await superAPI.getOrders();
+      setOrderHistory((rows || []).map((o: any) => ({
+        id: o.order_ref,
+        store: SUPERMARKETS.find(sm => sm.id === String(o.contract_ref))?.nombre || o.contract_ref || 'Supermercado',
+        total: Number(o.amount) || 0,
+        items: Array.isArray(o.payload?.items) ? o.payload.items.reduce((s: number, i: any) => s + Number(i.qty || 0), 0) : 0,
+        createdAt: o.created_at,
+      })));
+    } catch { /* el historial se muestra vacío si la ruta falla */ }
+  };
+
   const openStore = async (sm: Supermarket) => {
     setStore(sm);
     setLoading(true);
     try {
-      const apiProducts = await superAPI.getProducts(sm.id);
-      if (apiProducts?.length) {
-        setProducts(apiProducts.map((p: any) => ({
-          id: p.id, sm_ids: [sm.id], nombre: p.name, marca: p.brand || '', precio: Number(p.price) || 0, img: p.icon || '🛒', destacado: false,
-        })));
-      } else {
-        setProducts(FEATURED_PRODUCTS.filter(p => p.sm_ids.includes(sm.id)));
+      let lista = catalog;
+      if (!lista.length) {
+        const rows: ProductoServicio[] = await superAPI.getProducts(sm.id);
+        lista = (rows || []).map(toProduct);
+        setCatalog(lista);
       }
-    } catch {
-      setProducts(FEATURED_PRODUCTS.filter(p => p.sm_ids.includes(sm.id)));
+      setProducts(lista);
+      setCatalogError(lista.length ? '' : 'El catalogo de productos no esta disponible ahora mismo.');
+    } catch (e: any) {
+      setProducts([]);
+      setCatalogError(e?.message || 'No se pudo cargar el catalogo de productos.');
     } finally {
       setLoading(false);
       setScreen('products');
@@ -70,33 +119,38 @@ export const SupermercadoModal: React.FC<Props> = ({ visible, onClose }) => {
   const placeOrder = async () => {
     if (!store || !cart.length || !address.trim() || !phone.trim() || !name.trim()) return;
     setLoading(true);
-    let nextOrderId = '';
     try {
       const res = await superAPI.createOrder({
         supermarketId: store.id,
         address: address.trim(),
-        items: cart.map(i => ({ productId: i.product.id, qty: i.qty, price: i.product.precio })),
+        external_id: externalId,
+        // Solo producto y cantidad: el importe lo lee el servidor de la tabla.
+        items: cart.map(i => ({ product_id: i.product.id, qty: i.qty })),
       });
-      nextOrderId = res?.orderId || `SM-${Date.now()}`;
-    } catch {
-      nextOrderId = `SM-${Date.now().toString().slice(-6)}`;
-    } finally {
-      setOrderId(nextOrderId);
+      setRecibo({
+        total: Number(res.total),
+        balance: res.balance == null ? null : Number(res.balance),
+        eta: res.eta || '30-45 min',
+      });
       setOrderHistory(prev => [{
-        id: nextOrderId,
+        id: res.orderId,
         store: store.nombre,
-        total: cartTotal,
+        total: Number(res.total),
         items: cartCount,
         createdAt: new Date().toISOString(),
-      }, ...prev]);
-      setLoading(false);
-      setScreen('success');
+      }, ...prev.filter(o => o.id !== res.orderId)]);
       setCart([]);
+      setScreen('success');
+    } catch (e: any) {
+      toast.error(e?.message || 'No se pudo completar el pedido.');
+    } finally {
+      setLoading(false);
     }
   };
 
   const refresh = () => {
     setScreen('home'); setCityId(null); setStore(null); setSearch(''); setCart([]);
+    setRecibo(null); setExternalId('');
   };
 
   const goBack = () => {
@@ -116,9 +170,11 @@ export const SupermercadoModal: React.FC<Props> = ({ visible, onClose }) => {
     : screen === 'history' ? `${orderHistory.length} pedido${orderHistory.length === 1 ? '' : 's'}`
     : store ? store.nombre : undefined;
 
-  const filteredProducts = products.filter(p =>
-    !search || p.nombre.toLowerCase().includes(search.toLowerCase()) || p.marca.toLowerCase().includes(search.toLowerCase())
-  );
+  const matches = (p: Product) => !search
+    || p.nombre.toLowerCase().includes(search.toLowerCase())
+    || p.marca.toLowerCase().includes(search.toLowerCase());
+
+  const filteredProducts = products.filter(matches);
 
   const fixedTop = screen === 'home' ? (
     <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
@@ -160,8 +216,8 @@ export const SupermercadoModal: React.FC<Props> = ({ visible, onClose }) => {
               { icon: '🏙️', label: tr('xtVerCiudades'), sub: `${DAILY_CITIES.length} ciudades`, action: () => setScreen('cities') },
               { icon: '🛒', label: tr('svcSupermarkets'), sub: `${SUPERMARKETS.length} tiendas`, action: () => { setCityId(null); setScreen('stores'); } },
               { icon: '🛍️', label: tr('svcMyCart'), sub: cartCount ? `${cartCount} productos` : tr('xtVacio'), action: () => cartCount ? setScreen('cart') : Alert.alert(tr('xtCarritoVacio')) },
-              { icon: '📦', label: tr('svcMyOrders'), sub: `${orderHistory.length} pedido${orderHistory.length === 1 ? '' : 's'}`, action: () => setScreen('history') },
-              { icon: '📋', label: tr('history'), sub: tr('xtComprasAnteriores'), action: () => setScreen('history') },
+              { icon: '📦', label: tr('svcMyOrders'), sub: `${orderHistory.length} pedido${orderHistory.length === 1 ? '' : 's'}`, action: () => { loadHistory(); setScreen('history'); } },
+              { icon: '📋', label: tr('history'), sub: tr('xtComprasAnteriores'), action: () => { loadHistory(); setScreen('history'); } },
               { icon: '🎧', label: tr('svcSupport'), sub: tr('xtAyudaYReportes'), action: () => Alert.alert(tr('svcSupport'), '+240 222 20 00 00') },
             ]).map(item => (
               <TouchableOpacity key={item.label} style={st.gridCard} onPress={item.action} activeOpacity={0.8}>
@@ -173,8 +229,10 @@ export const SupermercadoModal: React.FC<Props> = ({ visible, onClose }) => {
           </View>
 
           <Text style={st.sectionTitle}>⭐ Productos destacados</Text>
+          {loadingCatalog && <ActivityIndicator color="#00c8a0" style={{ marginVertical: 10 }} />}
+          {!!catalogError && <Text style={st.catalogError}>{catalogError}</Text>}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-            {FEATURED_PRODUCTS.map(p => (
+            {(search ? catalog.filter(matches) : catalog).map(p => (
               <View key={p.id} style={st.prodCard}>
                 <Text style={{ fontSize: 32, textAlign: 'center', marginBottom: 6 }}>{p.img}</Text>
                 <Text style={st.prodName} numberOfLines={2}>{p.nombre}</Text>
@@ -248,7 +306,9 @@ export const SupermercadoModal: React.FC<Props> = ({ visible, onClose }) => {
             <Text style={st.storeBannerTitle}>{store.nombre}</Text>
             <Text style={st.storeBannerSub}>{store.direccion}</Text>
           </LinearGradient>
-          {filteredProducts.map(p => (
+          {filteredProducts.length === 0 ? (
+            <Text style={st.catalogError}>{catalogError || 'Ningún producto coincide con la búsqueda.'}</Text>
+          ) : filteredProducts.map(p => (
             <View key={p.id} style={st.prodRow}>
               <Text style={{ fontSize: 24 }}>{p.img}</Text>
               <View style={{ flex: 1 }}>
@@ -290,7 +350,12 @@ export const SupermercadoModal: React.FC<Props> = ({ visible, onClose }) => {
             </View>
           ))}
           <Text style={st.cartTotal}>Total: {cartTotal.toLocaleString()} XAF</Text>
-          <PrimaryButton label={tr('xtContinuarAlPago')} onPress={() => setScreen('checkout')} color="#00c8a0" disabled={!cart.length} />
+          <PrimaryButton
+            label={tr('xtContinuarAlPago')}
+            onPress={() => { setExternalId(`SM-${Date.now()}`); setScreen('checkout'); }}
+            color="#00c8a0"
+            disabled={!cart.length}
+          />
         </View>
       )}
 
@@ -303,17 +368,22 @@ export const SupermercadoModal: React.FC<Props> = ({ visible, onClose }) => {
             <Text style={st.summaryTitle}>{tr('svcOrderSummary')}</Text>
             <Text style={st.summaryTotal}>{cartTotal.toLocaleString()} XAF</Text>
             {store && <Text style={st.storeMeta}>{store.nombre}</Text>}
+            <Text style={st.storeMeta}>El importe final lo fija la tabla de productos al confirmar.</Text>
           </View>
           <PrimaryButton label={loading ? tr('processing') : tr('svcConfirmOrder')} onPress={placeOrder} color="#00c8a0" disabled={loading || !address.trim() || !phone.trim() || !name.trim()} />
         </View>
       )}
 
-      {screen === 'success' && (
+      {screen === 'success' && recibo && (
         <View style={st.success}>
           <Text style={{ fontSize: 48 }}>✅</Text>
           <Text style={st.successTitle}>{tr('svcOrderConfirmedTitle')}</Text>
-          <Text style={st.successSub}>Orden {orderId}</Text>
-          <Text style={st.successSub}>Entrega estimada: 30-45 min</Text>
+          <Text style={st.successSub}>Orden {externalId}</Text>
+          <Text style={st.successTotal}>{recibo.total.toLocaleString()} XAF</Text>
+          {recibo.balance != null && (
+            <Text style={st.successSub}>Saldo restante: {recibo.balance.toLocaleString()} XAF</Text>
+          )}
+          <Text style={st.successSub}>Entrega estimada: {recibo.eta}</Text>
           <PrimaryButton label={tr('backHome')} onPress={refresh} color="#00c8a0" />
         </View>
       )}
@@ -383,4 +453,6 @@ const st = StyleSheet.create({
   success: { alignItems: 'center', paddingVertical: 30, gap: 8 },
   successTitle: { fontSize: 20, fontWeight: '900', color: '#111827' },
   successSub: { fontSize: 13, color: '#9CA3AF' },
+  successTotal: { fontSize: 26, fontWeight: '900', color: '#065F46', marginVertical: 4 },
+  catalogError: { fontSize: 12, color: '#B45309', marginVertical: 10, textAlign: 'center' },
 });

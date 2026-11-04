@@ -890,75 +890,134 @@ export const cemacAPI = {
 };
 
 // ══════════════════════════════════════════════════════════════════
-// SERVICIOS (electricidad, agua, etc.)
+// SERVICIOS (luz, agua, impuestos, correos)
+//
+// La deuda y el precio los fija la base de datos: la app consulta la factura y
+// paga ESA factura por su id. Mandar un importe libre ya no sirve — el servidor
+// lo rechaza con BILL_ID_REQUIRED.
 // ══════════════════════════════════════════════════════════════════
+export interface BillFactura {
+  id: string;
+  provider: 'segesa' | 'snge' | 'dgi';
+  contract_ref: string;
+  amount: number;
+  currency: string;
+  period?: string | null;
+  concept?: string | null;
+  due_date?: string | null;
+  status: 'pending' | 'paid' | 'void';
+  paid_at?: string | null;
+}
+
+export interface Tarifa { service: string; variant: string; amount: number; currency: string; concept?: string | null }
+export interface Solicitud {
+  order_ref: string;
+  provider: string;
+  service_type: string;
+  contract_ref?: string | null;
+  amount: number;
+  status: string;
+  payload?: any;
+  response?: any;
+  created_at: string;
+}
+export interface ProductoServicio { id: string; name: string; category?: string | null; price: number; currency: string }
+
 export const serviciosAPI = {
   consultarFacturaElec: (contrato: string) =>
-    post<any>('/api/servicios/segesa/consultar', { contrato }),
-  pagarElectricidad: (contrato: string, amount: number, method: string) =>
-    post<any>('/api/servicios/segesa/pagar', { contrato, importe: amount, metodo: method }),
+    post<{ ok: boolean; contract: string; importe: number; estado: string; facturas: BillFactura[] }>(
+      '/api/servicios/segesa/consultar', { contrato }),
+  pagarElectricidad: (facturaId: string) =>
+    post<{ bill_id: string; importe: number; balance: number; journal_id: string; message: string }>(
+      '/api/servicios/segesa/pagar', { factura_id: facturaId }),
   consultarFacturaAgua: (contrato: string) =>
-    post<any>('/api/servicios/snge/consultar', { contrato }),
-  pagarAgua: (contrato: string, amount: number, method: string) =>
-    post<any>('/api/servicios/snge/pagar', { contrato, importe: amount, metodo: method }),
+    post<{ ok: boolean; contract: string; importe: number; estado: string; facturas: BillFactura[] }>(
+      '/api/servicios/snge/consultar', { contrato }),
+  pagarAgua: (facturaId: string) =>
+    post<{ bill_id: string; importe: number; balance: number; journal_id: string; message: string }>(
+      '/api/servicios/snge/pagar', { factura_id: facturaId }),
   consultarDGI: (nif: string) =>
-    post<any>('/api/servicios/dgi/consultar', { nif }),
-  pagarDGI: (nif: string, amount: number, referencia: string) =>
-    post<any>('/api/servicios/dgi/pagar', { nif, importe: amount, referencia }),
-  enviarPaquete: (data: any) =>
-    post<any>('/api/servicios/correos/enviar', data),
+    post<{ ok: boolean; contract: string; importe: number; estado: string; facturas: BillFactura[] }>(
+      '/api/servicios/dgi/consultar', { nif }),
+  pagarDGI: (facturaId: string) =>
+    post<{ bill_id: string; importe: number; balance: number; journal_id: string; message: string }>(
+      '/api/servicios/dgi/pagar', { factura_id: facturaId }),
+  facturas: (estado: 'pendientes' | 'pagadas' | 'todas' = 'pendientes') =>
+    get<{ facturas: BillFactura[]; total: number; por_proveedor: Record<string, number> }>(
+      `/api/servicios/facturas?estado=${estado}`),
+  tarifas: () => get<{ tarifas: Tarifa[]; productos: ProductoServicio[] }>('/api/servicios/tarifas'),
+  /** Solicitud sin cobro: queda registrada y el comercio la confirma. */
+  solicitud: (datos: { provider: string; tipo?: string; referencia?: string; datos?: any; external_id?: string }) =>
+    post<{ solicitudId: string; status: string; message: string; idempotent?: boolean }>('/api/servicios/solicitud', datos),
+  solicitudes: (provider?: string) =>
+    get<Solicitud[]>(`/api/servicios/solicitudes${provider ? `?provider=${encodeURIComponent(provider)}` : ''}`),
+  enviarPaquete: (datos: { destinatario: string; peso?: number; tipo: string }) =>
+    post<{ tracking: string; tarifa: number; variante: string; estimado: string; balance: number; journal_id: string; message: string }>(
+      '/api/servicios/correos/enviar', datos),
 };
 
 export const superAPI = {
-  getSupermarkets: (city?: string) => get<any[]>(`/supermarkets${city ? `?city=${city}` : ''}`),
-  getProducts: (smId: string, catId?: string) => get<any[]>(`/supermarkets/${smId}/products${catId ? `?cat=${catId}` : ''}`),
-  createOrder: (order: any) => post<{ orderId: string; status: string; total?: number }>('/supermarkets/orders', order),
-  getOrders: () => get<any[]>('/supermarkets/orders'),
-  getOrderById: (id: string) => get<any>(`/supermarkets/orders/${id}`),
+  getSupermarkets: (city?: string) => get<any[]>(`/api/supermarkets${city ? `?city=${city}` : ''}`),
+  getProducts: (smId: string, catId?: string) =>
+    get<ProductoServicio[]>(`/api/supermarkets/${smId}/products${catId ? `?cat=${encodeURIComponent(catId)}` : ''}`),
+  // Solo lineas de producto: el total lo pone service_products en el servidor.
+  createOrder: (order: { items: { product_id: string; qty: number }[]; supermarketId?: string; address?: string; external_id?: string }) =>
+    post<{ orderId: string; status: string; total: number; balance: number; eta: string; journal_id: string }>('/api/supermarkets/orders', order),
+  getOrders: () => get<any[]>('/api/supermarkets/orders'),
+  getOrderById: (id: string) => get<any>(`/api/supermarkets/orders/${id}`),
 };
 
 export const saludAPI = {
-  getHospitals: (city?: string) => get<any[]>(`/salud/hospitales${city ? `?city=${city}` : ''}`),
-  getPharmacies: (city?: string) => get<any[]>(`/salud/farmacias${city ? `?city=${city}` : ''}`),
-  requestCita: (data: any) => post<{ citaId: string }>('/salud/citas', data),
-  getMedicamentos: (query: string) => get<any[]>(`/salud/medicamentos?q=${encodeURIComponent(query)}`),
-  orderMeds: (order: any) => post<{ orderId: string }>('/salud/medicamentos/pedido', order),
+  getHospitals: (city?: string) => get<any[]>(`/api/salud/hospitales${city ? `?city=${city}` : ''}`),
+  getPharmacies: (city?: string) => get<any[]>(`/api/salud/farmacias${city ? `?city=${city}` : ''}`),
+  requestCita: (datos: any) => post<{ citaId: string }>('/api/salud/citas', datos),
+  getMedicamentos: (query: string) =>
+    get<ProductoServicio[]>(`/api/salud/medicamentos?q=${encodeURIComponent(query)}`),
+  // Mismo contrato que el supermercado: producto y cantidad, nunca precio.
+  orderMeds: (order: { items: { product_id: string; qty: number }[]; farmaciaId?: string; direccion?: string; external_id?: string }) =>
+    post<{ orderId: string; status: string; total: number; balance: number; eta: string; journal_id: string }>('/api/salud/medicamentos/pedido', order),
+};
+
+export const segurosAPI = {
+  companias: () => get<{ id: string; name: string }[]>('/api/seguros/companias'),
+  productos: (companyId: string) =>
+    get<{ id: string; name: string; price: number; currency: string; coverage: string }[]>(
+      `/api/seguros/companias/${companyId}/productos`),
+  contratar: (datos: { companyId: string; producto: string; datos?: any; external_id?: string }) =>
+    post<{ solicitudId: string; policyId: string; premium: number; currency: string; expires_at: string; balance: number; journal_id: string; status: string; message: string }>(
+      '/api/seguros/solicitar', datos),
+  polizas: () => get<any[]>('/api/seguros/polizas'),
+  abrirSiniestro: (policyId: string, datos: { amount: number; notes?: string }) =>
+    post<{ id: string; claim_ref: string; status: string; message: string }>(`/api/seguros/polizas/${policyId}/siniestros`, datos),
 };
 
 // ══════════════════════════════════════════════════════════════════
 // TAXI
 // ══════════════════════════════════════════════════════════════════
 export const taxiAPI = {
-  /** Solicitar viaje */
+  /** Solicitar viaje: se cobra la tarifa de la tabla al crearlo. */
   requestRide: (
     origin: { address: string; lat?: number; lng?: number },
     destination: { address: string; lat?: number; lng?: number },
-    rideType: string,
-    paymentMethod: 'wallet' | 'cash' | 'card' = 'wallet',
+    rideType: 'moto' | 'basic' | 'premium',
   ) => post<{
     rideId: string; driver: any; eta: number; tarifa: number;
-    distanceKm: number; type: string; status: string; paymentMethod: string;
+    type: string; status: string; balance: number; journal_id: string;
   }>('/api/taxi/request', {
-    origin:        origin.address,
-    dest:          destination.address,
-    type:          rideType,
-    paymentMethod,
-    originLat:     origin.lat,
-    originLng:     origin.lng,
-    destLat:       destination.lat,
-    destLng:       destination.lng,
+    origin: origin.address,
+    dest:   destination.address,
+    type:   rideType,
   }),
 
-  /** Cancelar viaje */
+  /** Cancelar viaje: devuelve lo cobrado si aún no se habia devuelto. */
   cancelRide: (rideId: string) =>
-    post<{ message: string }>(`/api/taxi/${rideId}/cancel`, {}),
+    post<{ message: string; rideId: string; reembolsado: number; balance: number }>(`/api/taxi/${rideId}/cancel`, {}),
 
   /** Estado del viaje (polling) */
   getRideStatus: (rideId: string) =>
     get<{
-      rideId: string; status: string; eta: number; distanceKm: number;
+      rideId: string; status: string; eta: number;
       fare: number; driver: any; driver_location: { lat: number; lng: number };
-      paymentMethod: string;
     }>(`/api/taxi/${rideId}/status`),
 
   /** Valorar conductor */
@@ -966,26 +1025,9 @@ export const taxiAPI = {
     post<{ message: string; rating: number }>(`/api/taxi/${rideId}/rate`, { rating, comment }),
 
   /** Historial de viajes */
-  getRides: (page = 1, limit = 20) =>
-    get<any[]>(`/api/taxi/rides?page=${page}&limit=${limit}`),
+  getRides: () => get<any[]>('/api/taxi/rides'),
 
-  /** Estimación de precio sin pedir viaje */
-  estimateFare: (
-    rideType: string,
-    origin: { lat?: number; lng?: number },
-    dest: { lat?: number; lng?: number },
-    distanceKm?: number,
-  ) => post<{ tarifa: number; distanceKm: number; eta: number; currency: string }>(
-    '/api/taxi/estimate',
-    {
-      type: rideType,
-      originLat: origin.lat, originLng: origin.lng,
-      destLat: dest.lat,     destLng: dest.lng,
-      distanceKm,
-    },
-  ),
-
-  /** Registro de nuevo conductor */
+  /** Alta de conductor: queda registrada como solicitud pendiente de revision. */
   registerDriver: (data: {
     name: string;
     phone: string;
@@ -997,25 +1039,12 @@ export const taxiAPI = {
       color?: string;
       plate: string;
       type?: string;
+      docs?: string[];
     };
   }) => post<{ message: string; driverId: string; status: string }>(
     '/api/taxi/drivers/register',
     data,
   ),
-
-  /** Estado del perfil de conductor del usuario actual */
-  getDriverProfile: () =>
-    get<{
-      id: string; name: string; status: 'pending' | 'approved' | 'rejected' | 'suspended';
-      rating: number; trips: number; vehicle: any;
-    }>('/api/taxi/drivers/me'),
-
-  /** Activar/desactivar disponibilidad del conductor */
-  setDriverAvailability: (available: boolean) =>
-    post<{ message: string; available: boolean }>(
-      '/api/taxi/drivers/availability',
-      { available },
-    ),
 };
 
 // ══════════════════════════════════════════════════════════════════

@@ -1,43 +1,52 @@
-// Módulo Bancos — paridad ServiciosModules.tsx web
-import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+// Módulo Bancos — directorio de bancos de Guinea Ecuatorial + solicitudes.
+//
+// EGChat no tiene conexión con los sistemas de estos bancos: no conocemos
+// cuentas, saldos ni movimientos, así que aquí no se enseñan balances.
+// Las acciones (transferir, préstamo, factura, invertir, tarjeta) se registran
+// como solicitudes con importe 0 y las confirma el banco.
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Linking } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GQ_BANKS, GQBank } from '../../data/serviciosFinancieros';
-import { FinancialModuleShell, SummaryCard, BankLogo } from './FinancialModuleUI';
+import { serviciosAPI, Solicitud } from '../../api';
+import { toast } from '../Toast';
+import { FinancialModuleShell, BankLogo } from './FinancialModuleUI';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
 import { CardsScreen } from './CardsScreen';
 import { useTranslation } from '../../context/LanguageContext';
 import { t as tr } from '../../translations';
 
-type BkScreen = 'home' | 'detail' | 'transfer' | 'loan' | 'bills' | 'invest' | 'cards' | 'history' | 'success';
+type BkScreen = 'home' | 'detail' | 'transfer' | 'loan' | 'bills' | 'invest' | 'cards' | 'requests' | 'success';
 
 interface Props {
   visible: boolean;
   onClose: () => void;
   initScreen?: 'home' | 'cards';
-  userBalance?: number;
 }
 
-export const BancosModal: React.FC<Props> = ({ visible, onClose, initScreen = 'home', userBalance = 100000 }) => {
+const TIPO_LABEL: Record<string, string> = {
+  transferencia: 'Transferencia',
+  prestamo: 'Préstamo',
+  aviso_pago: 'Pago de factura',
+  inversion: 'Inversión',
+  tarjeta: 'Tarjeta',
+};
+
+export const BancosModal: React.FC<Props> = ({ visible, onClose, initScreen = 'home' }) => {
   const { t } = useTranslation();
   const [screen, setScreen] = useState<BkScreen>(initScreen);
   const [bank, setBank] = useState<GQBank | null>(null);
   const [form, setForm] = useState<Record<string, string>>({});
-  const [msg, setMsg] = useState('');
-  const [balance, setBalance] = useState(userBalance);
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [txHistory, setTxHistory] = useState([
-    { type: 'in', desc: t('svcTxSalaryDeposit'), amount: 150000, date: '01/03/2026' },
-    { type: 'out', desc: t('svcTxToMaria'), amount: 25000, date: '05/03/2026' },
-    { type: 'out', desc: t('svcTxElectricityPayment'), amount: 8500, date: '10/03/2026' },
-  ]);
+  const [solicitudes, setSolicitudes] = useState<Solicitud[]>([]);
+  const [recibo, setRecibo] = useState({ ref: '', msg: '' });
+  const [sending, setSending] = useState(false);
 
-  const banks = useMemo(() => GQ_BANKS.map(b => ({ ...b, accounts: b.accounts.map(a => ({ ...a })) })), [refreshKey]);
-  const totalBalance = banks.flatMap(b => b.accounts).reduce((s, a) => s + a.balance, 0);
-  const accountsCount = banks.filter(b => b.accounts.length > 0).length;
+  useEffect(() => { if (visible) setScreen(initScreen); }, [visible, initScreen]);
+  useEffect(() => { if (visible) { cargarSolicitudes(); return; } setScreen('home'); setBank(null); setForm({}); }, [visible]);
 
-  useEffect(() => { if (visible) { setScreen(initScreen); setBalance(userBalance); } }, [visible, initScreen, userBalance]);
-  useEffect(() => { if (!visible) { setScreen('home'); setBank(null); setForm({}); } }, [visible]);
+  const cargarSolicitudes = async () => {
+    try { setSolicitudes(await serviciosAPI.solicitudes('bancos')); } catch { setSolicitudes([]); }
+  };
 
   const setF = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
   const grad = bank ? [bank.color, bank.color2] as [string, string] : ['#1485EE', '#0052CC'] as [string, string];
@@ -52,29 +61,49 @@ export const BancosModal: React.FC<Props> = ({ visible, onClose, initScreen = 'h
   const titles: Record<BkScreen, string> = {
     home: t('banks'), detail: bank?.name || '', transfer: t('svcTransfer'),
     loan: t('svcLoans'), bills: t('svcPayBill'), invest: t('svcInvestments'),
-    cards: bank ? `${t('cards')} — ${bank.name}` : t('svcMyCards'), history: t('history'), success: t('svcCompleted'),
+    cards: bank ? `${t('cards')} — ${bank.name}` : t('svcMyCards'), requests: t('history'), success: t('svcCompleted'),
   };
 
-  const ok = (m: string, txDesc?: string, txAmount?: number, txType?: string) => {
-    if (txDesc && txAmount) {
-      setTxHistory(p => [{ type: txType || 'out', desc: txDesc, amount: txAmount, date: new Date().toLocaleDateString('es') }, ...p]);
-      if (txType === 'out') setBalance(b => b - txAmount);
+  // Registrar la solicitud en el servidor. Nada de esto debita el monedero:
+  // el banco es quien confirma y ejecuta después.
+  const enviar = async (tipo: string, datos: Record<string, any>) => {
+    if (!bank || sending) return;
+    setSending(true);
+    try {
+      const res = await serviciosAPI.solicitud({
+        provider: 'bancos',
+        tipo,
+        referencia: bank.id,
+        datos: { banco: bank.name, ...datos },
+        external_id: form.ref || `BAN-${bank.id}-${tipo}-${Date.now()}`,
+      });
+      setRecibo({ ref: res.solicitudId, msg: res.message });
+      await cargarSolicitudes();
+      setForm({});
+      setScreen('success');
+    } catch (e: any) {
+      toast.error(e?.message || 'No se pudo registrar la solicitud.');
+    } finally {
+      setSending(false);
     }
-    setMsg(m); setScreen('success'); setForm({});
+  };
+
+  const abrirFlujo = (b: GQBank, sc: BkScreen) => {
+    setBank(b);
+    setF('ref', `BAN-${b.id}-${sc}-${Date.now()}`);
+    setScreen(sc);
   };
 
   const fixedTop = screen === 'home' ? (
     <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
-      <SummaryCard
-        label={t('svcTotalBalance')}
-        amount={totalBalance}
-        colors={['#4A90D9', '#2563EB']}
-        stats={[
-          { v: accountsCount, l: t('svcAccounts') },
-          { v: GQ_BANKS.length, l: t('banks') },
-          { v: accountsCount, l: t('cards') },
-        ]}
-      />
+      <LinearGradient colors={['#1A2B4A', '#2563EB']} style={s.aviso}>
+        <Text style={s.avisoTitle}>Directorio bancario</Text>
+        <Text style={s.avisoText}>
+          EGChat no tiene conexión con sus sistemas: los saldos y movimientos de tus cuentas no
+          aparecen aquí porque no los conocemos. Las operaciones quedan como solicitud pendiente
+          hasta que el banco la confirme.
+        </Text>
+      </LinearGradient>
     </View>
   ) : undefined;
 
@@ -86,59 +115,23 @@ export const BancosModal: React.FC<Props> = ({ visible, onClose, initScreen = 'h
       onBack={back}
       onClose={onClose}
       fixedTop={fixedTop}
-      onRefresh={screen === 'home' ? () => setRefreshKey(k => k + 1) : undefined}
+      onRefresh={screen === 'home' || screen === 'requests' ? cargarSolicitudes : undefined}
     >
-      {screen === 'home' && banks.map(b => (
+      {screen === 'home' && GQ_BANKS.map(b => (
         <View key={b.id} style={s.bankCard}>
-          <View style={[s.bankHeader, { backgroundColor: 'transparent' }]}>
+          <View style={s.bankHeader}>
             <BankLogo bank={b} size={38} />
             <View style={{ flex: 1, marginLeft: 10 }}>
               <Text style={s.bankName}>{b.name}</Text>
               <Text style={s.bankMeta}>{b.branches} {t('svcBranches')} — {b.atms} ATMs</Text>
             </View>
-            <TouchableOpacity style={[s.verBtn, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.1)' }]} onPress={() => { setBank(b); setScreen('detail'); }}>
+            <TouchableOpacity style={s.verBtn} onPress={() => { setBank(b); setScreen('detail'); }}>
               <Text style={[s.verText, { color: b.color }]}>{t('svcView')}</Text>
             </TouchableOpacity>
           </View>
-          {b.accounts.length > 0 ? (
-            <View style={s.accountsWrap}>
-              {b.accounts.map((acc, i) => (
-                <View key={i} style={s.accRow}>
-                  <View style={[s.accIcon, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }]}>
-                    <Text style={{ fontSize: 14 }}>{acc.type.includes('Ahorro') ? '💰' : '💳'}</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.accType}>{acc.type}</Text>
-                    <Text style={s.accNum}>{acc.number}</Text>
-                  </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={s.accBal}>{acc.balance.toLocaleString()}</Text>
-                    <Text style={s.accCur}>XAF</Text>
-                  </View>
-                </View>
-              ))}
-              <View style={[s.accRow, s.cardRow, { borderColor: 'rgba(0,0,0,0.08)' }]}>
-                <View style={[s.accIcon, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }]}><Text>💳</Text></View>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.accType}>{tr('xtTarjetaDeDebito')}</Text>
-                  <Text style={s.accNum}>**** 4521 — Vence 12/28</Text>
-                </View>
-                <View style={[s.activeBadge, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }]}>
-                  <Text style={[s.activeText, { color: b.color }]}>Activa</Text>
-                </View>
-              </View>
-            </View>
-          ) : (
-            <View style={s.noAcc}>
-              <Text style={s.noAccText}>{tr('xtSinCuentasActivas')}</Text>
-              <TouchableOpacity style={[s.verBtn, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.1)' }]} onPress={() => { setBank(b); setScreen('detail'); }}>
-                <Text style={[s.verText, { color: b.color }]}>{tr('xtAbrirCuenta')}</Text>
-              </TouchableOpacity>
-            </View>
-          )}
           <View style={s.quickActions}>
-            {([['Transferir', 'transfer'], ['Pagar', 'bills'], [tr('xtPrestamo'), 'loan'], ['Invertir', 'invest']] as const).map(([label, sc]) => (
-              <TouchableOpacity key={sc} style={s.quickBtn} onPress={() => { setBank(b); setScreen(sc); }}>
+            {([['Transferir', 'transfer'], ['Pagar', 'bills'], [tr('xtPrestamo'), 'loan'], ['Invertir', 'invest'], [t('cards'), 'cards']] as const).map(([label, sc]) => (
+              <TouchableOpacity key={sc} style={s.quickBtn} onPress={() => abrirFlujo(b, sc)}>
                 <Text style={s.quickText}>{label}</Text>
               </TouchableOpacity>
             ))}
@@ -157,19 +150,23 @@ export const BancosModal: React.FC<Props> = ({ visible, onClose, initScreen = 'h
               </View>
             </View>
             <Text style={s.detailDesc}>{bank.desc}</Text>
+            <View style={s.contactRow}>
+              <TouchableOpacity style={s.contactBtn} onPress={() => { if (bank.phone) openCall(bank.phone); }}>
+                <Text style={[s.contactText, { color: bank.color }]}>{tr('phone')}: {bank.phone}</Text>
+              </TouchableOpacity>
+            </View>
+            {solicitudes.filter(o => o.contract_ref === bank.id).length > 0 && (
+              <Text style={s.misSolicitudes}>
+                {solicitudes.filter(o => o.contract_ref === bank.id).length} solicitudes tuyas en {bank.name}
+              </Text>
+            )}
           </View>
-          {bank.accounts.map((a, i) => (
-            <LinearGradient key={i} colors={grad} style={s.accGradient}>
-              <Text style={s.accGradSub}>{a.type} — {a.number}</Text>
-              <Text style={s.accGradAmt}>{a.balance.toLocaleString()} <Text style={s.accGradCur}>XAF</Text></Text>
-            </LinearGradient>
-          ))}
           <View style={s.actionGrid}>
             {([
               ['transfer', 'Transferir'], ['bills', tr('xtPagarFactura')], ['loan', 'Préstamos'],
-              ['invest', tr('svcInvestments')], ['cards', tr('cards')], ['history', tr('history')],
+              ['invest', t('svcInvestments')], ['cards', t('cards')], ['requests', t('history')],
             ] as [BkScreen, string][]).map(([id, label]) => (
-              <TouchableOpacity key={id} style={s.actionCell} onPress={() => setScreen(id)}>
+              <TouchableOpacity key={id} style={s.actionCell} onPress={() => (id === 'requests' ? setScreen(id) : abrirFlujo(bank, id))}>
                 <Text style={s.actionLabel}>{label}</Text>
               </TouchableOpacity>
             ))}
@@ -193,15 +190,16 @@ export const BancosModal: React.FC<Props> = ({ visible, onClose, initScreen = 'h
             <View style={s.formCard}>
               <FormField placeholder={tr('xtDestinatarioIBANTelefono')} value={form.recipient || ''} onChangeText={v => setF('recipient', v)} />
               <FormField placeholder="Monto (XAF)" value={form.amount || ''} onChangeText={v => setF('amount', v)} keyboardType="numeric" />
-              <Text style={s.balHint}>Saldo disponible: {balance.toLocaleString()} XAF</Text>
+              <Text style={s.note}>Se envía la orden al banco. No se debita tu monedero hasta que el banco la ejecute.</Text>
               <PrimaryButton
-                label={tr('xtConfirmarTransferencia2')}
+                label={sending ? 'Enviando…' : tr('xtConfirmarTransferencia2')}
                 color={bank.color}
-                disabled={!form.recipient || !form.amount}
-                onPress={() => {
-                  const amt = parseInt(form.amount, 10);
-                  if (amt) ok(`Transferencia de ${amt.toLocaleString()} XAF completada.`, `Transferencia a ${form.recipient}`, amt, 'out');
-                }}
+                disabled={!form.recipient || !(parseInt(form.amount, 10) > 0) || sending}
+                onPress={() => enviar('transferencia', {
+                  clase: form.tt,
+                  destinatario: form.recipient,
+                  importe_declarado: parseInt(form.amount, 10),
+                })}
               />
             </View>
           )}
@@ -210,6 +208,10 @@ export const BancosModal: React.FC<Props> = ({ visible, onClose, initScreen = 'h
 
       {screen === 'loan' && bank && (
         <View>
+          <Text style={s.note}>
+            Los importes maximos y el interes son orientativos: EGChat no tiene las condiciones de {bank.name},
+            el banco las fija en su estudio. Lo que envias es la solicitud.
+          </Text>
           {([
             ['personal', tr('xtPrestamoPersonal'), 'Hasta 5,000,000 XAF', '12% anual'],
             ['negocio', tr('xtPrestamoNegocio'), 'Hasta 50,000,000 XAF', '9% anual'],
@@ -223,11 +225,16 @@ export const BancosModal: React.FC<Props> = ({ visible, onClose, initScreen = 'h
             <View style={s.formCard}>
               <FormField placeholder="Monto solicitado (XAF)" value={form.amount || ''} onChangeText={v => setF('amount', v)} keyboardType="numeric" />
               <FormField placeholder="Plazo en meses (6-60)" value={form.months || ''} onChangeText={v => setF('months', v)} keyboardType="numeric" />
+              <Text style={s.note}>El tipo y el plazo los confirma el banco tras estudiar tu expediente.</Text>
               <PrimaryButton
-                label={tr('xtSolicitarPrestamo')}
+                label={sending ? 'Enviando…' : tr('xtSolicitarPrestamo')}
                 color={bank.color}
-                disabled={!form.amount || !form.months}
-                onPress={() => ok(`Solicitud de préstamo por ${parseInt(form.amount, 10).toLocaleString()} XAF enviada a ${bank.name}.`)}
+                disabled={!form.amount || !form.months || sending}
+                onPress={() => enviar('prestamo', {
+                  clase: form.lt,
+                  monto_solicitado: parseInt(form.amount, 10),
+                  plazo_meses: parseInt(form.months, 10),
+                })}
               />
             </View>
           )}
@@ -243,16 +250,21 @@ export const BancosModal: React.FC<Props> = ({ visible, onClose, initScreen = 'h
           ))}
           {form.bt && (
             <View style={s.formCard}>
-              <FormField placeholder={t('svcRefContractUpper')} value={form.ref || ''} onChangeText={v => setF('ref', v)} />
+              <FormField placeholder={t('svcRefContractUpper')} value={form.ref2 || ''} onChangeText={v => setF('ref2', v)} />
               <FormField placeholder={tr('xtMontoAPagarXAF')} value={form.amount || ''} onChangeText={v => setF('amount', v)} keyboardType="numeric" />
+              <Text style={s.note}>
+                Es un aviso al banco con el importe que tú declaras. Si quieres pagar ahora desde el
+                monedero, usa el módulo de facturas: ahí el cargo sí es real.
+              </Text>
               <PrimaryButton
-                label={tr('svcPayBill')}
+                label={sending ? 'Registrando…' : `${t('svcPayBill')} ${form.amount ? `${parseInt(form.amount, 10).toLocaleString()} XAF` : ''}`}
                 color="#C47D2A"
-                disabled={!form.ref || !form.amount}
-                onPress={() => {
-                  const amt = parseInt(form.amount, 10);
-                  if (amt) ok(`Pago de factura por ${amt.toLocaleString()} XAF completado.`, `Pago ref.${form.ref}`, amt, 'out');
-                }}
+                disabled={!form.ref2 || !(parseInt(form.amount, 10) > 0) || sending}
+                onPress={() => enviar('aviso_pago', {
+                  proveedor: form.bt,
+                  contrato: form.ref2,
+                  importe_declarado: parseInt(form.amount, 10),
+                })}
               />
             </View>
           )}
@@ -278,31 +290,38 @@ export const BancosModal: React.FC<Props> = ({ visible, onClose, initScreen = 'h
             <View style={s.formCard}>
               <FormField placeholder="Monto a invertir (XAF)" value={form.amount || ''} onChangeText={v => setF('amount', v)} keyboardType="numeric" />
               <FormField placeholder="Plazo en meses" value={form.months || ''} onChangeText={v => setF('months', v)} keyboardType="numeric" />
+              <Text style={s.note}>La rentabilidad y la apertura de la posición las fija el banco.</Text>
               <PrimaryButton
-                label="Invertir ahora"
+                label={sending ? 'Registrando…' : 'Registrar intención de inversión'}
                 color="#6B5BD6"
-                disabled={!form.amount || !form.months}
-                onPress={() => ok(`Inversión de ${parseInt(form.amount, 10).toLocaleString()} XAF registrada en ${bank.name}.`)}
+                disabled={!form.amount || !form.months || sending}
+                onPress={() => enviar('inversion', {
+                  producto: form.it,
+                  monto: parseInt(form.amount, 10),
+                  plazo_meses: parseInt(form.months, 10),
+                })}
               />
             </View>
           )}
         </View>
       )}
 
-      {screen === 'cards' && <CardsScreen bank={bank || GQ_BANKS[0]} />}
+      {screen === 'cards' && <CardsScreen bank={bank || GQ_BANKS[0]} onCambios={cargarSolicitudes} />}
 
-      {screen === 'history' && bank && (
-        txHistory.map((h, i) => (
-          <View key={i} style={s.txRow}>
-            <View style={[s.txIcon, { backgroundColor: h.type === 'in' ? '#F0FDF4' : '#FFF1F2' }]}>
-              <Text>{h.type === 'in' ? '↓' : '↑'}</Text>
+      {screen === 'requests' && (
+        solicitudes.length === 0 ? (
+          <Text style={s.note}>Todavía no has registrado ninguna solicitud en ningún banco.</Text>
+        ) : solicitudes.map(o => (
+          <View key={o.order_ref} style={s.txRow}>
+            <View style={[s.txIcon, { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#E5E7EB' }]}>
+              <Text>{o.status === 'completed' ? '✓' : '·'}</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={s.txDesc}>{h.desc}</Text>
-              <Text style={s.txDate}>{h.date}</Text>
+              <Text style={s.txDesc}>{TIPO_LABEL[o.service_type] || o.service_type} — {o.payload?.banco || o.contract_ref}</Text>
+              <Text style={s.txDate}>{o.order_ref} · {new Date(o.created_at).toLocaleDateString('es')}</Text>
             </View>
-            <Text style={[s.txAmt, { color: h.type === 'in' ? '#16A34A' : '#DC2626' }]}>
-              {h.type === 'in' ? '+' : '-'}{h.amount.toLocaleString()} XAF
+            <Text style={[s.txAmt, { color: Number(o.amount) > 0 ? '#DC2626' : '#6B7280' }]}>
+              {Number(o.amount) > 0 ? `${Number(o.amount).toLocaleString()} XAF` : 'Sin cobro'}
             </Text>
           </View>
         ))
@@ -310,9 +329,14 @@ export const BancosModal: React.FC<Props> = ({ visible, onClose, initScreen = 'h
 
       {screen === 'success' && (
         <View style={s.success}>
-          <Text style={{ fontSize: 48, marginBottom: 16 }}>✅</Text>
-          <Text style={s.successTitle}>{tr('xtOperacionCompletada')}</Text>
-          <Text style={s.successMsg}>{msg}</Text>
+          <Text style={{ fontSize: 48, marginBottom: 16 }}>📨</Text>
+          <Text style={s.successTitle}>Solicitud registrada</Text>
+          <Text style={s.successMsg}>{recibo.msg}</Text>
+          <View style={s.refBox}>
+            <Text style={s.refLbl}>Referencia</Text>
+            <Text style={s.refVal}>{recibo.ref}</Text>
+          </View>
+          <Text style={s.note}>No se ha cobrado nada todavía. El banco la revisará y te confirmará.</Text>
           <TouchableOpacity style={[s.doneBtn, { backgroundColor: bank?.color || '#1485EE' }]} onPress={() => setScreen(bank ? 'detail' : 'home')}>
             <Text style={s.doneText}>{tr('djhBack')}</Text>
           </TouchableOpacity>
@@ -322,36 +346,31 @@ export const BancosModal: React.FC<Props> = ({ visible, onClose, initScreen = 'h
   );
 };
 
+const openCall = (phone: string) => {
+  Linking.openURL(`tel:${phone.replace(/\s/g, '')}`).catch(() => {});
+};
+
 const s = StyleSheet.create({
+  aviso: { borderRadius: 14, padding: 14 },
+  avisoTitle: { fontSize: 13, fontWeight: '800', color: '#fff', marginBottom: 4 },
+  avisoText: { fontSize: 11.5, color: 'rgba(255,255,255,0.85)', lineHeight: 16 },
   bankCard: { backgroundColor: '#fff', borderRadius: 14, marginBottom: 10, overflow: 'hidden', borderWidth: 1, borderColor: '#F0F2F5' },
   bankHeader: { flexDirection: 'row', alignItems: 'center', padding: 12, borderBottomWidth: 1, borderBottomColor: '#F0F2F5' },
   bankName: { fontSize: 14, fontWeight: '700', color: '#111827' },
   bankMeta: { fontSize: 11, color: '#9CA3AF', marginTop: 1 },
-  verBtn: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+  verBtn: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: '#E5E7EB' },
   verText: { fontSize: 11, fontWeight: '700' },
-  accountsWrap: { padding: 10 },
-  accRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9FAFB', borderRadius: 10, padding: 9, marginBottom: 6 },
-  cardRow: { borderWidth: 1, borderStyle: 'dashed' },
-  accIcon: { width: 30, height: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginRight: 9 },
-  accType: { fontSize: 12, fontWeight: '600', color: '#374151' },
-  accNum: { fontSize: 10, color: '#9CA3AF' },
-  accBal: { fontSize: 14, fontWeight: '700', color: '#111827' },
-  accCur: { fontSize: 10, color: '#9CA3AF' },
-  activeBadge: { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
-  activeText: { fontSize: 10, fontWeight: '600' },
-  noAcc: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12 },
-  noAccText: { fontSize: 12, color: '#9CA3AF' },
-  quickActions: { flexDirection: 'row', gap: 6, padding: 8, borderTopWidth: 1, borderTopColor: '#F0F2F5' },
+  quickActions: { flexDirection: 'row', gap: 6, padding: 8 },
   quickBtn: { flex: 1, backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, paddingVertical: 6, alignItems: 'center' },
   quickText: { fontSize: 10, fontWeight: '600', color: '#6B7280' },
   detailCard: { backgroundColor: '#fff', borderRadius: 16, padding: 18, marginBottom: 12 },
   detailName: { fontSize: 18, fontWeight: '900', color: '#1A2B4A' },
   detailSub: { fontSize: 11, color: '#8A9BB5' },
   detailDesc: { fontSize: 12, color: '#5A7090', lineHeight: 18 },
-  accGradient: { borderRadius: 14, padding: 16, marginBottom: 8 },
-  accGradSub: { fontSize: 11, color: 'rgba(255,255,255,0.8)', marginBottom: 4 },
-  accGradAmt: { fontSize: 26, fontWeight: '900', color: '#fff' },
-  accGradCur: { fontSize: 13, opacity: 0.8 },
+  contactRow: { marginTop: 10 },
+  contactBtn: { alignSelf: 'flex-start', borderRadius: 8, borderWidth: 1, borderColor: '#E5E7EB', paddingHorizontal: 10, paddingVertical: 6 },
+  contactText: { fontSize: 12, fontWeight: '700' },
+  misSolicitudes: { fontSize: 11, color: '#8A9BB5', marginTop: 10 },
   actionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   actionCell: { width: '48%', backgroundColor: '#fff', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#F0F2F5' },
   actionLabel: { fontSize: 12, fontWeight: '600', color: '#374151' },
@@ -359,15 +378,18 @@ const s = StyleSheet.create({
   optionTitle: { fontSize: 13, fontWeight: '700', color: '#1A2B4A' },
   optionSub: { fontSize: 11, color: '#8A9BB5', marginTop: 2 },
   formCard: { backgroundColor: '#fff', borderRadius: 14, padding: 14, marginTop: 4 },
-  balHint: { fontSize: 12, color: '#8A9BB5', marginBottom: 8 },
+  note: { fontSize: 11.5, color: '#8A9BB5', lineHeight: 16, marginBottom: 10 },
   txRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 12, padding: 13, marginBottom: 8 },
   txIcon: { width: 38, height: 38, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   txDesc: { fontSize: 13, fontWeight: '600', color: '#1A2B4A' },
-  txDate: { fontSize: 11, color: '#8A9BB5' },
-  txAmt: { fontSize: 14, fontWeight: '700' },
+  txDate: { fontSize: 10, color: '#8A9BB5', marginTop: 2 },
+  txAmt: { fontSize: 13, fontWeight: '700' },
   success: { alignItems: 'center', paddingVertical: 40 },
   successTitle: { fontSize: 18, fontWeight: '800', color: '#1A2B4A', marginBottom: 8 },
-  successMsg: { fontSize: 13, color: '#8A9BB5', textAlign: 'center', marginBottom: 24, paddingHorizontal: 20 },
+  successMsg: { fontSize: 13, color: '#8A9BB5', textAlign: 'center', marginBottom: 16, paddingHorizontal: 20 },
+  refBox: { backgroundColor: '#F9FAFB', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 12, alignItems: 'center' },
+  refLbl: { fontSize: 10, color: '#9CA3AF' },
+  refVal: { fontSize: 13, fontWeight: '800', color: '#1A2B4A', marginTop: 2 },
   doneBtn: { borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 },
   doneText: { color: '#fff', fontSize: 14, fontWeight: '700' },
 });

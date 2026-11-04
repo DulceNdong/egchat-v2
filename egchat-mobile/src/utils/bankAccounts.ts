@@ -9,19 +9,19 @@ export interface BankAccount {
 
 const KEY = 'egchat_bank_accounts_v1';
 
-export const DEFAULT_BANK_ACCOUNTS: BankAccount[] = [
-  { id: '1', bank: 'BANGE', type: 'Corriente', balance: 45200 },
-  { id: '2', bank: 'CCEI Bank', type: 'Ahorros', balance: 80000 },
-];
+// Cuentas bancarias declaradas por el usuario. EGChat no se conecta a ningún
+// banco: estas filas son informativas y nunca se descuentan ni se suman al
+// monedero, así que no se sembrarían con saldos inventados.
+export const DEFAULT_BANK_ACCOUNTS: BankAccount[] = [];
 
 export async function loadBankAccounts(): Promise<BankAccount[]> {
   try {
     const raw = await AsyncStorage.getItem(KEY);
-    if (!raw) return [...DEFAULT_BANK_ACCOUNTS];
+    if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : [...DEFAULT_BANK_ACCOUNTS];
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
-    return [...DEFAULT_BANK_ACCOUNTS];
+    return [];
   }
 }
 

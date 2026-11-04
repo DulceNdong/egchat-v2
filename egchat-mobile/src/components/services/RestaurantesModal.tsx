@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Linking, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { RESTAURANTS, Restaurant, precioColor, precioLabel } from '../../data/serviciosDiarios';
+import { serviciosAPI } from '../../api';
 import { FinancialModuleShell, FilterChips } from './FinancialModuleUI';
 import { SearchField } from './PublicModuleUI';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
@@ -16,10 +17,13 @@ export const RestaurantesModal: React.FC<Props> = ({ visible, onClose }) => {
   const [search, setSearch] = useState('');
   const [view, setView] = useState<RestScreen>('list');
   const [selected, setSelected] = useState<Restaurant | null>(null);
-  const [form, setForm] = useState({ name: '', phone: '', date: '', hora: '', personas: '2', notas: '' });
+  const [form, setForm] = useState({ name: '', phone: '', date: '', hora: '', personas: '2' });
+  const [ref, setRef] = useState('');
+  const [recibo, setRecibo] = useState('');
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    if (!visible) { setView('list'); setCity('Malabo'); setSearch(''); setSelected(null); setForm({ name: '', phone: '', date: '', hora: '', personas: '2', notas: '' }); }
+    if (!visible) { setView('list'); setCity('Malabo'); setSearch(''); setSelected(null); setForm({ name: '', phone: '', date: '', hora: '', personas: '2' }); }
   }, [visible]);
 
   const filtered = RESTAURANTS.filter(r =>
@@ -29,6 +33,35 @@ export const RestaurantesModal: React.FC<Props> = ({ visible, onClose }) => {
 
   const setF = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
   const canReserve = form.name && form.phone && form.date && form.hora;
+
+  // La reserva de mesa se registra como solicitud (importe 0): el restaurante
+  // confirma la disponibilidad y el cobro se hace allí.
+  const enviar = async () => {
+    if (!selected || sending) return;
+    setSending(true);
+    try {
+      const res = await serviciosAPI.solicitud({
+        provider: 'restaurantes',
+        tipo: 'reserva',
+        referencia: selected.id,
+        datos: {
+          restaurante: selected.nombre,
+          cliente: form.name,
+          telefono: form.phone,
+          fecha: form.date,
+          hora: form.hora,
+          personas: parseInt(form.personas, 10) || 1,
+        },
+        external_id: ref || `RES-${selected.id}-${Date.now()}`,
+      });
+      setRecibo(res.solicitudId);
+      setView('ok');
+    } catch (e: any) {
+      Alert.alert(t('error'), e?.message || 'No se pudo registrar la reserva.');
+    } finally {
+      setSending(false);
+    }
+  };
 
   const fixedTop = view === 'list' ? (
     <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
@@ -76,7 +109,7 @@ export const RestaurantesModal: React.FC<Props> = ({ visible, onClose }) => {
                 <TouchableOpacity style={[st.actBtn, { backgroundColor: '#FEF3C7' }]} onPress={() => { setSelected(r); setView('menu'); }}>
                   <Text style={[st.actText, { color: '#92400E' }]}>{t('svcViewMenu')}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[st.actBtn, { backgroundColor: '#C47D2A' }]} onPress={() => { setSelected(r); setView('reserva'); }}>
+                <TouchableOpacity style={[st.actBtn, { backgroundColor: '#C47D2A' }]} onPress={() => { setSelected(r); setRef(`RES-${r.id}-${Date.now()}`); setView('reserva'); }}>
                   <Text style={[st.actText, { color: '#fff' }]}>{t('svcBookNow')}</Text>
                 </TouchableOpacity>
               </View>
@@ -91,13 +124,14 @@ export const RestaurantesModal: React.FC<Props> = ({ visible, onClose }) => {
             <Text style={st.menuTitle}>{selected.nombre}</Text>
             <Text style={st.menuSub}>{selected.tipo} · {selected.barrio}</Text>
           </LinearGradient>
+          <Text style={st.notice}>Precios de referencia del directorio: el restaurante confirma la carta y el importe.</Text>
           {selected.menu.map((item, i) => (
             <View key={i} style={st.menuRow}>
               <Text style={st.menuPlato}>{item.plato}</Text>
               <Text style={st.menuPrecio}>{item.precio.toLocaleString()} XAF</Text>
             </View>
           ))}
-          <PrimaryButton label={t('svcReserveTable')} onPress={() => setView('reserva')} color="#C47D2A" />
+          <PrimaryButton label={t('svcReserveTable')} onPress={() => { setRef(`RES-${selected.id}-${Date.now()}`); setView('reserva'); }} color="#C47D2A" />
         </View>
       )}
 
@@ -112,17 +146,27 @@ export const RestaurantesModal: React.FC<Props> = ({ visible, onClose }) => {
           <FormField placeholder={t('svcDatePh')} value={form.date} onChangeText={v => setF('date', v)} />
           <FormField placeholder={t('svcArrivalTime')} value={form.hora} onChangeText={v => setF('hora', v)} />
           <FormField placeholder={t('svcNumPeople')} value={form.personas} onChangeText={v => setF('personas', v)} keyboardType="numeric" />
-          <PrimaryButton label={t('svcConfirmBooking')} onPress={() => setView('ok')} color="#C47D2A" disabled={!canReserve} />
+          <Text style={st.notice}>
+            {selected.nombre} recibe la solicitud y confirma la mesa. No se reserva ni se cobra
+            nada desde EGChat.
+          </Text>
+          <PrimaryButton
+            label={sending ? 'Enviando…' : t('svcConfirmBooking')}
+            onPress={enviar}
+            color="#C47D2A"
+            disabled={!canReserve || sending}
+          />
         </View>
       )}
 
       {view === 'ok' && selected && (
         <View style={st.success}>
-          <Text style={{ fontSize: 48 }}>✅</Text>
-          <Text style={st.successTitle}>{t('svcBookingConfirmed')}</Text>
+          <Text style={{ fontSize: 48 }}>📨</Text>
+          <Text style={st.successTitle}>Solicitud registrada</Text>
           <Text style={st.successSub}>{selected.nombre}</Text>
           <Text style={st.successSub}>{form.date} · {form.hora} · {form.personas} {t('svcPeopleWord')}</Text>
-          <PrimaryButton label={t('svcMoreRestaurants')} onPress={() => { setView('list'); setSelected(null); }} color="#C47D2A" />
+          <Text style={st.refText}>{recibo}</Text>
+          <PrimaryButton label={t('svcMoreRestaurants')} onPress={() => { setView('list'); setSelected(null); setRecibo(''); }} color="#C47D2A" />
         </View>
       )}
     </FinancialModuleShell>
@@ -146,6 +190,8 @@ const st = StyleSheet.create({
   menuPlato: { fontSize: 13, fontWeight: '600', color: '#111827', flex: 1 },
   menuPrecio: { fontSize: 13, fontWeight: '800', color: '#C47D2A' },
   success: { alignItems: 'center', paddingVertical: 30, gap: 8 },
+  notice: { fontSize: 11, color: '#8A9BB5', lineHeight: 16, marginBottom: 10 },
+  refText: { fontSize: 12, fontWeight: '800', color: '#1A2B4A', backgroundColor: '#F9FAFB', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
   successTitle: { fontSize: 20, fontWeight: '900', color: '#111827' },
   successSub: { fontSize: 13, color: '#9CA3AF' },
 });

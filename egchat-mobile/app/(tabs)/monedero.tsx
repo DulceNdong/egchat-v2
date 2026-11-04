@@ -1113,6 +1113,9 @@ const AddBankModal = ({
           ))}
         </View>
         <Field label={t('walInitialBalance')} value={balance} onChangeText={setBalance} placeholder="0" keyboardType="numeric" />
+        <Text style={{ fontSize: 11, color: '#8A9BB5', lineHeight: 16, marginBottom: 10 }}>
+          Es el saldo que tú anotas. No se verifica con el banco ni se puede usar para pagar desde EGChat.
+        </Text>
         <TouchableOpacity style={[s.primaryBtn, { backgroundColor: '#00c8a0' }]} onPress={save} activeOpacity={0.85}>
           <Text style={s.primaryBtnText}>{t('walSaveAccount')}</Text>
         </TouchableOpacity>
@@ -1772,6 +1775,10 @@ function MonederoScreenInner() {
                 <Text style={s.addBtnText}>+</Text>
               </TouchableOpacity>
             </View>
+            <Text style={{ fontSize: 11, color: C.textSecondary, marginBottom: 6, paddingHorizontal: 4 }}>
+              Cuentas que tú declaras, solo informativas. EGChat no se conecta a estos bancos: ese
+              saldo no es dinero del monedero y no puedes pagar con él.
+            </Text>
 
             <View style={[s.card, { backgroundColor: C.bgSecondary }]}> 
               {bankAccounts.map((acc, i) => (
@@ -1997,7 +2004,7 @@ function MonederoScreenInner() {
             <Text style={{ fontSize: 17, fontWeight: '700', color: '#1A2B4A', flex: 1 }}>{t('walMyCardsTitle')}</Text>
           </View>
           <ScrollView contentContainerStyle={{ padding: 16 }}>
-            <CardsScreen bank={{ id: 'egchat', name: 'EGPAY', color: '#1B3A6B', color2: '#2A5298', initials: 'EG', full: 'EGPAY', founded: 2024, desc: '', address: '', phone: '', web: '', swift: '', branches: 0, atms: 0, services: [], accounts: [] }} />
+            <CardsScreen bank={{ id: 'egpay', name: 'EGPAY', color: '#1B3A6B', color2: '#2A5298', initials: 'EG', full: 'EGPAY', founded: 2024, desc: '', address: '', phone: '', web: '', swift: '', branches: 0, atms: 0, services: [] }} />
           </ScrollView>
         </SafeAreaView>
       </Modal>
