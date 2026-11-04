@@ -8040,12 +8040,14 @@ const TWILIO_ACCOUNT_SID  = process.env.TWILIO_ACCOUNT_SID  || '';
 const TWILIO_API_KEY_SID  = process.env.TWILIO_API_KEY_SID  || '';
 const TWILIO_API_KEY_SECRET = process.env.TWILIO_API_KEY_SECRET || '';
 const TWILIO_AUTH_TOKEN   = process.env.TWILIO_AUTH_TOKEN   || '';
-const CF_TURN_KEY_ID    = process.env.CF_TURN_KEY_ID        || '';
-const CF_TURN_KEY_TOKEN = process.env.CF_TURN_KEY_API_TOKEN || '';
+const CF_TURN_KEY_ID    = process.env.CF_TURN_KEY_ID || '';
+// La doc de Cloudflare llama a este valor TURN_KEY_API_TOKEN y nosotros CF_TURN_KEY_SECRET en el
+// panel; se aceptan los dos nombres para que un pegado con cualquiera de las dos letras funcione.
+const CF_TURN_KEY_TOKEN = process.env.CF_TURN_KEY_SECRET || process.env.CF_TURN_KEY_API_TOKEN || '';
 const CF_TURN_TTL       = parseInt(process.env.CF_TURN_TTL || '86400', 10);
 
 async function getCloudflareIceServers() {
-  if (!CF_TURN_KEY_ID || !CF_TURN_KEY_TOKEN) throw new Error('sin CF_TURN_KEY_ID/CF_TURN_KEY_API_TOKEN');
+  if (!CF_TURN_KEY_ID || !CF_TURN_KEY_TOKEN) throw new Error('sin CF_TURN_KEY_ID + CF_TURN_KEY_SECRET');
   TURN_VIA = 'cloudflare';
   const r = await fetch(
     `https://rtc.live.cloudflare.com/v1/turn/keys/${CF_TURN_KEY_ID}/credentials/generate-ice-servers`,
@@ -8062,7 +8064,7 @@ async function getCloudflareIceServers() {
     const e = data?.errors?.[0]?.message
       ?? (typeof data?.error === 'string' ? data.error : data?.error?.message)
       ?? data?.message;
-    throw new Error(`Cloudflare ${r.status}: ${String(e ?? 'respuesta sin detalle').slice(0, 120)}`);
+    throw Object.assign(new Error(`Cloudflare ${r.status}: ${String(e ?? 'respuesta sin detalle').slice(0, 120)}`), { status: r.status });
   }
   // Devuelve el bloque ya en la forma {urls, username, credential} que lee useWebRTC.
   const servers = (Array.isArray(data.iceServers) ? data.iceServers : []).map(s => ({
@@ -8103,11 +8105,17 @@ async function getTwilioIceServers() {
 // cayo, que es lo que necesita quien lea `turn.ultimo` en voip-status.
 async function getIceServers() {
   const caidas = [];
+  let http = null, codigo = null;
   for (const [nombre, fn] of [['cloudflare', getCloudflareIceServers], ['twilio', getTwilioIceServers]]) {
     try { return await fn(); }
-    catch (e) { caidas.push(`${nombre}: ${redactarSecretos(e.message).slice(0, 120)}`); }
+    catch (e) {
+      caidas.push(`${nombre}: ${redactarSecretos(e.message).slice(0, 120)}`);
+      // Se guarda el primer estado HTTP que respondio un proveedor: es el que dice si la
+      // clave TURN existe, si Twilio rechazó la credencial o si fue un fallo de red.
+      if (http === null && e.status !== undefined) { http = e.status; codigo = e.code ?? null; }
+    }
   }
-  throw new Error(caidas.join(' | '));
+  throw Object.assign(new Error(caidas.join(' | ')), { status: http ?? undefined, code: codigo ?? undefined });
 }
 
 // Solo STUN publicos: un TURN abierto y sin probar (openrelay) aporta candidatos
@@ -8136,6 +8144,8 @@ app.get('/api/turn-token', auth, async (req, res) => {
       via: TURN_VIA,
       servidores: iceServers.length,
       conTurn: iceServers.some(s => String(s.urls).includes('turn:')),
+      // Solo las URLs: username y credential son la credencial del relay y no salen del proceso.
+      urls: iceServers.flatMap(s => Array.isArray(s.urls) ? s.urls : [s.urls]),
     };
     res.json({ iceServers });
   } catch (e) {
@@ -9389,7 +9399,7 @@ app.get('/api/push/voip-status', auth, async (req, res) => {
       edgeFnConfigured: !!(process.env.SUPABASE_URL && process.env.SERVICE_TOKEN),
       tokens:           counts,
       turn: {
-        conCloudflare: !!(process.env.CF_TURN_KEY_ID && process.env.CF_TURN_KEY_API_TOKEN),
+        conCloudflare: !!(process.env.CF_TURN_KEY_ID && (process.env.CF_TURN_KEY_SECRET || process.env.CF_TURN_KEY_API_TOKEN)),
         conApiKey:  !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_API_KEY_SID && process.env.TWILIO_API_KEY_SECRET),
         conMaestro: !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN),
         ultimo:     TURN_ULTIMO,
