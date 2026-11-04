@@ -7454,15 +7454,19 @@ const contactosDeUsuario = async (userId) => {
 
 const momentoSinComentarios = (m, usersMap, likedSet) => {
   const autor = usersMap[m.user_id] || {};
-  let images = m.images;
-  if (typeof images === 'string') { try { images = JSON.parse(images); } catch { images = []; } }
+  const comoLista = (v) => {
+    let out = v;
+    if (typeof out === 'string') { try { out = JSON.parse(out); } catch { out = []; } }
+    return Array.isArray(out) ? out : [];
+  };
   return {
     id: m.id,
     user_id: m.user_id,
     user_name: autor.full_name || 'Usuario',
     user_avatar: autor.avatar_url || '',
     text: m.text || '',
-    images: Array.isArray(images) ? images : [],
+    images: comoLista(m.images),
+    videos: comoLista(m.videos),
     likes: 0,
     liked_by_me: likedSet.has(m.id),
     comments: [],
@@ -8005,6 +8009,7 @@ async function getTwilioIceServers() {
   if (!conApiKey) {
     console.warn('[turn] sin API key de NTS: los tokens salen del token maestro de SMS (TWILIO_AUTH_TOKEN)');
   }
+  TURN_VIA = conApiKey ? 'apikey' : 'maestro';
   const client = require('twilio')(
     conApiKey ? TWILIO_API_KEY_SID : TWILIO_ACCOUNT_SID,
     conApiKey ? TWILIO_API_KEY_SECRET : TWILIO_AUTH_TOKEN,
@@ -8026,16 +8031,40 @@ const FALLBACK_ICE = [
   { urls: 'stun:stun.cloudflare.com:3478' }
 ];
 
+// Estado del ultimo intento de TURN, para diagnosticar sin leer los logs del servicio.
+// Nunca guarda valores de secretos: el mensaje de Twilio se redacta antes de guardarlo.
+let TURN_VIA = null;
+let TURN_ULTIMO = null;
+const redactarSecretos = (s) => [TWILIO_AUTH_TOKEN, TWILIO_API_KEY_SECRET, TWILIO_ACCOUNT_SID]
+  .filter(Boolean)
+  .reduce((acc, v) => acc.split(v).join('[secreto]'), String(s || ''));
+
 // Ruta principal usada por el frontend
 app.get('/api/turn-token', auth, async (req, res) => {
   try {
-    res.json({ iceServers: await getTwilioIceServers() });
+    const iceServers = await getTwilioIceServers();
+    TURN_ULTIMO = {
+      ok: true,
+      en: new Date().toISOString(),
+      via: TURN_VIA,
+      servidores: iceServers.length,
+      conTurn: iceServers.some(s => String(s.urls).includes('turn:')),
+    };
+    res.json({ iceServers });
   } catch (e) {
     // Sin ninguna de las dos vias el SDK rechaza el `username` vacio y el ICE se queda
     // solo con STUN publico: la llamada timbra pero el audio puede no conectar entre
     // redes distintas. Se nombran las variables, nunca sus valores.
     const conApiKey   = process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_API_KEY_SID && process.env.TWILIO_API_KEY_SECRET;
     const conMaestro  = process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN;
+    TURN_ULTIMO = {
+      ok: false,
+      en: new Date().toISOString(),
+      via: TURN_VIA,
+      codigo: e.code ?? null,
+      http: e.status ?? null,
+      mensaje: redactarSecretos(e.message).slice(0, 160),
+    };
     console.error('TURN token error:', e.message, (conApiKey || conMaestro)
       ? '· las credenciales estan puestas, el fallo es de Twilio'
       : '· faltan TWILIO_API_KEY_SID+API_KEY_SECRET y tampoco hay TWILIO_AUTH_TOKEN util · se devuelven solo STUN publicos');
@@ -9276,6 +9305,11 @@ app.get('/api/push/voip-status', auth, async (req, res) => {
       apnsBundle:       process.env.APNS_BUNDLE_ID || 'com.jallzstores.egchat',
       edgeFnConfigured: !!(process.env.SUPABASE_URL && process.env.SERVICE_TOKEN),
       tokens:           counts,
+      turn: {
+        conApiKey:  !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_API_KEY_SID && process.env.TWILIO_API_KEY_SECRET),
+        conMaestro: !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN),
+        ultimo:     TURN_ULTIMO,
+      },
     });
   } catch (e) {
     res.status(500).json({ message: e.message });
