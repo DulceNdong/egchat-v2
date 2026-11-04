@@ -347,7 +347,7 @@ const notifyCallPeer = async (callId, selfUserId, payload) => {
     const users = [...new Set([data.caller_id, data.target_user_id]
       .filter(Boolean).map((id) => String(id)))];
     emitToUsers(users, payload);
-    sendVoipSignalToUsers(users, callId, payload.type).catch(() => {});
+    sendVoipSignalToUsers(users, callId, payload.type, payload.reason).catch(() => {});
   } catch (e) {
     console.warn('[call/notify-peer]', e.message);
   }
@@ -7915,7 +7915,7 @@ const sendVoipPushToUser = async (userId, call) => {
  * aún no estaba conectada. Sin este push, un iPhone suspendido no se entera de
  * que otra máquina contestó y sigue sonando hasta que caduca la sesión.
  */
-const sendVoipSignalToUsers = async (userIds, callId, type) => {
+const sendVoipSignalToUsers = async (userIds, callId, type, reason) => {
   try {
     const apnsJwt = getApnsVoipJwt();
     if (!apnsJwt) return { configured: false, delivered: false };
@@ -7933,11 +7933,19 @@ const sendVoipSignalToUsers = async (userIds, callId, type) => {
     const uniq = [...new Set(tokens)];
     if (uniq.length === 0) return { configured: true, delivered: false, reason: 'no_voip_token' };
 
+    // El binario de TestFlight decide con estos dos campos si debe colgar la
+    // llamada que ya está sonando: `notificationType` (los dos valores que
+    // emite notifyCallPeer) o `status` (answered/ended/rejected/cancelled/
+    // missed). Son alternativas en el cliente, así que se mandan los dos.
+    const status = type === 'call_answered' ? 'answered'
+      : (['rejected', 'cancelled', 'missed'].includes(String(reason || '')) ? String(reason) : 'ended');
     const payload = {
       aps: { 'content-available': 1 },
       callId:           String(callId),
       'call-uuid':      uuidFromCallId(callId),
       notificationType: type,
+      status,
+      reason: reason || status,
     };
     const results   = await Promise.all(uniq.map(t => sendApnsVoip(t, apnsJwt, payload)));
     const delivered = results.some(r => r.ok);
@@ -8104,7 +8112,7 @@ app.post('/api/call/answer', auth, async (req, res) => {
         updated_at: new Date().toISOString(),
       }).eq('call_id', callId).eq('target_user_id', String(req.user.id));
       if (fallbackUpdate.error) throw fallbackUpdate.error;
-      await notifyCallPeer(callId, req.user.id, { type: 'call_answered', callId, ts: Date.now() });
+      await notifyCallPeer(callId, req.user.id, { type: 'call_answered', callId, reason: 'answered', ts: Date.now() });
       return res.json({ ok: true });
     }
 
@@ -8137,7 +8145,7 @@ app.post('/api/call/answer', auth, async (req, res) => {
       console.warn('[call/answer] Broadcast failed:', broadcastErr.message);
     }
 
-    await notifyCallPeer(callId, req.user.id, { type: 'call_answered', callId, ts: Date.now() });
+    await notifyCallPeer(callId, req.user.id, { type: 'call_answered', callId, reason: 'answered', ts: Date.now() });
 
     res.json({ ok: true, idempotent: data && data.idempotent ? true : false });
   } catch (e) {
