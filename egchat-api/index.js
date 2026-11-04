@@ -922,24 +922,31 @@ app.post('/api/auth/send-verification', authLimiter, async (req, res) => {
     const code = String(Math.floor(100000 + Math.random() * 900000));
     resetCodes.set(phone, { code, expiresAt: Date.now() + 10 * 60 * 1000 }); // 10 min
 
-    // Intentar enviar SMS via Twilio si está configurado
+    // Sin las tres variables no hay canal de SMS: antes se respondia `sent:true` igual
+    // y el usuario se quedaba esperando un código que nunca salió.
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken  = process.env.TWILIO_AUTH_TOKEN;
+    const fromPhone  = process.env.TWILIO_PHONE;
+    if (!accountSid || !authToken || !fromPhone) {
+      resetCodes.delete(phone);
+      const faltan = ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_PHONE'].filter(k => !process.env[k]);
+      console.error('SMS de recuperacion sin configurar: faltan', faltan.join(', '));
+      return res.status(503).json({ sent: false, message: 'No podemos enviar el SMS en este momento. Inténtalo más tarde.' });
+    }
     try {
-      const accountSid = process.env.TWILIO_ACCOUNT_SID;
-      const authToken  = process.env.TWILIO_AUTH_TOKEN;
-      const fromPhone  = process.env.TWILIO_PHONE;
-      if (accountSid && authToken && fromPhone) {
-        const twilio = require('twilio')(accountSid, authToken);
-        await twilio.messages.create({
-          body: `Tu código de recuperación EGCHAT es: ${code}. Válido 10 minutos.`,
-          from: fromPhone,
-          to: phone,
-        });
-      }
+      const twilio = require('twilio')(accountSid, authToken);
+      await twilio.messages.create({
+        body: `Tu código de recuperación EGCHAT es: ${code}. Válido 10 minutos.`,
+        from: fromPhone,
+        to: phone,
+      });
     } catch (smsErr) {
-      console.warn('SMS no enviado (Twilio no configurado):', smsErr.message);
+      resetCodes.delete(phone);
+      console.error('Twilio rechazo el SMS de recuperacion:', smsErr.message);
+      return res.status(502).json({ sent: false, message: 'El envío del código falló. Inténtalo más tarde.' });
     }
 
-    console.log(`[RESET] Código para ${phone}: ${code}`);
+    // El código es la credencial del reset: nunca va al log.
     res.json({ sent: true, message: 'Código enviado' });
   } catch (e) {
     res.status(500).json({ message: e.message });
