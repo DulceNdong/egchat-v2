@@ -8032,11 +8032,47 @@ const updateUserVersions = async () => {
 
 // ─── WebRTC Signaling — persistido en Supabase ───────────────────────────────
 
-// TURN token endpoint — genera credenciales temporales Twilio NTS
+// TURN token endpoint — credenciales temporales de relay
+//
+// Orden de preferencia: Cloudflare Realtime (los primeros 1.000 GB/mes son gratis y
+// el relay solo se pisa cuando falla la conexion directa) → Twilio NTS → STUN publico.
 const TWILIO_ACCOUNT_SID  = process.env.TWILIO_ACCOUNT_SID  || '';
 const TWILIO_API_KEY_SID  = process.env.TWILIO_API_KEY_SID  || '';
 const TWILIO_API_KEY_SECRET = process.env.TWILIO_API_KEY_SECRET || '';
 const TWILIO_AUTH_TOKEN   = process.env.TWILIO_AUTH_TOKEN   || '';
+const CF_TURN_KEY_ID    = process.env.CF_TURN_KEY_ID        || '';
+const CF_TURN_KEY_TOKEN = process.env.CF_TURN_KEY_API_TOKEN || '';
+const CF_TURN_TTL       = parseInt(process.env.CF_TURN_TTL || '86400', 10);
+
+async function getCloudflareIceServers() {
+  if (!CF_TURN_KEY_ID || !CF_TURN_KEY_TOKEN) throw new Error('sin CF_TURN_KEY_ID/CF_TURN_KEY_API_TOKEN');
+  TURN_VIA = 'cloudflare';
+  const r = await fetch(
+    `https://rtc.live.cloudflare.com/v1/turn/keys/${CF_TURN_KEY_ID}/credentials/generate-ice-servers`,
+    {
+      method:  'POST',
+      headers: { authorization: `Bearer ${CF_TURN_KEY_TOKEN}`, 'content-type': 'application/json' },
+      body:    JSON.stringify({ ttl: CF_TURN_TTL }),
+      signal:  AbortSignal.timeout(8000),
+    }
+  );
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    // rtc.live responde {"error":"texto"}, no el envoltorio errors[] del API de Cloudflare.
+    const e = data?.errors?.[0]?.message
+      ?? (typeof data?.error === 'string' ? data.error : data?.error?.message)
+      ?? data?.message;
+    throw new Error(`Cloudflare ${r.status}: ${String(e ?? 'respuesta sin detalle').slice(0, 120)}`);
+  }
+  // Devuelve el bloque ya en la forma {urls, username, credential} que lee useWebRTC.
+  const servers = (Array.isArray(data.iceServers) ? data.iceServers : []).map(s => ({
+    urls: s.urls,
+    ...(s.username   ? { username:   s.username }   : {}),
+    ...(s.credential ? { credential: s.credential } : {}),
+  }));
+  if (!servers.some(s => String(s.urls).includes('turn:'))) throw new Error('Cloudflare respondio sin entradas TURN');
+  return servers;
+}
 
 async function getTwilioIceServers() {
   // La via limpia es una API key propia de NTS. Si no existe, el SDK tambien acepta
@@ -8044,7 +8080,7 @@ async function getTwilioIceServers() {
   // secretos nuevos: se avisa en el log, no es un reemplazo silencioso.
   const conApiKey = !!(TWILIO_ACCOUNT_SID && TWILIO_API_KEY_SID && TWILIO_API_KEY_SECRET);
   if (!conApiKey && !(TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN)) {
-    throw new Error('Twilio credentials not configured');
+    throw new Error('sin credenciales de Twilio en el servicio');
   }
   if (!conApiKey) {
     console.warn('[turn] sin API key de NTS: los tokens salen del token maestro de SMS (TWILIO_AUTH_TOKEN)');
@@ -8063,26 +8099,37 @@ async function getTwilioIceServers() {
   }));
 }
 
+// Prueba un proveedor y despues el siguiente; el error acumulado dice por que cada uno
+// cayo, que es lo que necesita quien lea `turn.ultimo` en voip-status.
+async function getIceServers() {
+  const caidas = [];
+  for (const [nombre, fn] of [['cloudflare', getCloudflareIceServers], ['twilio', getTwilioIceServers]]) {
+    try { return await fn(); }
+    catch (e) { caidas.push(`${nombre}: ${redactarSecretos(e.message).slice(0, 120)}`); }
+  }
+  throw new Error(caidas.join(' | '));
+}
+
 // Solo STUN publicos: un TURN abierto y sin probar (openrelay) aporta candidatos
-// muertos que retrasan la negociacion ICE en lugar de ayudar. Con las credenciales
-// de Twilio puestas, el TURN real lo devuelve getTwilioIceServers().
+// muertos que retrasan la negociacion ICE en lugar de ayudar. El TURN real lo
+// devuelven getCloudflareIceServers() o getTwilioIceServers().
 const FALLBACK_ICE = [
   { urls: ['stun:stun.l.google.com:19302', 'stun:stun2.l.google.com:19302'] },
   { urls: 'stun:stun.cloudflare.com:3478' }
 ];
 
 // Estado del ultimo intento de TURN, para diagnosticar sin leer los logs del servicio.
-// Nunca guarda valores de secretos: el mensaje de Twilio se redacta antes de guardarlo.
+// Nunca guarda valores de secretos: los mensajes se redactan antes de guardarse.
 let TURN_VIA = null;
 let TURN_ULTIMO = null;
-const redactarSecretos = (s) => [TWILIO_AUTH_TOKEN, TWILIO_API_KEY_SECRET, TWILIO_ACCOUNT_SID]
+const redactarSecretos = (s) => [TWILIO_AUTH_TOKEN, TWILIO_API_KEY_SECRET, TWILIO_ACCOUNT_SID, CF_TURN_KEY_TOKEN]
   .filter(Boolean)
   .reduce((acc, v) => acc.split(v).join('[secreto]'), String(s || ''));
 
 // Ruta principal usada por el frontend
 app.get('/api/turn-token', auth, async (req, res) => {
   try {
-    const iceServers = await getTwilioIceServers();
+    const iceServers = await getIceServers();
     TURN_ULTIMO = {
       ok: true,
       en: new Date().toISOString(),
@@ -8092,22 +8139,18 @@ app.get('/api/turn-token', auth, async (req, res) => {
     };
     res.json({ iceServers });
   } catch (e) {
-    // Sin ninguna de las dos vias el SDK rechaza el `username` vacio y el ICE se queda
-    // solo con STUN publico: la llamada timbra pero el audio puede no conectar entre
-    // redes distintas. Se nombran las variables, nunca sus valores.
-    const conApiKey   = process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_API_KEY_SID && process.env.TWILIO_API_KEY_SECRET;
-    const conMaestro  = process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN;
+    // Sin ningun proveedor el ICE se queda solo con STUN publico: la llamada timbra pero
+    // el audio puede no conectar entre redes distintas. `e.message` ya trae por que cayo
+    // cada proveedor, redactado y con nomes de variable.
     TURN_ULTIMO = {
       ok: false,
       en: new Date().toISOString(),
       via: TURN_VIA,
       codigo: e.code ?? null,
       http: e.status ?? null,
-      mensaje: redactarSecretos(e.message).slice(0, 160),
+      mensaje: redactarSecretos(e.message).slice(0, 240),
     };
-    console.error('TURN token error:', e.message, (conApiKey || conMaestro)
-      ? '· las credenciales estan puestas, el fallo es de Twilio'
-      : '· faltan TWILIO_API_KEY_SID+API_KEY_SECRET y tampoco hay TWILIO_AUTH_TOKEN util · se devuelven solo STUN publicos');
+    console.error('TURN sin relay, se devuelven solo STUN publicos ·', TURN_ULTIMO.mensaje);
     res.json({ iceServers: FALLBACK_ICE });
   }
 });
@@ -9346,6 +9389,7 @@ app.get('/api/push/voip-status', auth, async (req, res) => {
       edgeFnConfigured: !!(process.env.SUPABASE_URL && process.env.SERVICE_TOKEN),
       tokens:           counts,
       turn: {
+        conCloudflare: !!(process.env.CF_TURN_KEY_ID && process.env.CF_TURN_KEY_API_TOKEN),
         conApiKey:  !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_API_KEY_SID && process.env.TWILIO_API_KEY_SECRET),
         conMaestro: !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN),
         ultimo:     TURN_ULTIMO,
