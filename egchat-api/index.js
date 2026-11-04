@@ -7150,77 +7150,57 @@ app.get('/api/users/:userId', auth, async (req, res) => {
 // ════════════════════════════════════════════════════════════════════
 
 // Auto-crear tablas de espacios
-const ensureSpacesTable = async () => {
-  try {
-    await supabase.rpc('exec_sql', { sql: `
-      CREATE TABLE IF NOT EXISTS spaces (
-        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-        name VARCHAR(100) NOT NULL,
-        description TEXT,
-        type VARCHAR(20) DEFAULT 'publico' CHECK (type IN ('publico','comunidad')),
-        cover TEXT,
-        emoji VARCHAR(10) DEFAULT '📢',
-        owner_id UUID REFERENCES users(id) ON DELETE CASCADE,
-        followers_count INTEGER DEFAULT 0,
-        created_at TIMESTAMPTZ DEFAULT NOW()
-      );
-      CREATE TABLE IF NOT EXISTS space_follows (
-        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-        space_id UUID REFERENCES spaces(id) ON DELETE CASCADE,
-        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-        created_at TIMESTAMPTZ DEFAULT NOW(),
-        UNIQUE(space_id, user_id)
-      );
-      CREATE TABLE IF NOT EXISTS space_posts (
-        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-        space_id UUID REFERENCES spaces(id) ON DELETE CASCADE,
-        author_id UUID REFERENCES users(id) ON DELETE CASCADE,
-        text TEXT NOT NULL,
-        image_url TEXT,
-        likes_count INTEGER DEFAULT 0,
-        comments_count INTEGER DEFAULT 0,
-        created_at TIMESTAMPTZ DEFAULT NOW()
-      );
-      CREATE TABLE IF NOT EXISTS space_post_likes (
-        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-        post_id UUID REFERENCES space_posts(id) ON DELETE CASCADE,
-        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-        created_at TIMESTAMPTZ DEFAULT NOW(),
-        UNIQUE(post_id, user_id)
-      );
-      CREATE TABLE IF NOT EXISTS space_post_comments (
-        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-        post_id UUID REFERENCES space_posts(id) ON DELETE CASCADE,
-        author_id UUID REFERENCES users(id) ON DELETE CASCADE,
-        text TEXT NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT NOW()
-      );
-      CREATE INDEX IF NOT EXISTS idx_spaces_type ON spaces(type);
-      CREATE INDEX IF NOT EXISTS idx_space_follows_user ON space_follows(user_id);
-      CREATE INDEX IF NOT EXISTS idx_space_posts_space ON space_posts(space_id);
-      CREATE INDEX IF NOT EXISTS idx_space_posts_created ON space_posts(created_at DESC);
-      CREATE INDEX IF NOT EXISTS idx_space_comments_post ON space_post_comments(post_id);
-    `});
-  } catch {}
+// Las creaba `exec_sql`, que ya no existe en el esquema (ver nota en
+// ensureChatMuteColumn). El DDL vivo esta en
+// migrations/2026-11-05_espacio_dulce_lote_e1.sql; aqui solo se comprueba que el
+// esquema esta puesto, porque antes el catch vacio tragaba el error y la pantalla
+// salia vacia sin que nadie supiera por que.
+const ensureSpacesSchema = async () => {
+  const faltan = [];
+  for (const t of ['spaces', 'space_follows', 'space_posts', 'space_post_likes', 'space_post_comments', 'stories']) {
+    try {
+      const { error } = await supabase.from(t).select('id').limit(1);
+      if (error) faltan.push(`${t}: ${error.message}`);
+    } catch (e) {
+      faltan.push(`${t}: ${e.message}`);
+    }
+  }
+  if (faltan.length > 0) {
+    console.warn('ensureSpacesSchema: falta el esquema de Espacio Dulce, pegar migrations/2026-11-05_espacio_dulce_lote_e1.sql ->', faltan.join(' | '));
+  }
 };
-ensureSpacesTable();
+ensureSpacesSchema();
 
-// Seed espacios por defecto si no existen
+// Los cinco canales por defecto, creados solo si la tabla esta vacia.
+// Los seguidores que llevaba antes (48200, 31500, 22100...) eran inventados: no hay
+// nadie detras de esas cuentas todavia, y empezar con una audiencia falsa es peor
+// que empezar con cero. Ahora nacen en 0 y suben con space_followers_delta.
 const seedDefaultSpaces = async () => {
   try {
-    const { data } = await supabase.from('spaces').select('id').limit(1);
+    const { data, error } = await supabase.from('spaces').select('id').limit(1);
+    if (error) return;
     if (data && data.length > 0) return; // ya existen
     const defaults = [
-      { name: 'Gobierno GE', description: 'Noticias y comunicados oficiales del Gobierno de Guinea Ecuatorial', type: 'publico', cover: 'linear-gradient(135deg,#1e3a5f,#0369a1)', emoji: '🏛️', followers_count: 48200 },
-      { name: 'Musica GQ', description: 'Lo mejor de la musica de Guinea Ecuatorial y Africa Central', type: 'comunidad', cover: 'linear-gradient(135deg,#7c3aed,#db2777)', emoji: '🎵', followers_count: 12800 },
-      { name: 'Mercado Malabo', description: 'Compra, vende e intercambia en Guinea Ecuatorial', type: 'comunidad', cover: 'linear-gradient(135deg,#059669,#0d9488)', emoji: '🛒', followers_count: 31500 },
-      { name: 'Deportes GQ', description: 'Futbol, baloncesto y todos los deportes de Guinea Ecuatorial', type: 'publico', cover: 'linear-gradient(135deg,#dc2626,#f59e0b)', emoji: '⚽', followers_count: 22100 },
-      { name: 'Tecnologia GE', description: 'Innovacion, startups y tecnologia en Guinea Ecuatorial', type: 'comunidad', cover: 'linear-gradient(135deg,#1e40af,#7c3aed)', emoji: '💻', followers_count: 8900 },
+      { name: 'Gobierno GE', description: 'Canal reservado para comunicados oficiales. Todavia sin redactor.', type: 'publico', cover: 'linear-gradient(135deg,#1e3a5f,#0369a1)', emoji: '🏛️', followers_count: 0 },
+      { name: 'Musica GQ', description: 'Lo mejor de la musica de Guinea Ecuatorial y Africa Central', type: 'comunidad', cover: 'linear-gradient(135deg,#7c3aed,#db2777)', emoji: '🎵', followers_count: 0 },
+      { name: 'Mercado Malabo', description: 'Compra, vende e intercambia en Guinea Ecuatorial', type: 'comunidad', cover: 'linear-gradient(135deg,#059669,#0d9488)', emoji: '🛒', followers_count: 0 },
+      { name: 'Deportes GQ', description: 'Futbol, baloncesto y todos los deportes de Guinea Ecuatorial', type: 'publico', cover: 'linear-gradient(135deg,#dc2626,#f59e0b)', emoji: '⚽', followers_count: 0 },
+      { name: 'Tecnologia GE', description: 'Innovacion, startups y tecnologia en Guinea Ecuatorial', type: 'comunidad', cover: 'linear-gradient(135deg,#1e40af,#7c3aed)', emoji: '💻', followers_count: 0 },
     ];
     await supabase.from('spaces').insert(defaults);
-  } catch {}
+  } catch (e) {
+    console.warn('seedDefaultSpaces:', e.message);
+  }
 };
 setTimeout(seedDefaultSpaces, 3000);
+
+// Un fallo de esquema no es un listado vacio. Mientras devolvia `[]`, la pantalla
+// no tenia forma de saber que estaba rota y la web tapaba el hueco con canales y
+// posts inventados. 502 con codigo para que el cliente pueda avisar de verdad.
+const espacioFallo = (res, e) => res.status(502).json({
+  error: 'ESPACIO_ESQUEMA_FALLO',
+  message: (e && e.message) ? e.message : 'No se pudo leer el esquema de Espacio Dulce.',
+});
 
 // GET /api/spaces — listar todos los espacios con estado de seguimiento del usuario
 app.get('/api/spaces', auth, async (req, res) => {
@@ -7230,7 +7210,7 @@ app.get('/api/spaces', auth, async (req, res) => {
       .from('spaces')
       .select('*')
       .order('followers_count', { ascending: false });
-    if (error) return res.json([]);
+    if (error) return espacioFallo(res, error);
 
     // Qué espacios sigue el usuario
     const { data: follows } = await supabase
@@ -7240,7 +7220,7 @@ app.get('/api/spaces', auth, async (req, res) => {
     const followedIds = new Set((follows || []).map(f => f.space_id));
 
     res.json((spaces || []).map(s => ({ ...s, following: followedIds.has(s.id) })));
-  } catch (e) { res.json([]); }
+  } catch (e) { espacioFallo(res, e); }
 });
 
 // POST /api/spaces — crear espacio
@@ -7290,13 +7270,14 @@ app.get('/api/spaces/:id/posts', auth, async (req, res) => {
     const limit = 20;
     const offset = (page - 1) * limit;
 
-    const { data: posts } = await supabase
+    const { data: posts, error: postsError } = await supabase
       .from('space_posts')
       .select('*')
       .eq('space_id', id)
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
+    if (postsError) return espacioFallo(res, postsError);
     if (!posts || posts.length === 0) return res.json([]);
 
     // Datos de autores
@@ -7329,7 +7310,7 @@ app.get('/api/spaces/:id/posts', auth, async (req, res) => {
         liked: likedSet.has(p.id),
       };
     }));
-  } catch (e) { res.json([]); }
+  } catch (e) { espacioFallo(res, e); }
 });
 
 // POST /api/spaces/:id/posts — publicar en un espacio
@@ -7386,7 +7367,7 @@ app.get('/api/spaces/posts/:postId/comments', auth, async (req, res) => {
       const timeStr = diff < 60000 ? 'ahora' : diff < 3600000 ? `${Math.floor(diff/60000)}m` : `${Math.floor(diff/3600000)}h`;
       return { id: c.id, author: author.full_name || 'Usuario', avatar: (author.full_name||'U').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(), avatarUrl: author.avatar_url||'', text: c.text, time: timeStr };
     }));
-  } catch (e) { res.json([]); }
+  } catch (e) { espacioFallo(res, e); }
 });
 
 // POST /api/spaces/posts/:postId/comments — comentar
@@ -7419,36 +7400,11 @@ app.delete('/api/spaces/posts/:postId', auth, async (req, res) => {
 // ════════════════════════════════════════════════════════════════════
 // STORIES / ESTADOS
 // ════════════════════════════════════════════════════════════════════
+// La tabla `stories` la crea tambien
+// migrations/2026-11-05_espacio_dulce_lote_e1.sql y su presencia la comprueba
+// ensureSpacesSchema arriba. Antes intentaba crearse ella sola con `exec_sql`, que
+// ya no existe: el catch vacio se tragaba el fallo y los estados no salian.
 
-// Auto-crear tabla stories si no existe al primer uso
-const ensureStoriesTable = async () => {
-  try {
-    const { error } = await supabase.from('stories').select('id').limit(1);
-    if (error && error.message && error.message.includes('does not exist')) {
-      await supabase.rpc('exec_sql', {
-        sql: `CREATE TABLE IF NOT EXISTS stories (
-          id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-          user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
-          media JSONB NOT NULL,
-          type TEXT DEFAULT 'text',
-          views INTEGER DEFAULT 0,
-          reactions JSONB DEFAULT '[]',
-          replies JSONB DEFAULT '[]',
-          expires_at TIMESTAMPTZ NOT NULL,
-          created_at TIMESTAMPTZ DEFAULT NOW()
-        );
-        CREATE INDEX IF NOT EXISTS idx_stories_user_id ON stories(user_id);
-        CREATE INDEX IF NOT EXISTS idx_stories_expires_at ON stories(expires_at);`
-      });
-    } else if (!error) {
-      await supabase.rpc('exec_sql', {
-        sql: `ALTER TABLE IF EXISTS stories ADD COLUMN IF NOT EXISTS reactions JSONB DEFAULT '[]';
-              ALTER TABLE IF EXISTS stories ADD COLUMN IF NOT EXISTS replies JSONB DEFAULT '[]';`
-      });
-    }
-  } catch {}
-};
-ensureStoriesTable();
 
 app.get('/api/stories', auth, async (req, res) => {
   try {
@@ -7456,12 +7412,14 @@ app.get('/api/stories', auth, async (req, res) => {
     const now = new Date().toISOString();
 
     // 1. Mis propios estados
-    const { data: mine } = await supabase
+    const { data: mine, error: mineError } = await supabase
       .from('stories')
       .select('*')
       .eq('user_id', userId)
       .gt('expires_at', now)
       .order('created_at', { ascending: false });
+
+    if (mineError) return espacioFallo(res, mineError);
 
     // 2. IDs de contactos (tabla contacts)
     const { data: contacts } = await supabase
@@ -7542,7 +7500,7 @@ app.get('/api/stories', auth, async (req, res) => {
       ...(mine || []).map(s => format(s, true)),
       ...contactStories.map(s => format(s, false)),
     ]);
-  } catch (e) { res.json([]); }
+  } catch (e) { espacioFallo(res, e); }
 });
 
 app.post('/api/stories', auth, async (req, res) => {

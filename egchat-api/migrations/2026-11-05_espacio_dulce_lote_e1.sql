@@ -1,0 +1,294 @@
+-- EGChat - Lote E1: Espacio Dulce deja de ser decorativo.
+--
+-- Que esta pasando hoy: `ensureSpacesTable` (index.js:7153) y `ensureStoriesTable`
+-- (index.js:7424) creaban sus tablas con `supabase.rpc('exec_sql', ...)`. Esa funcion
+-- ya no existe en el esquema -- la retirada el Lote B y el propio codigo lo reconoce en
+-- index.js:1826 --, y los dos `catch {}` vacios tragaban el error sin decir nada. Como
+-- las rutas tampoco comprueban el resultado, el efecto es una pantalla vacia que parece
+-- correcta: `GET /api/spaces` hace `res.json([])` al primer fallo (index.js:7233 y 7243),
+-- igual que `GET /api/stories` (index.js:7545).
+--
+-- Medido en la base de pruebas: `spaces` tiene 3 columnas de 8, `space_posts` tiene 5 de 8,
+-- y `space_follows`, `space_post_likes`, `space_post_comments` y `stories` no existen. O sea,
+-- seguir un canal, dar like, comentar y publicar estados no funciona ni aqui. Los contadores
+-- los mueven `space_followers_delta` / `space_likes_delta` / `space_comments_delta`, que si
+-- estan creados (Lote B), pero actualizan columnas de tablas parciales.
+--
+-- Este lote crea lo que falta y completa lo que esta a medias. No mete contenido: en
+-- produccion `spaces` tiene 0 filas y aqui se deja. La semilla que inventaba seguidores
+-- (48200, 31500, 22100...) vive en index.js:7214-7219 y se quita del codigo, no de la base.
+--
+-- Idempotente: `create table if not exists`, `add column if not exists`, defaults y checks
+-- comprobados, indices estrictos y RLS sin politicas. Se puede pegar dos veces.
+--
+-- Sin emojis en el DDL: la columna `emoji` se queda sin default para que el archivo que se
+-- pega sea ASCII. El API ya escribe su emoji al insertar (index.js:7253).
+
+begin;
+
+-- ── spaces: los canales y comunidades ────────────────────────────────────────
+create table if not exists public.spaces (
+  id              uuid default gen_random_uuid(),
+  name            text,
+  description     text,
+  type            text,
+  cover           text,
+  emoji           text,
+  owner_id        uuid,
+  followers_count integer,
+  created_at      timestamptz
+);
+
+alter table public.spaces add column if not exists description     text;
+alter table public.spaces add column if not exists type            text;
+alter table public.spaces add column if not exists cover           text;
+alter table public.spaces add column if not exists emoji           text;
+alter table public.spaces add column if not exists owner_id        uuid;
+alter table public.spaces add column if not exists followers_count integer;
+alter table public.spaces add column if not exists created_at      timestamptz;
+
+-- Defaults e checks sobre las columnas que ya existian a secas.
+alter table public.spaces alter column id              set default gen_random_uuid();
+alter table public.spaces alter column type            set default 'publico';
+alter table public.spaces alter column followers_count set default 0;
+alter table public.spaces alter column created_at      set default now();
+
+do $$ begin
+  if not exists (select 1 from pg_constraint
+                 where conrelid = 'public.spaces'::regclass and contype = 'p') then
+    alter table public.spaces add constraint spaces_pkey primary key (id);
+  end if;
+  if not exists (select 1 from pg_constraint
+                 where conrelid = 'public.spaces'::regclass and contype = 'c'
+                   and conname = 'spaces_type_check') then
+    alter table public.spaces add constraint spaces_type_check
+      check (type in ('publico', 'comunidad'));
+  end if;
+end $$;
+
+-- ── space_follows: quien sigue cada canal (no existia) ───────────────────────
+create table if not exists public.space_follows (
+  id         uuid default gen_random_uuid() primary key,
+  space_id   uuid,
+  user_id    uuid,
+  created_at timestamptz default now()
+);
+
+-- ── space_posts: las publicaciones del canal ─────────────────────────────────
+create table if not exists public.space_posts (
+  id             uuid default gen_random_uuid(),
+  space_id       uuid,
+  author_id      uuid,
+  text           text,
+  image_url      text,
+  likes_count    integer,
+  comments_count integer,
+  created_at     timestamptz
+);
+
+alter table public.space_posts add column if not exists author_id      uuid;
+alter table public.space_posts add column if not exists image_url      text;
+alter table public.space_posts add column if not exists likes_count    integer;
+alter table public.space_posts add column if not exists comments_count integer;
+alter table public.space_posts add column if not exists created_at     timestamptz;
+
+alter table public.space_posts alter column id             set default gen_random_uuid();
+alter table public.space_posts alter column likes_count    set default 0;
+alter table public.space_posts alter column comments_count set default 0;
+alter table public.space_posts alter column created_at     set default now();
+
+do $$ begin
+  if not exists (select 1 from pg_constraint
+                 where conrelid = 'public.space_posts'::regclass and contype = 'p') then
+    alter table public.space_posts add constraint space_posts_pkey primary key (id);
+  end if;
+end $$;
+
+-- ── likes y comentarios (no existian) ────────────────────────────────────────
+create table if not exists public.space_post_likes (
+  id         uuid default gen_random_uuid() primary key,
+  post_id    uuid,
+  user_id    uuid,
+  created_at timestamptz default now()
+);
+
+create table if not exists public.space_post_comments (
+  id         uuid default gen_random_uuid() primary key,
+  post_id    uuid,
+  author_id  uuid,
+  text       text,
+  created_at timestamptz default now()
+);
+
+-- ── stories: los estados de 24 horas (no existia) ────────────────────────────
+create table if not exists public.stories (
+  id         uuid default gen_random_uuid() primary key,
+  user_id    uuid,
+  media      jsonb,
+  type       text default 'text',
+  views      integer default 0,
+  reactions  jsonb default '[]'::jsonb,
+  replies    jsonb default '[]'::jsonb,
+  expires_at timestamptz,
+  created_at timestamptz default now()
+);
+
+alter table public.stories add column if not exists media      jsonb;
+alter table public.stories add column if not exists type       text default 'text';
+alter table public.stories add column if not exists views      integer default 0;
+alter table public.stories add column if not exists reactions  jsonb default '[]'::jsonb;
+alter table public.stories add column if not exists replies    jsonb default '[]'::jsonb;
+alter table public.stories add column if not exists expires_at timestamptz;
+alter table public.stories add column if not exists created_at timestamptz default now();
+
+-- ── relaciones: un solo seguimiento y un solo like por usuario y post ────────
+-- Las claves unicas son lo que impide que un doble clic cuente dos veces.
+do $$ begin
+  if not exists (select 1 from pg_constraint
+                 where conrelid = 'public.space_follows'::regclass and contype = 'u') then
+    alter table public.space_follows add constraint space_follows_space_id_user_id_key
+      unique (space_id, user_id);
+  end if;
+  if not exists (select 1 from pg_constraint
+                 where conrelid = 'public.space_post_likes'::regclass and contype = 'u') then
+    alter table public.space_post_likes add constraint space_post_likes_post_id_user_id_key
+      unique (post_id, user_id);
+  end if;
+end $$;
+
+-- Las FK se añaden solo si no queda ninguna fila huerfana. Si las hay, este lote NO
+-- borra filas del cliente: lo dice en el aviso y deja las claves para el siguiente
+-- pegado, cuando se sepa de donde vienen esas filas.
+do $$
+declare
+  h int := 0;
+begin
+  select
+      (select count(*) from public.space_follows f
+        where not exists (select 1 from public.users u where u.id = f.user_id)
+           or not exists (select 1 from public.spaces s where s.id = f.space_id))
+    + (select count(*) from public.space_post_likes l
+        where not exists (select 1 from public.users u where u.id = l.user_id)
+           or not exists (select 1 from public.space_posts p where p.id = l.post_id))
+    + (select count(*) from public.space_post_comments c
+        where not exists (select 1 from public.users u where u.id = c.author_id)
+           or not exists (select 1 from public.space_posts p where p.id = c.post_id))
+    + (select count(*) from public.space_posts p
+        where not exists (select 1 from public.spaces s where s.id = p.space_id)
+           or (p.author_id is not null and not exists (select 1 from public.users u where u.id = p.author_id)))
+    + (select count(*) from public.spaces s
+        where s.owner_id is not null and not exists (select 1 from public.users u where u.id = s.owner_id))
+    + (select count(*) from public.stories t
+        where not exists (select 1 from public.users u where u.id = t.user_id))
+  into h;
+
+  if h > 0 then
+    raise notice 'ESACIO DULCE: % filas huerfanas. Las claves foraneas quedan sin crear; revisa de donde vienen antes de volver a pegar.', h;
+    return;
+  end if;
+
+  if not exists (select 1 from pg_constraint
+                 where conrelid = 'public.spaces'::regclass and conname = 'spaces_owner_id_fkey') then
+    alter table public.spaces add constraint spaces_owner_id_fkey
+      foreign key (owner_id) references public.users(id) on delete cascade;
+  end if;
+  if not exists (select 1 from pg_constraint
+                 where conrelid = 'public.space_follows'::regclass and conname = 'space_follows_space_id_fkey') then
+    alter table public.space_follows add constraint space_follows_space_id_fkey
+      foreign key (space_id) references public.spaces(id) on delete cascade;
+  end if;
+  if not exists (select 1 from pg_constraint
+                 where conrelid = 'public.space_follows'::regclass and conname = 'space_follows_user_id_fkey') then
+    alter table public.space_follows add constraint space_follows_user_id_fkey
+      foreign key (user_id) references public.users(id) on delete cascade;
+  end if;
+  if not exists (select 1 from pg_constraint
+                 where conrelid = 'public.space_posts'::regclass and conname = 'space_posts_space_id_fkey') then
+    alter table public.space_posts add constraint space_posts_space_id_fkey
+      foreign key (space_id) references public.spaces(id) on delete cascade;
+  end if;
+  if not exists (select 1 from pg_constraint
+                 where conrelid = 'public.space_posts'::regclass and conname = 'space_posts_author_id_fkey') then
+    alter table public.space_posts add constraint space_posts_author_id_fkey
+      foreign key (author_id) references public.users(id) on delete cascade;
+  end if;
+  if not exists (select 1 from pg_constraint
+                 where conrelid = 'public.space_post_likes'::regclass and conname = 'space_post_likes_post_id_fkey') then
+    alter table public.space_post_likes add constraint space_post_likes_post_id_fkey
+      foreign key (post_id) references public.space_posts(id) on delete cascade;
+  end if;
+  if not exists (select 1 from pg_constraint
+                 where conrelid = 'public.space_post_likes'::regclass and conname = 'space_post_likes_user_id_fkey') then
+    alter table public.space_post_likes add constraint space_post_likes_user_id_fkey
+      foreign key (user_id) references public.users(id) on delete cascade;
+  end if;
+  if not exists (select 1 from pg_constraint
+                 where conrelid = 'public.space_post_comments'::regclass and conname = 'space_post_comments_post_id_fkey') then
+    alter table public.space_post_comments add constraint space_post_comments_post_id_fkey
+      foreign key (post_id) references public.space_posts(id) on delete cascade;
+  end if;
+  if not exists (select 1 from pg_constraint
+                 where conrelid = 'public.space_post_comments'::regclass and conname = 'space_post_comments_author_id_fkey') then
+    alter table public.space_post_comments add constraint space_post_comments_author_id_fkey
+      foreign key (author_id) references public.users(id) on delete cascade;
+  end if;
+  if not exists (select 1 from pg_constraint
+                 where conrelid = 'public.stories'::regclass and conname = 'stories_user_id_fkey') then
+    alter table public.stories add constraint stories_user_id_fkey
+      foreign key (user_id) references public.users(id) on delete cascade;
+  end if;
+end $$;
+
+-- ── indices de las lecturas que hace la app ──────────────────────────────────
+create index if not exists idx_spaces_type             on public.spaces (type);
+create index if not exists idx_space_follows_user      on public.space_follows (user_id);
+create index if not exists idx_space_posts_space       on public.space_posts (space_id, created_at desc);
+create index if not exists idx_space_posts_created     on public.space_posts (created_at desc);
+create index if not exists idx_space_likes_post        on public.space_post_likes (post_id);
+create index if not exists idx_space_comments_post     on public.space_post_comments (post_id, created_at);
+create index if not exists idx_stories_user_id         on public.stories (user_id);
+create index if not exists idx_stories_expires_at      on public.stories (expires_at);
+
+-- El unico acceso legitimo es el API con la clave de servicio: RLS sin politicas,
+-- igual que en S1/S2/S3. `space_*_delta` ya estan revocadas a anon/authenticated.
+alter table public.spaces               enable row level security;
+alter table public.space_follows        enable row level security;
+alter table public.space_posts          enable row level security;
+alter table public.space_post_likes     enable row level security;
+alter table public.space_post_comments  enable row level security;
+alter table public.stories              enable row level security;
+
+-- ── autocomprobacion ─────────────────────────────────────────────────────────
+-- `columnas` tiene que dar 8 en spaces, 8 en space_posts, 4 en space_follows y
+-- space_post_likes, 5 en space_post_comments y 9 en stories. `huerfanas_cero` es
+-- el numero de filas sin dueno: si no es 0, las claves foraneas no se crearon.
+select x.tabla,
+       (to_regclass('public.' || x.tabla) is not null) as existe,
+       (select count(*) from information_schema.columns c
+         where c.table_schema = 'public' and c.table_name = x.tabla) as columnas,
+       (select count(*) from pg_constraint k
+         where k.conrelid = ('public.' || x.tabla)::regclass and k.contype = 'f') as claves_foraneas
+  from (values
+    ('spaces'), ('space_follows'), ('space_posts'),
+    ('space_post_likes'), ('space_post_comments'), ('stories')
+  ) x(tabla)
+ order by x.tabla;
+
+select
+    (select count(*) from public.space_follows f
+      where not exists (select 1 from public.users u where u.id = f.user_id)
+         or not exists (select 1 from public.spaces s where s.id = f.space_id))
+  + (select count(*) from public.space_post_likes l
+      where not exists (select 1 from public.users u where u.id = l.user_id)
+         or not exists (select 1 from public.space_posts p where p.id = l.post_id))
+  + (select count(*) from public.space_post_comments c
+      where not exists (select 1 from public.users u where u.id = c.author_id)
+         or not exists (select 1 from public.space_posts p where p.id = c.post_id))
+  + (select count(*) from public.space_posts p
+      where not exists (select 1 from public.spaces s where s.id = p.space_id)
+         or (p.author_id is not null and not exists (select 1 from public.users u where u.id = p.author_id)))
+  + (select count(*) from public.stories t
+      where not exists (select 1 from public.users u where u.id = t.user_id))
+  as huerfanas_cero;
+
+commit;
