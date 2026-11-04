@@ -1,15 +1,17 @@
 // ══════════════════════════════════════════════════════════════════
-// Channels — Canales oficiales / perfiles verificados
-// Estilo WeChat/WhatsApp Business: feed de posts de canales
+// Channels — canales de Espacio Dulce
+// Lee /api/spaces, que es la superficie real del servidor: la ruta
+// /api/channels no existe, la peticion fallaba y la pantalla mostraba
+// canales y seguidores inventados.
 // ══════════════════════════════════════════════════════════════════
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  Image, RefreshControl, ActivityIndicator, TextInput,
+  Image, RefreshControl, ActivityIndicator, TextInput, Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Path, Line, Polyline, Circle } from 'react-native-svg';
+import Svg, { Line, Polyline, Circle, Path } from 'react-native-svg';
 import { router } from 'expo-router';
 import { getToken, getApiBase } from '../src/api';
 import { EGAvatar } from '../src/components/ui';
@@ -18,45 +20,57 @@ import { useThemeContext } from '../src/theme/ThemeContext';
 import { useTranslation } from '../src/context/LanguageContext';
 import { Colors } from '../src/theme/colors';
 import { DarkColors } from '../src/theme/darkMode';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
-interface Channel {
+interface Canal {
   id: string;
   name: string;
   description?: string;
-  avatar_url?: string;
-  verified: boolean;
-  category: string;
-  followers_count?: number;
-  followers?: number; 
-  followed: boolean;
-  last_post?: {
-    text: string;
-    created_at: string;
-  };
+  tipo: string;
+  emoji: string;
+  seguidores: number;
+  siguiendo: boolean;
 }
 
-// value = dato del API (no se traduce); labelKey = clave i18n para la UI
-const CATEGORIES: { value: string; labelKey: string }[] = [
-  { value: 'Todos', labelKey: 'everyone' },
-  { value: 'Noticias', labelKey: 'news' },
-  { value: 'Tecnología', labelKey: 'chtChTecnologia' },
-  { value: 'Negocios', labelKey: 'chtChNegocios' },
-  { value: 'Deportes', labelKey: 'chtChDeportes' },
-  { value: 'Salud', labelKey: 'health' },
-  { value: 'Entretenimiento', labelKey: 'chtChEntretenimiento' },
-];
-
-const FOLLOWED_KEY = 'egchat_followed_channels';
-
-async function getFollowed(): Promise<string[]> {
-  try { const r = await AsyncStorage.getItem(FOLLOWED_KEY); return r ? JSON.parse(r) : ['c1']; } catch { return ['c1']; }
+interface PostCanal {
+  id: string;
+  author: string;
+  avatarUrl?: string;
+  text: string;
+  imageUrl?: string | null;
+  time?: string;
+  likes: number;
+  comments: number;
+  liked: boolean;
 }
-async function toggleFollow(id: string): Promise<void> {
-  const followed = await getFollowed();
-  const next = followed.includes(id) ? followed.filter(x => x !== id) : [...followed, id];
-  await AsyncStorage.setItem(FOLLOWED_KEY, JSON.stringify(next));
-}
+
+const mapearCanal = (s: any): Canal => ({
+  id: s.id,
+  name: s.name || 'Canal',
+  description: s.description || undefined,
+  tipo: s.type || 'publico',
+  emoji: s.emoji || '📢',
+  seguidores: Number(s.followers_count) || 0,
+  siguiendo: !!s.following,
+});
+
+const obtenerCanales = async (): Promise<Canal[]> => {
+  const res = await fetch(`${getApiBase()}/api/spaces`, {
+    headers: { Authorization: `Bearer ${await getToken()}` },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  if (!Array.isArray(data)) throw new Error('respuesta inesperada');
+  return data.map(mapearCanal);
+};
+
+const obtenerPosts = async (spaceId: string): Promise<PostCanal[]> => {
+  const res = await fetch(`${getApiBase()}/api/spaces/${spaceId}/posts`, {
+    headers: { Authorization: `Bearer ${await getToken()}` },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
+};
 
 function formatCount(n: number): string {
   if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
@@ -65,12 +79,17 @@ function formatCount(n: number): string {
 }
 
 export default function ChannelsScreen() {
-  const [channels, setChannels] = useState<Channel[]>([]);
+  const [channels, setChannels] = useState<Canal[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [cargaFallo, setCargaFallo] = useState(false);
   const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('Todos');
+  const [categoria, setCategoria] = useState('Todos');
   const [tab, setTab] = useState<'discover' | 'following'>('discover');
+  const [detalle, setDetalle] = useState<Canal | null>(null);
+  const [posts, setPosts] = useState<PostCanal[]>([]);
+  const [postsCargando, setPostsCargando] = useState(false);
+  const [postsFallo, setPostsFallo] = useState(false);
   const insets = useSafeAreaInsets();
   const { isDark } = useThemeContext();
   const { t } = useTranslation();
@@ -79,111 +98,94 @@ export default function ChannelsScreen() {
   const load = useCallback(async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true);
     try {
-      const BASE = getApiBase();
-      const token = await getToken();
-      const res = await fetch(`${BASE}/api/channels`, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) {
-        const data: Channel[] = await res.json();
-        setChannels(data);
-      } else {
-        // Error en API - mantener canales actuales
-        toast.error(t('chtChErrorCargando'));
-      }
-    } catch (error) {
-      // Error de conexión - mantener canales actuales
-      toast.error(t('chtChErrorConexion'));
+      setChannels(await obtenerCanales());
+      setCargaFallo(false);
+    } catch {
+      setCargaFallo(true);
+      toast.error(t('xtNoSePudoCargar'));
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => { load(); }, []);
 
-  const handleFollow = useCallback(async (ch: Channel) => {
+  const handleFollow = useCallback(async (ch: Canal) => {
     try {
-      const BASE = getApiBase();
-      const token = await getToken();
-      const res = await fetch(`${BASE}/api/channels/${ch.id}/follow`, {
+      const res = await fetch(`${getApiBase()}/api/spaces/${ch.id}/follow`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${await getToken()}` },
       });
-      if (res.ok) {
-        const { followed } = await res.json();
-        setChannels(prev => prev.map(c => c.id === ch.id ? { 
-          ...c, 
-          followed,
-          followers_count: followed ? 
-            (c.followers_count || c.followers || 0) + 1 : 
-            Math.max((c.followers_count || c.followers || 0) - 1, 0),
-          followers: followed ? 
-            (c.followers_count || c.followers || 0) + 1 : 
-            Math.max((c.followers_count || c.followers || 0) - 1, 0)
-        } : c));
-        toast.info(followed ? `${t('chtChSiguiendoA')} ${ch.name}` : `${t('chtChDejasteDeSeguir')} ${ch.name}`);
-      } else {
-        // Fallback a AsyncStorage si API falla
-        await toggleFollow(ch.id);
-        setChannels(prev => prev.map(c => c.id === ch.id ? { ...c, followed: !c.followed } : c));
-        toast.info(ch.followed ? `${t('chtChDejasteDeSeguir')} ${ch.name}` : `${t('chtChSiguiendoA')} ${ch.name}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const { following } = await res.json();
+      const nuevo = !!following;
+      setDetalle(prev => (prev && prev.id === ch.id ? { ...prev, siguiendo: nuevo } : prev));
+      // El contador lo mueve la base con un delta: se vuelve a leer, no se suma
+      // ni se resta aqui, que es como se inflaban los seguidores.
+      try {
+        setChannels(await obtenerCanales());
+      } catch {
+        setChannels(prev => prev.map(c => (c.id === ch.id ? { ...c, siguiendo: nuevo } : c)));
       }
-    } catch (error) {
-      // Fallback a AsyncStorage si hay error
-      await toggleFollow(ch.id);
-      setChannels(prev => prev.map(c => c.id === ch.id ? { ...c, followed: !c.followed } : c));
-      toast.info(ch.followed ? `${t('chtChDejasteDeSeguir')} ${ch.name}` : `${t('chtChSiguiendoA')} ${ch.name}`);
+      toast.info(nuevo ? `${t('chtChSiguiendo')} ${ch.name}` : `${t('chtChDejasteDeSeguir')} ${ch.name}`);
+    } catch {
+      toast.error(t('xtNoSePudoCargar'));
+    }
+  }, [t]);
+
+  const abrir = useCallback(async (ch: Canal) => {
+    setDetalle(ch);
+    setPosts([]);
+    setPostsFallo(false);
+    setPostsCargando(true);
+    try {
+      setPosts(await obtenerPosts(ch.id));
+    } catch {
+      setPostsFallo(true);
+    } finally {
+      setPostsCargando(false);
     }
   }, []);
 
-  const handleOpen = useCallback((ch: Channel) => {
-    router.push({ pathname: '/channel-detail', params: { id: ch.id, name: ch.name } } as any);
-  }, []);
+  // Las categorias son los tipos que hay en la tabla, no una lista inventada.
+  const categorias = ['Todos', ...Array.from(new Set(channels.map(c => c.tipo)))];
 
   const filtered = channels.filter(ch => {
-    if (tab === 'following' && !ch.followed) return false;
-    if (category !== 'Todos' && ch.category !== category) return false;
+    if (tab === 'following' && !ch.siguiendo) return false;
+    if (categoria !== 'Todos' && ch.tipo !== categoria) return false;
     if (search && !ch.name.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 
-  const renderChannel = ({ item }: { item: Channel }) => (
+  const renderChannel = ({ item }: { item: Canal }) => (
     <TouchableOpacity
       style={[s.card, { backgroundColor: C.bgPrimary, borderBottomColor: C.borderLight }]}
-      onPress={() => handleOpen(item)}
+      onPress={() => abrir(item)}
       activeOpacity={0.75}
     >
       <View style={s.cardLeft}>
-        <View style={{ position: 'relative' }}>
-          <EGAvatar src={item.avatar_url} name={item.name} size={52} />
-          {item.verified && (
-            <View style={s.verifiedBadge}>
-              <Svg width={12} height={12} viewBox="0 0 24 24" fill="#00C8A0">
-                <Path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                <Polyline points="22 4 12 14.01 9 11.01" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round"/>
-              </Svg>
-            </View>
-          )}
+        <View style={[s.avatarWrap, { backgroundColor: C.bgTertiary }]}>
+          <Text style={s.avatarEmoji}>{item.emoji}</Text>
         </View>
         <View style={s.cardInfo}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-            <Text style={[s.channelName, { color: C.textPrimary }]} numberOfLines={1}>{item.name}</Text>
-          </View>
-          <Text style={[s.channelCat, { color: C.brand }]}>{item.category}</Text>
-          {item.description && (
+          <Text style={[s.channelName, { color: C.textPrimary }]} numberOfLines={1}>{item.name}</Text>
+          <Text style={[s.channelCat, { color: C.brand }]}>{item.tipo}</Text>
+          {!!item.description && (
             <Text style={[s.channelDesc, { color: C.textTertiary }]} numberOfLines={1}>{item.description}</Text>
           )}
           <Text style={[s.followers, { color: C.textTertiary }]}>
-            {`${formatCount(item.followers_count || item.followers || 0)} ${t('chtChSeguidores')}`}
+            {`${formatCount(item.seguidores)} ${t('chtChSeguidores')}`}
           </Text>
         </View>
       </View>
       <TouchableOpacity
-        style={[s.followBtn, item.followed && s.followBtnActive]}
+        style={[s.followBtn, item.siguiendo && s.followBtnActive]}
         onPress={() => handleFollow(item)}
         activeOpacity={0.8}
       >
-        <Text style={[s.followBtnText, item.followed && s.followBtnTextActive]}>
-          {item.followed ? t('chtChSiguiendo') : t('chtChSeguir')}
+        <Text style={[s.followBtnText, item.siguiendo && s.followBtnTextActive]}>
+          {item.siguiendo ? t('chtChSiguiendo') : t('chtChSeguir')}
         </Text>
       </TouchableOpacity>
     </TouchableOpacity>
@@ -227,20 +229,20 @@ export default function ChannelsScreen() {
         />
       </View>
 
-      {/* Categorías */}
-      {tab === 'discover' && (
+      {/* Categorías reales */}
+      {tab === 'discover' && categorias.length > 1 && (
         <FlatList
           horizontal
-          data={CATEGORIES}
-          keyExtractor={c => c.value}
+          data={categorias}
+          keyExtractor={c => c}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 12, gap: 8, paddingVertical: 8 }}
           renderItem={({ item: cat }) => (
             <TouchableOpacity
-              style={[s.catChip, category === cat.value && s.catChipActive]}
-              onPress={() => setCategory(cat.value)}
+              style={[s.catChip, categoria === cat && s.catChipActive]}
+              onPress={() => setCategoria(cat)}
             >
-              <Text style={[s.catChipText, category === cat.value && s.catChipTextActive]}>{t(cat.labelKey)}</Text>
+              <Text style={[s.catChipText, categoria === cat && s.catChipTextActive]}>{cat}</Text>
             </TouchableOpacity>
           )}
         />
@@ -249,6 +251,13 @@ export default function ChannelsScreen() {
       {/* Lista */}
       {loading ? (
         <ActivityIndicator style={{ marginTop: 50 }} color={C.brand} size="large" />
+      ) : cargaFallo && channels.length === 0 ? (
+        <View style={s.empty}>
+          <Text style={[s.emptyText, { color: C.textTertiary }]}>{t('xtNoSePudoCargar')}</Text>
+          <TouchableOpacity style={s.retryBtn} onPress={() => load(true)}>
+            <Text style={s.retryText}>{t('retry')}</Text>
+          </TouchableOpacity>
+        </View>
       ) : (
         <FlatList
           data={filtered}
@@ -266,6 +275,96 @@ export default function ChannelsScreen() {
           }
         />
       )}
+
+      {/* Detalle: los posts del canal, leidos del servidor al abrir */}
+      <Modal visible={!!detalle} animationType="slide" onRequestClose={() => setDetalle(null)}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: C.bgPrimary }} edges={['top']}>
+          {detalle && (
+            <>
+              <LinearGradient colors={['#00C8A0', '#00B4E6']} style={s.detailHeader}>
+                <TouchableOpacity onPress={() => setDetalle(null)} style={s.headerBtn}>
+                  <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
+                    <Line x1="19" y1="12" x2="5" y2="12"/><Polyline points="12 19 5 12 12 5"/>
+                  </Svg>
+                </TouchableOpacity>
+                <Text style={s.detailEmoji}>{detalle.emoji}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.headerTitle}>{detalle.name}</Text>
+                  <Text style={s.detailTipo}>{detalle.tipo}</Text>
+                </View>
+                <TouchableOpacity
+                  style={[s.followBtn, detalle.siguiendo && s.followBtnActive]}
+                  onPress={() => handleFollow(detalle)}
+                >
+                  <Text style={[s.followBtnText, detalle.siguiendo && s.followBtnTextActive]}>
+                    {detalle.siguiendo ? t('chtChSiguiendo') : t('chtChSeguir')}
+                  </Text>
+                </TouchableOpacity>
+              </LinearGradient>
+
+              <View style={s.detailInfo}>
+                {!!detalle.description && (
+                  <Text style={{ fontSize: 13, color: C.textTertiary, lineHeight: 20 }}>{detalle.description}</Text>
+                )}
+                <Text style={{ fontSize: 12, color: C.textTertiary, marginTop: 4 }}>
+                  {`${formatCount(detalle.seguidores)} ${t('chtChSeguidores')}`}
+                </Text>
+              </View>
+
+              <FlatList
+                data={posts}
+                keyExtractor={p => p.id}
+                contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 30 }}
+                ListHeaderComponent={
+                  postsCargando
+                    ? <ActivityIndicator color={C.brand} size="large" style={{ marginVertical: 30 }} />
+                    : postsFallo
+                      ? (
+                        <View style={s.empty}>
+                          <Text style={[s.emptyText, { color: C.textTertiary }]}>{t('xtNoSePudoCargar')}</Text>
+                          <TouchableOpacity style={s.retryBtn} onPress={() => abrir(detalle)}>
+                            <Text style={s.retryText}>{t('retry')}</Text>
+                          </TouchableOpacity>
+                        </View>
+                      )
+                      : null
+                }
+                renderItem={({ item: p }) => (
+                  <View style={[s.postCard, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                      <EGAvatar src={p.avatarUrl} name={p.author || detalle.name} size={30} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: C.textPrimary, fontSize: 13, fontWeight: '700' }}>{p.author || detalle.name}</Text>
+                        {!!p.time && <Text style={{ color: C.textTertiary, fontSize: 11 }}>{p.time}</Text>}
+                      </View>
+                    </View>
+                    <Text style={{ color: C.textPrimary, fontSize: 14, lineHeight: 21 }}>{p.text}</Text>
+                    {!!p.imageUrl && (
+                      <Image
+                        source={{ uri: p.imageUrl }}
+                        style={{ width: '100%', height: 180, borderRadius: 10, marginTop: 10 }}
+                        resizeMode="cover"
+                      />
+                    )}
+                    <View style={{ flexDirection: 'row', gap: 16, marginTop: 10 }}>
+                      <Text style={{ fontSize: 12, color: C.textTertiary }}>{`♥ ${p.likes || 0}`}</Text>
+                      <Text style={{ fontSize: 12, color: C.textTertiary }}>{`💬 ${p.comments || 0}`}</Text>
+                    </View>
+                  </View>
+                )}
+                ListEmptyComponent={
+                  !postsCargando && !postsFallo ? (
+                    <View style={s.empty}>
+                      <Text style={[s.emptyText, { color: C.textTertiary }]}>{t('xtSinPublicacionesAun')}</Text>
+                      <Text style={[s.emptySub, { color: C.textTertiary }]}>{t('xtLasPublicacionesDelCanalApareceranAqui')}</Text>
+                    </View>
+                  ) : null
+                }
+              />
+            </>
+          )}
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -274,7 +373,7 @@ const s = StyleSheet.create({
   root: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingBottom: 12, paddingTop: 10 },
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { flex: 1, fontSize: 18, fontWeight: '700', color: '#fff', marginLeft: 4 },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: '#fff' },
   tabs: { flexDirection: 'row', borderBottomWidth: StyleSheet.hairlineWidth },
   tab: { flex: 1, alignItems: 'center', paddingVertical: 12, position: 'relative' },
   tabActive: {},
@@ -288,17 +387,26 @@ const s = StyleSheet.create({
   catChipTextActive: { color: '#fff' },
   card: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth },
   cardLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  avatarWrap: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
+  avatarEmoji: { fontSize: 24 },
   cardInfo: { flex: 1 },
   channelName: { fontSize: 15, fontWeight: '700', flex: 1 },
   channelCat: { fontSize: 11, fontWeight: '700', marginTop: 1 },
   channelDesc: { fontSize: 12, marginTop: 2 },
   followers: { fontSize: 11, marginTop: 3 },
-  verifiedBadge: { position: 'absolute', bottom: -2, right: -2, width: 18, height: 18, borderRadius: 9, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
   followBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 16, borderWidth: 1.5, borderColor: '#00C8A0' },
   followBtnActive: { backgroundColor: '#00C8A020', borderColor: '#00C8A0' },
   followBtnText: { fontSize: 13, fontWeight: '700', color: '#00C8A0' },
   followBtnTextActive: { color: '#00C8A0' },
-  empty: { alignItems: 'center', marginTop: 80 },
+  empty: { alignItems: 'center', marginTop: 60, paddingHorizontal: 30 },
   emptyIcon: { fontSize: 48, marginBottom: 12 },
-  emptyText: { fontSize: 15, textAlign: 'center', paddingHorizontal: 30 },
+  emptyText: { fontSize: 15, textAlign: 'center' },
+  emptySub: { fontSize: 13, textAlign: 'center', marginTop: 6 },
+  retryBtn: { marginTop: 14, paddingHorizontal: 22, paddingVertical: 10, borderRadius: 20, backgroundColor: '#00C8A0' },
+  retryText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  detailHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 8, paddingBottom: 14, paddingTop: 10 },
+  detailEmoji: { fontSize: 30 },
+  detailTipo: { fontSize: 12, fontWeight: '700', color: '#e6fff9', marginTop: 2 },
+  detailInfo: { paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e5e7eb' },
+  postCard: { borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, padding: 14, marginBottom: 10 },
 });

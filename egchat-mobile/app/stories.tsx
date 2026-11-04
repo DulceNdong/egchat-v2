@@ -15,7 +15,7 @@ import { BlurView } from 'expo-blur';
 import { ResizeMode, Video } from 'expo-av';
 import { router } from 'expo-router';
 import { storiesAPI, authAPI, getToken, getApiBase } from '../src/api';
-import { notifyNewStory, notifyLiveStarted } from '../src/notifications';
+import { notifyNewMoment, notifyNewStory, notifyLiveStarted } from '../src/notifications';
 import { supabase } from '../src/supabase';
 import {
   pickImageFromCamera, pickImageFromLibrary,
@@ -23,6 +23,7 @@ import {
 } from '../src/utils/chatMedia';
 import { uploadStoryMediaToSupabase } from '../src/utils/storyMediaStorage';
 import { MIcon } from '../src/components/ui/MIcon';
+import { toast } from '../src/components/Toast';
 import { parseStoriesResponse, initialsFor, type StoryGroup } from '../src/utils/storyParser';
 import { EGAvatar } from '../src/components/ui';
 import { StoryMusicPicker, StoryMusicBadge, type StoryMusic } from '../src/components/StoryMusicPicker';
@@ -565,93 +566,73 @@ const formatRelativeTime = (dateStr: string) => {
   return `Hace ${Math.floor(diff / 86400)}d`;
 };
 const MOMENTS_CACHE = 'egchat_moments_v1';
-async function fetchMomentsData(): Promise<MomentPost[]> {
+
+// La caché solo vale cuando la peticion no pudo hacerse; lo que guarda puede
+// estar viejo, y la pantalla recibe el aviso para decirlo en vez de callarlo.
+async function fetchMomentsData(): Promise<{ posts: MomentPost[]; desdeCache: boolean }> {
+  const { getApiBase, getToken } = await import('../src/api');
   try {
-    const BASE = (await import('../src/api')).getApiBase();
-    const token = await (await import('../src/api')).getToken();
-    const res = await fetch(`${BASE}/api/moments`, { headers: { Authorization: `Bearer ${token}` } });
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) { await AsyncStorage.setItem(MOMENTS_CACHE, JSON.stringify(data)); return data; }
-    }
-  } catch {}
-  try { const c = await AsyncStorage.getItem(MOMENTS_CACHE); if (c) return JSON.parse(c); } catch {}
-  return [];
+    const res = await fetch(`${getApiBase()}/api/moments`, { headers: { Authorization: `Bearer ${await getToken()}` } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (!Array.isArray(data)) throw new Error('respuesta inesperada');
+    await AsyncStorage.setItem(MOMENTS_CACHE, JSON.stringify(data));
+    return { posts: data, desdeCache: false };
+  } catch {
+    try {
+      const c = await AsyncStorage.getItem(MOMENTS_CACHE);
+      if (c) return { posts: JSON.parse(c) as MomentPost[], desdeCache: true };
+    } catch {}
+    throw new Error('sin momentos y sin caché');
+  }
 }
-async function createMomentPost(text: string, localImages: string[], videos: string[] = []): Promise<MomentPost | null> {
-  try {
-    const { getApiBase, getToken } = await import('../src/api');
-    const BASE  = getApiBase();
-    const token = await getToken();
 
-    // ── Subir imágenes locales a Supabase Storage antes de POST ──
-    const me = await authAPI.me().catch(() => null);
-    const userId = me?.id || 'anon';
+// Un file:// que no se subio no puede entrar en el POST: el servidor lo guardaria
+// como si fuera una url publica y solo lo veria este telefono.
+async function subirMediaMomento(uris: string[], userId: string, tipo: 'image' | 'video'): Promise<string[]> {
+  const subidas: string[] = [];
+  for (const uri of uris) {
+    if (/^https?:\/\//.test(uri)) { subidas.push(uri); continue; }
+    const url = await uploadStoryMediaToSupabase(userId, uri, tipo);
+    if (!url) throw new Error('no se pudo subir el archivo');
+    subidas.push(url);
+  }
+  return subidas;
+}
 
-    const uploadedImages: string[] = [];
-    for (const uri of localImages) {
-      if (uri.startsWith('http://') || uri.startsWith('https://')) {
-        uploadedImages.push(uri);
-      } else {
-        const publicUrl = await uploadStoryMediaToSupabase(userId, uri, 'image');
-        if (publicUrl) uploadedImages.push(publicUrl);
-      }
-    }
-
-    // ── Subir videos locales ──────────────────────────────────────
-    const uploadedVideos: string[] = [];
-    for (const uri of videos) {
-      if (uri.startsWith('http://') || uri.startsWith('https://')) {
-        uploadedVideos.push(uri);
-      } else {
-        const publicUrl = await uploadStoryMediaToSupabase(userId, uri, 'video');
-        if (publicUrl) uploadedVideos.push(publicUrl);
-      }
-    }
-
-    const res = await fetch(`${BASE}/api/moments`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, images: uploadedImages, videos: uploadedVideos }),
-    });
-    if (res.ok) return res.json();
-  } catch {}
-  // Fallback local (sin conexión)
+async function createMomentPost(text: string, localImages: string[], videos: string[] = []): Promise<MomentPost> {
+  const { getApiBase, getToken } = await import('../src/api');
   const me = await authAPI.me().catch(() => null);
-  return {
-    id: `local-${Date.now()}`,
-    user_id: me?.id || 'local',
-    user_name: me?.full_name || 'Yo',
-    user_avatar: me?.avatar_url,
-    text,
-    images: localImages,
-    videos,
-    likes: 0,
-    liked_by_me: false,
-    comments: [],
-    created_at: new Date().toISOString(),
-  };
+  const userId = me?.id || 'anon';
+  const imagenes = await subirMediaMomento(localImages, userId, 'image');
+  const clips = await subirMediaMomento(videos, userId, 'video');
+  const res = await fetch(`${getApiBase()}/api/moments`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${await getToken()}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, images: imagenes, videos: clips }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
 }
-async function toggleMomentLike(postId: string): Promise<boolean> {
-  try {
-    const BASE = (await import('../src/api')).getApiBase();
-    const token = await (await import('../src/api')).getToken();
-    const res = await fetch(`${BASE}/api/moments/${postId}/like`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
-    if (res.ok) return (await res.json()).liked;
-  } catch {}
-  return true;
+
+// El servidor manda el estado real del like y el conteo fresco; no se devuelve un
+// booleano inventado cuando la peticion falla.
+async function toggleMomentLike(postId: string): Promise<{ liked: boolean; likes: number }> {
+  const { getApiBase, getToken } = await import('../src/api');
+  const res = await fetch(`${getApiBase()}/api/moments/${postId}/like`, {
+    method: 'POST', headers: { Authorization: `Bearer ${await getToken()}` },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  return { liked: !!data.liked, likes: Number(data.likes) || 0 };
 }
-async function addMomentComment(postId: string, text: string): Promise<MomentComment | null> {
-  try {
-    const BASE = (await import('../src/api')).getApiBase();
-    const token = await (await import('../src/api')).getToken();
-    const res = await fetch(`${BASE}/api/moments/${postId}/comments`, {
-      method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ text }),
-    });
-    if (res.ok) return res.json();
-  } catch {}
-  const me = await authAPI.me().catch(() => null);
-  return { id: `local-${Date.now()}`, user_id: me?.id || 'local', user_name: me?.full_name || 'Yo', text, created_at: new Date().toISOString() };
+async function addMomentComment(postId: string, text: string): Promise<MomentComment> {
+  const { getApiBase, getToken } = await import('../src/api');
+  const res = await fetch(`${getApiBase()}/api/moments/${postId}/comments`, {
+    method: 'POST', headers: { Authorization: `Bearer ${await getToken()}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ text }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
 }
 
 async function deleteMomentPost(postId: string): Promise<boolean> {
@@ -666,42 +647,19 @@ async function deleteMomentPost(postId: string): Promise<boolean> {
   return false;
 }
 
-async function updateMomentPost(postId: string, text: string, images: string[], videos: string[]): Promise<MomentPost | null> {
-  try {
-    const { getApiBase, getToken } = await import('../src/api');
-    const BASE  = getApiBase();
-    const token = await getToken();
-    const me = await authAPI.me().catch(() => null);
-    const userId = me?.id || 'anon';
-
-    // Subir nuevas imágenes locales
-    const uploadedImages: string[] = [];
-    for (const uri of images) {
-      if (uri.startsWith('http://') || uri.startsWith('https://')) {
-        uploadedImages.push(uri);
-      } else {
-        const publicUrl = await uploadStoryMediaToSupabase(userId, uri, 'image');
-        if (publicUrl) uploadedImages.push(publicUrl);
-      }
-    }
-    const uploadedVideos: string[] = [];
-    for (const uri of videos) {
-      if (uri.startsWith('http://') || uri.startsWith('https://')) {
-        uploadedVideos.push(uri);
-      } else {
-        const publicUrl = await uploadStoryMediaToSupabase(userId, uri, 'video');
-        if (publicUrl) uploadedVideos.push(publicUrl);
-      }
-    }
-
-    const res = await fetch(`${BASE}/api/moments/${postId}`, {
-      method: 'PATCH',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, images: uploadedImages, videos: uploadedVideos }),
-    });
-    if (res.ok) return res.json();
-  } catch {}
-  return null;
+async function updateMomentPost(postId: string, text: string, images: string[], videos: string[]): Promise<MomentPost> {
+  const { getApiBase, getToken } = await import('../src/api');
+  const me = await authAPI.me().catch(() => null);
+  const userId = me?.id || 'anon';
+  const imagenes = await subirMediaMomento(images, userId, 'image');
+  const clips = await subirMediaMomento(videos, userId, 'video');
+  const res = await fetch(`${getApiBase()}/api/moments/${postId}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${await getToken()}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, images: imagenes, videos: clips }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -732,6 +690,8 @@ export default function StoriesScreen() {
   const [momentCurrentUid,setMomentCurrentUid]= useState('');
   const [commentingPost,  setCommentingPost]  = useState<string | null>(null);
   const [commentText,     setCommentText]     = useState('');
+  const [momentDesdeCache, setMomentDesdeCache] = useState(false);
+  const [momentCargaFallo, setMomentCargaFallo] = useState(false);
   const [showMomentCreate,setShowMomentCreate]= useState(false);
   const [showMomentCamera,setShowMomentCamera]= useState(false);
   // ── Editar momento ────────────────────────────────────────────
@@ -742,7 +702,7 @@ export default function StoriesScreen() {
   const pendingMediaRef = React.useRef<MomentMedia | null>(null);
   // ── Live viewer (unirse a un streaming) ──────────────────────
   const [viewingLiveId,  setViewingLiveId]  = useState<string | null>(null);
-  const [liveStreams,    setLiveStreams]    = useState<Array<{ id: string; hostName: string; hostAvatar?: string; viewerCount: number }>>([]);
+  const [liveStreams,    setLiveStreams]    = useState<Array<{ live_id: string; host_id: string; host_name?: string; title?: string; started_at?: string }>>([]);
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
   const buStyles  = makeBuStyles(C);
@@ -793,46 +753,66 @@ export default function StoriesScreen() {
   // ── Moments helpers ──────────────────────────────────────────
   const loadMoments = useCallback(async (showRefresh = false) => {
     if (showRefresh) setMomentRefreshing(true); else setMomentLoading(true);
-    try { const data = await fetchMomentsData(); setMomentPosts(data); }
-    finally { setMomentLoading(false); setMomentRefreshing(false); }
+    try {
+      const { posts, desdeCache } = await fetchMomentsData();
+      setMomentPosts(posts);
+      setMomentDesdeCache(desdeCache);
+      setMomentCargaFallo(false);
+      if (desdeCache) toast.info(tr('xtSinConexion'));
+    } catch {
+      setMomentDesdeCache(false);
+      setMomentCargaFallo(true);
+      toast.error(tr('xtNoSePudoCargar'));
+    } finally {
+      setMomentLoading(false);
+      setMomentRefreshing(false);
+    }
   }, []);
 
   useEffect(() => {
     authAPI.me().then(me => setMomentCurrentUid(me?.id || '')).catch(() => {});
   }, []);
 
-  const handleMomentLike = useCallback(async (postId: string) => {
-    setMomentPosts(prev => prev.map(p =>
-      p.id === postId ? { ...p, liked_by_me: !p.liked_by_me, likes: p.liked_by_me ? p.likes - 1 : p.likes + 1 } : p
-    ));
-    await toggleMomentLike(postId);
+  const handleMomentLike = useCallback(async (postId: string): Promise<{ liked: boolean; likes: number } | null> => {
+    try {
+      const estado = await toggleMomentLike(postId);
+      setMomentPosts(prev => prev.map(p =>
+        p.id === postId ? { ...p, liked_by_me: estado.liked, likes: estado.likes } : p
+      ));
+      return estado;
+    } catch {
+      toast.error(tr('xtNoSePudoCargar'));
+      return null;
+    }
   }, []);
 
   const handleDeleteMoment = useCallback(async (postId: string) => {
-    // Eliminar del estado local inmediatamente (optimista)
     setMomentPosts(prev => prev.filter(p => p.id !== postId));
-    // Eliminar en el servidor de forma permanente
     const ok = await deleteMomentPost(postId);
     if (!ok) {
       // Si falla, recargar para restaurar el estado real
       loadMoments();
+      toast.error(tr('xtNoSePudoEliminarIntentaDeNuevo'));
     }
   }, [loadMoments]);
 
   const handleEditMomentSave = useCallback(async (postId: string, text: string, images: string[], videos: string[]) => {
-    const updated = await updateMomentPost(postId, text, images, videos);
-    if (updated) {
-      setMomentPosts(prev => prev.map(p => p.id === postId ? { ...updated } : p));
-    } else {
-      // Actualizar localmente si la API falla
-      setMomentPosts(prev => prev.map(p => p.id === postId ? { ...p, text, images, videos } : p));
+    try {
+      const updated = await updateMomentPost(postId, text, images, videos);
+      setMomentPosts(prev => prev.map(p => {
+        if (p.id !== postId) return p;
+        // El PATCH responde sin comentarios: los que ya estaba mostrando siguen
+        // siendo los del servidor, editar el texto no los borra.
+        return { ...updated, comments: p.comments };
+      }));
+      setEditingMoment(null);
+    } catch {
+      toast.error(tr('xtNoSePudoCargar'));
     }
-    setEditingMoment(null);
   }, []);
 
   const loadLiveStreams = useCallback(async () => {
     try {
-      // Primero intentar por API
       const BASE  = getApiBase();
       const token = await getToken();
       const res   = await fetch(`${BASE}/api/live/active`, { headers: { Authorization: `Bearer ${token}` } });
@@ -840,51 +820,37 @@ export default function StoriesScreen() {
         const data = await res.json();
         if (Array.isArray(data)) { setLiveStreams(data); return; }
       }
-    } catch {}
-    // Fallback: consultar Supabase directamente
-    try {
-      const { data } = await supabase
-        .from('live_streams')
-        .select('id, host_name, host_avatar, viewer_count')
-        .eq('is_active', true)
-        .order('started_at', { ascending: false });
-      if (data) {
-        setLiveStreams(data.map((s: any) => ({
-          id: s.id,
-          hostName: s.host_name || tr('xtEnVivo'),
-          hostAvatar: s.host_avatar,
-          viewerCount: s.viewer_count || 0,
-        })));
-      }
-    } catch {}
+      // Si la ruta no responde se muestra la lista vacia. Antes caia a una lectura
+      // directa de live_streams desde el telefono: esa tabla no esta en el esquema,
+      // el select fallaba en silencio y la pestaña nunca tenia datos.
+      setLiveStreams([]);
+    } catch {
+      setLiveStreams([]);
+    }
   }, []);
-
-  // Suscripción realtime: actualizar lista de lives automáticamente
-  useEffect(() => {
-    if (activeSubTab !== 'sub_vivos') return;
-    const channel = supabase
-      .channel('live_streams_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'live_streams' }, () => {
-        loadLiveStreams();
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel).catch(() => {}); };
-  }, [activeSubTab, loadLiveStreams]);
 
   const handleMomentComment = useCallback(async () => {
     if (!commentingPost || !commentText.trim()) return;
-    const text = commentText.trim();
+    const texto = commentText.trim();
     setCommentText('');
-    const comment = await addMomentComment(commentingPost, text);
-    if (comment) setMomentPosts(prev => prev.map(p => p.id === commentingPost ? { ...p, comments: [...p.comments, comment] } : p));
+    try {
+      const comentario = await addMomentComment(commentingPost, texto);
+      setMomentPosts(prev => prev.map(p => p.id === commentingPost ? { ...p, comments: [...p.comments, comentario] } : p));
+    } catch {
+      setCommentText(texto); // no se pierde lo que se escribio
+      toast.error(tr('xtNoSePudoCargar'));
+    }
   }, [commentingPost, commentText]);
 
   const handleMomentCameraDone = useCallback(async (media: MomentMedia) => {
     setShowMomentCamera(false);
     let publicUrl = media.uri;
-    if (!media.uri.startsWith('http')) {
+    if (!/^https?:\/\//.test(media.uri)) {
       const uploaded = await uploadStoryMediaToSupabase(meId || 'unknown', media.uri, media.type === 'video' ? 'video' : 'image');
-      if (uploaded) publicUrl = uploaded;
+      // Sin subida no hay url publica: abrir el modal con el file:// terminaria en
+      // un momento que solo ve este telefono.
+      if (!uploaded) { toast.error(tr('xtNoSePudoCargar')); return; }
+      publicUrl = uploaded;
     }
     pendingMediaRef.current = { ...media, uri: publicUrl };
     setShowMomentCreate(true);
@@ -1046,143 +1012,128 @@ export default function StoriesScreen() {
   }, [recentGroups, groups, myGroup, uploading, MyBubble, C, car]);
 
   // ── Espacio Dulce ─────────────────────────────────────────────
-  // ── Canales Dulce — EGChat Edition ─────────────────────────
-  const [chList,       setChList]       = React.useState<any[]>([]);
-  const [chLoading,    setChLoading]    = React.useState(false);
-  const [chRefreshing, setChRefreshing] = React.useState(false);
-  const [chSearch,     setChSearch]     = React.useState('');
-  const [chCategory,   setChCategory]   = React.useState('Todos');
-  const [chTab,        setChTab]        = React.useState<'discover'|'following'>('discover');
-  const [chDetail,     setChDetail]     = React.useState<any | null>(null);
-  const [chSportFilter,setChSportFilter]= React.useState<string>('Todos');
+  // ── Canales Dulce — sobre /api/spaces, que es la superficie real ──
+  // Esta pestaña leia /api/channels, una ruta que no existe en el servidor: la
+  // peticion fallaba en silencio y la lista se llenaba con canales inventados.
+  interface Canal {
+    id: string;
+    name: string;
+    description?: string;
+    tipo: string;
+    emoji: string;
+    seguidores: number;
+    siguiendo: boolean;
+  }
+  interface PostCanal {
+    id: string;
+    author: string;
+    avatar?: string;
+    avatarUrl?: string;
+    text: string;
+    imageUrl?: string | null;
+    time?: string;
+    likes: number;
+    comments: number;
+    liked: boolean;
+  }
 
-  const SPORT_FILTERS = [
-    { id: 'Todos',      label: tr('xtTodo'),      icon: 'grid-view' },
-    { id: 'Futbol',     label: tr('xtFutbol'),    icon: 'sports-soccer' },
-    { id: 'Baloncesto', label: 'Basket',    icon: 'sports-basketball' },
-    { id: 'Tennis',     label: 'Tenis',     icon: 'sports-tennis' },
-    { id: 'Atletismo',  label: 'Atletismo', icon: 'directions-run' },
-    { id: 'Natacion',   label: tr('xtNatacion'),  icon: 'pool' },
-    { id: 'Boxeo',      label: 'Boxeo',     icon: 'sports-mma' },
-    { id: 'Rugby',      label: 'Rugby',     icon: 'sports-rugby' },
-    { id: 'Ciclismo',   label: 'Ciclismo',  icon: 'directions-bike' },
-    { id: 'Formula1',   label: 'F1',        icon: 'speed' },
-  ];
+  const [chList,         setChList]         = React.useState<Canal[]>([]);
+  const [chLoading,      setChLoading]      = React.useState(false);
+  const [chRefreshing,   setChRefreshing]   = React.useState(false);
+  const [chSearch,       setChSearch]       = React.useState('');
+  const [chCategory,     setChCategory]     = React.useState('Todos');
+  const [chTab,          setChTab]          = React.useState<'discover'|'following'>('discover');
+  const [chDetail,       setChDetail]       = React.useState<Canal | null>(null);
+  const [chPosts,        setChPosts]        = React.useState<PostCanal[]>([]);
+  const [chPostsLoading, setChPostsLoading] = React.useState(false);
+  const [chPostsFallo,   setChPostsFallo]   = React.useState(false);
+  const [chCargaFallo,   setChCargaFallo]   = React.useState(false);
 
-  const CH_CATEGORIES: { id: string; Icon: (props: { color: string; size?: number }) => React.JSX.Element }[] = [
-    {
-      id: 'Todos',
-      Icon: ({ color, size = 14 }) => (
-        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-          <Circle cx="12" cy="12" r="10"/><Line x1="2" y1="12" x2="22" y2="12"/>
-          <Path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-        </Svg>
-      ),
-    },
-    {
-      id: 'Gobierno',
-      Icon: ({ color, size = 14 }) => (
-        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-          <Line x1="3" y1="22" x2="21" y2="22"/><Line x1="6" y1="18" x2="6" y2="11"/>
-          <Line x1="10" y1="18" x2="10" y2="11"/><Line x1="14" y1="18" x2="14" y2="11"/>
-          <Line x1="18" y1="18" x2="18" y2="11"/><Path d="M12 2L2 7h20L12 2z"/>
-        </Svg>
-      ),
-    },
-    {
-      id: 'Noticias',
-      Icon: ({ color, size = 14 }) => (
-        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-          <Path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/>
-          <Line x1="16" y1="8" x2="10" y2="8"/><Line x1="16" y1="12" x2="10" y2="12"/><Line x1="16" y1="16" x2="14" y2="16"/>
-        </Svg>
-      ),
-    },
-    {
-      id: 'Musica',
-      Icon: ({ color, size = 14 }) => (
-        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-          <Path d="M9 18V5l12-2v13"/>
-          <Circle cx="6" cy="18" r="3"/><Circle cx="18" cy="16" r="3"/>
-        </Svg>
-      ),
-    },
-    {
-      id: 'Deportes',
-      Icon: ({ color, size = 14 }) => (
-        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-          <Circle cx="12" cy="12" r="10"/>
-          <Path d="M12 8v4l3 3"/>
-        </Svg>
-      ),
-    },
-    {
-      id: 'Negocios',
-      Icon: ({ color, size = 14 }) => (
-        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-          <Rect x="2" y="7" width="20" height="14" rx="2"/><Path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
-          <Line x1="12" y1="12" x2="12" y2="12"/>
-        </Svg>
-      ),
-    },
-    {
-      id: 'Tecnologia',
-      Icon: ({ color, size = 14 }) => (
-        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-          <Rect x="2" y="3" width="20" height="14" rx="2"/><Line x1="8" y1="21" x2="16" y2="21"/><Line x1="12" y1="17" x2="12" y2="21"/>
-        </Svg>
-      ),
-    },
-    {
-      id: 'Salud',
-      Icon: ({ color, size = 14 }) => (
-        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-          <Path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-        </Svg>
-      ),
-    },
-    {
-      id: 'Entretenimiento',
-      Icon: ({ color, size = 14 }) => (
-        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-          <Polyline points="23 7 16 12 23 17 23 7"/><Rect x="1" y="5" width="15" height="14" rx="2"/>
-        </Svg>
-      ),
-    },
-  ];
+  const mapearCanal = (s: any): Canal => ({
+    id: s.id,
+    name: s.name || 'Canal',
+    description: s.description || undefined,
+    tipo: s.type || 'publico',
+    emoji: s.emoji || '📢',
+    seguidores: Number(s.followers_count) || 0,
+    siguiendo: !!s.following,
+  });
+
+  const obtenerCanales = async (): Promise<Canal[]> => {
+    const api = await import('../src/api');
+    const res = await fetch(`${api.getApiBase()}/api/spaces`, {
+      headers: { Authorization: `Bearer ${await api.getToken()}` },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (!Array.isArray(data)) throw new Error('respuesta inesperada');
+    return data.map(mapearCanal);
+  };
 
   const loadChannels = React.useCallback(async (showRefresh = false) => {
     if (showRefresh) setChRefreshing(true); else setChLoading(true);
     try {
-      const api = await import('../src/api');
-      const token = await api.getToken();
-      const res = await fetch(`${api.getApiBase()}/api/channels`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) { const data = await res.json(); setChList(data); }
-    } catch {}
-    finally { setChLoading(false); setChRefreshing(false); }
+      setChList(await obtenerCanales());
+      setChCargaFallo(false);
+    } catch {
+      setChCargaFallo(true);
+      toast.error(tr('xtNoSePudoCargar'));
+    } finally {
+      setChLoading(false);
+      setChRefreshing(false);
+    }
   }, []);
 
-  const handleChFollow = React.useCallback(async (ch: any) => {
-    // Optimistic update
-    setChList(prev => prev.map((c: any) =>
-      c.id === ch.id
-        ? { ...c, followed: !c.followed, followers_count: !c.followed ? (c.followers_count||0)+1 : Math.max((c.followers_count||0)-1,0) }
-        : c
-    ));
+  const handleChFollow = React.useCallback(async (ch: Canal) => {
     try {
       const api = await import('../src/api');
-      const token = await api.getToken();
-      await fetch(`${api.getApiBase()}/api/channels/${ch.id}/follow`, {
-        method: 'POST', headers: { Authorization: `Bearer ${token}` },
+      const res = await fetch(`${api.getApiBase()}/api/spaces/${ch.id}/follow`, {
+        method: 'POST', headers: { Authorization: `Bearer ${await api.getToken()}` },
       });
-    } catch {}
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const { following } = await res.json();
+      setChDetail(prev => (prev && prev.id === ch.id ? { ...prev, siguiendo: !!following } : prev));
+      // El contador lo mueve la base con un delta: se vuelve a leer en lugar de
+      // sumarlo aqui, que es como se inflaba.
+      try {
+        setChList(await obtenerCanales());
+      } catch {
+        setChList(prev => prev.map(c => (c.id === ch.id ? { ...c, siguiendo: !!following } : c)));
+      }
+    } catch {
+      toast.error(tr('xtNoSePudoCargar'));
+    }
   }, []);
 
-  const chFiltered = React.useMemo(() => chList.filter((ch: any) => {
-    if (chTab === 'following' && !ch.followed) return false;
-    if (chCategory !== 'Todos' && ch.category !== chCategory) return false;
+  const abrirCanal = React.useCallback(async (ch: Canal) => {
+    setChDetail(ch);
+    setChPosts([]);
+    setChPostsFallo(false);
+    setChPostsLoading(true);
+    try {
+      const api = await import('../src/api');
+      const res = await fetch(`${api.getApiBase()}/api/spaces/${ch.id}/posts`, {
+        headers: { Authorization: `Bearer ${await api.getToken()}` },
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setChPosts(Array.isArray(data) ? data : []);
+    } catch {
+      setChPostsFallo(true);
+    } finally {
+      setChPostsLoading(false);
+    }
+  }, []);
+
+  // Los tipos son los que hay en spaces, no una lista de categorias inventada.
+  const chTipos = React.useMemo(
+    () => ['Todos', ...Array.from(new Set(chList.map(c => c.tipo)))],
+    [chList],
+  );
+
+  const chFiltered = React.useMemo(() => chList.filter(ch => {
+    if (chTab === 'following' && !ch.siguiendo) return false;
+    if (chCategory !== 'Todos' && ch.tipo !== chCategory) return false;
     if (chSearch && !ch.name.toLowerCase().includes(chSearch.toLowerCase())) return false;
     return true;
   }), [chList, chTab, chCategory, chSearch]);
@@ -1192,80 +1143,54 @@ export default function StoriesScreen() {
     if ((n||0) >= 1000) return `${((n||0)/1000).toFixed(1)}K`;
     return String(n||0);
   };
-  // Card compacta de canal — diseño EGChat moderno
-  const ChannelCard = React.useCallback(({ ch, onFollow, onOpen }: { ch: any; onFollow: () => void; onOpen: () => void }) => {
-    const catColor =
-      ch.category === 'Gobierno'        ? '#1d4ed8' :
-      ch.category === 'Musica'          ? '#7c3aed' :
-      ch.category === 'Deportes'        ? '#16a34a' :
-      ch.category === 'Noticias'        ? '#dc2626' :
-      ch.category === 'Negocios'        ? '#b45309' :
-      ch.category === 'Tecnologia'      ? '#0891b2' :
-      ch.category === 'Salud'           ? '#0d9488' :
-      ch.category === 'Entretenimiento' ? '#d97706' : BRAND;
-    const catDef = CH_CATEGORIES.find(c => c.id === ch.category);
-    const CatIcon = catDef?.Icon;
 
-    return (
-      <TouchableOpacity
-        style={[chst.channelCard, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}
-        onPress={onOpen}
-        activeOpacity={0.87}
-      >
-        {/* BANNER — fondo neutro, icono SVG centrado, acento de color en borde inferior */}
-        <View style={[chst.bannerWrap, { backgroundColor: C.bgTertiary }]}>
-          {!!ch.banner_url && (
-            <Image source={{ uri: ch.banner_url }} style={[StyleSheet.absoluteFillObject as any, { opacity: 0.45 }]} resizeMode="cover" />
-          )}
-          {CatIcon && (
-            <View style={chst.bannerIconWrap}>
-              <CatIcon color={catColor} size={28} />
-            </View>
-          )}
-          {/* Línea de acento inferior */}
-          <View style={[chst.bannerAccent, { backgroundColor: catColor }]} />
-          {ch.verified && (
-            <View style={chst.officialBadge}>
-              <MIcon name="verified" size={11} color="#fff" />
-              <Text style={chst.officialText}>Oficial</Text>
-            </View>
-          )}
+  // Card compacta de canal
+  const ChannelCard = React.useCallback(({ ch, onFollow, onOpen }: { ch: Canal; onFollow: () => void; onOpen: () => void }) => (
+    <TouchableOpacity
+      style={[chst.channelCard, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}
+      onPress={onOpen}
+      activeOpacity={0.87}
+    >
+      {/* BANNER — `cover` trae un gradiente css, no una url: no se puede cargar como imagen */}
+      <View style={[chst.bannerWrap, { backgroundColor: C.bgTertiary }]}>
+        <LinearGradient colors={[BRAND, BRAND2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject as any} />
+        <View style={chst.bannerIconWrap}>
+          <Text style={chst.bannerEmoji}>{ch.emoji}</Text>
         </View>
+        <View style={[chst.bannerAccent, { backgroundColor: BRAND }]} />
+      </View>
 
-        {/* Fila inferior: avatar + info + botón */}
-        <View style={chst.cardBody}>
-          <View style={[chst.cardAvatar, { borderColor: C.bgSecondary }]}>
-            <EGAvatar src={ch.avatar_url} name={ch.name} size={36} />
-          </View>
-          <View style={chst.cardInfo}>
-            <Text style={[chst.chName, { color: C.textPrimary }]} numberOfLines={1}>{ch.name}</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 }}>
-              {CatIcon && <CatIcon color={catColor} size={11} />}
-              <Text style={[chst.catTagText, { color: catColor }]}>{ch.category}</Text>
-              <Text style={[chst.chFollowers, { color: C.textTertiary }]}>
-                · {formatChCount(ch.followers_count||0)}
-              </Text>
-            </View>
-            {!!ch.description && (
-              <Text style={[chst.chDesc, { color: C.textTertiary }]} numberOfLines={1}>{ch.description}</Text>
-            )}
-          </View>
-          <TouchableOpacity
-            style={[chst.followBtn, ch.followed && { backgroundColor: BRAND + '18', borderColor: BRAND }]}
-            onPress={onFollow}
-            activeOpacity={0.8}
-          >
-            <Text style={[chst.followBtnText, { color: ch.followed ? BRAND : C.textSecondary }]}>
-              {ch.followed ? 'Suscrito' : 'Seguir'}
+      <View style={chst.cardBody}>
+        <View style={[chst.cardAvatar, { borderColor: C.bgSecondary, backgroundColor: C.bgTertiary }]}>
+          <EGAvatar name={ch.name} size={36} />
+        </View>
+        <View style={chst.cardInfo}>
+          <Text style={[chst.chName, { color: C.textPrimary }]} numberOfLines={1}>{ch.name}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 }}>
+            <Text style={[chst.catTagText, { color: BRAND }]}>{ch.tipo}</Text>
+            <Text style={[chst.chFollowers, { color: C.textTertiary }]}>
+              · {formatChCount(ch.seguidores)} {tr('chtChSeguidores')}
             </Text>
-          </TouchableOpacity>
+          </View>
+          {!!ch.description && (
+            <Text style={[chst.chDesc, { color: C.textTertiary }]} numberOfLines={1}>{ch.description}</Text>
+          )}
         </View>
-      </TouchableOpacity>
-    );
-  }, [C, CH_CATEGORIES]);
+        <TouchableOpacity
+          style={[chst.followBtn, ch.siguiendo && { backgroundColor: BRAND + '18', borderColor: BRAND }]}
+          onPress={onFollow}
+          activeOpacity={0.8}
+        >
+          <Text style={[chst.followBtnText, { color: ch.siguiendo ? BRAND : C.textSecondary }]}>
+            {ch.siguiendo ? tr('chtChSiguiendo') : tr('chtChSeguir')}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
+  ), [C]);
 
   const CanalesDulceTab = React.useCallback(() => {
-    React.useEffect(() => { if (chList.length === 0) loadChannels(); }, []);
+    React.useEffect(() => { if (chList.length === 0 && !chLoading) loadChannels(); }, []);
     const featured = chFiltered[0] || null;
     const rest = chFiltered.slice(1);
     return (
@@ -1276,7 +1201,7 @@ export default function StoriesScreen() {
             {(['discover','following'] as const).map(t => (
               <TouchableOpacity key={t} style={[chst.subTab, chTab === t && { borderBottomColor: BRAND, borderBottomWidth: 2.5 }]} onPress={() => setChTab(t)}>
                 <Text style={[chst.subTabText, { color: chTab === t ? BRAND : C.textTertiary }]}>
-                  {t === 'discover' ? 'Explorar' : 'Mis canales'}
+                  {t === 'discover' ? tr('chtChDescubrir') : tr('chtChSiguiendo')}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -1298,20 +1223,18 @@ export default function StoriesScreen() {
           </View>
         </View>
 
-        {/* Filtro de categorias */}
-        {chTab === 'discover' && (
+        {/* Filtro de tipos reales */}
+        {chTab === 'discover' && chTipos.length > 1 && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 6, paddingVertical: 10 }}>
-            {CH_CATEGORIES.map(cat => {
-              const active = chCategory === cat.id;
-              const iconColor = active ? '#fff' : '#64748b';
+            {chTipos.map(tipo => {
+              const active = chCategory === tipo;
               return (
                 <TouchableOpacity
-                  key={cat.id}
+                  key={tipo}
                   style={[chst.catChip, active && { backgroundColor: BRAND, borderColor: BRAND }]}
-                  onPress={() => setChCategory(cat.id)}
+                  onPress={() => setChCategory(tipo)}
                 >
-                  <cat.Icon color={iconColor} size={13} />
-                  <Text style={[chst.catChipText, active && { color: '#fff' }]}>{cat.id}</Text>
+                  <Text style={[chst.catChipText, active && { color: '#fff' }]}>{tipo}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -1322,31 +1245,40 @@ export default function StoriesScreen() {
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
             <ActivityIndicator color={BRAND} size="large" />
           </View>
+        ) : chCargaFallo && chList.length === 0 ? (
+          <View style={[st.empty, { marginTop: 40 }]}>
+            <MIcon name="cloud-off" size={56} color={C.border} />
+            <Text style={[st.emptyTitle, { color: C.textSecondary }]}>{tr('xtNoSePudoCargar')}</Text>
+            <TouchableOpacity style={st.emptyBtn} onPress={() => loadChannels(true)} activeOpacity={0.85}>
+              <LinearGradient colors={[BRAND, BRAND2]} style={st.emptyBtnGrad}>
+                <Text style={st.emptyBtnText}>{tr('retry')}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         ) : (
           <FlatList
             data={chTab === 'discover' && !chSearch && chCategory === 'Todos' ? rest : chFiltered}
-            keyExtractor={(c: any) => c.id}
+            keyExtractor={(c: Canal) => c.id}
             style={{ flex: 1 }}
             contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 60, paddingTop: 4 }}
             refreshControl={<RefreshControl refreshing={chRefreshing} onRefresh={() => loadChannels(true)} colors={[BRAND]} tintColor={BRAND} />}
             ListHeaderComponent={
-              // Canal destacado solo en Explorar sin filtros
               chTab === 'discover' && !chSearch && chCategory === 'Todos' && featured ? (
                 <View style={{ marginBottom: 16 }}>
                   <Text style={[chst.sectionLabel, { color: C.textTertiary }]}>DESTACADO</Text>
                   <ChannelCard
                     ch={featured}
                     onFollow={() => handleChFollow(featured)}
-                    onOpen={() => setChDetail(featured)}
+                    onOpen={() => abrirCanal(featured)}
                   />
                 </View>
               ) : null
             }
-            renderItem={({ item: ch }: { item: any }) => (
+            renderItem={({ item: ch }: { item: Canal }) => (
               <ChannelCard
                 ch={ch}
                 onFollow={() => handleChFollow(ch)}
-                onOpen={() => setChDetail(ch)}
+                onOpen={() => abrirCanal(ch)}
               />
             )}
             ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
@@ -1354,10 +1286,7 @@ export default function StoriesScreen() {
               <View style={[st.empty, { marginTop: 40 }]}>
                 <MIcon name="cell-tower" size={56} color={C.border} />
                 <Text style={[st.emptyTitle, { color: C.textSecondary }]}>
-                  {chTab === 'following' ? 'Sin canales suscritos' : 'Sin resultados'}
-                </Text>
-                <Text style={[st.emptySub, { color: C.textTertiary }]}>
-                  {chTab === 'following' ? 'Explora y suscribete a canales' : 'Prueba otra busqueda o categoria'}
+                  {chTab === 'following' ? tr('chtChNoSiguesNinguno') : tr('chtChSinCanalesDisponibles')}
                 </Text>
               </View>
             }
@@ -1369,13 +1298,9 @@ export default function StoriesScreen() {
           <SafeAreaView style={{ flex: 1, backgroundColor: C.bgPrimary }} edges={['top']}>
             {chDetail && (
               <>
-                {/* Header con banner */}
                 <View style={{ position: 'relative' }}>
-                  <LinearGradient
-                    colors={[chDetail.category === 'Gobierno' ? '#1d4ed8' : chDetail.category === 'Musica' ? '#7c3aed' : chDetail.category === 'Deportes' ? '#16a34a' : BRAND, BRAND2]}
-                    style={{ height: 160 }}
-                  >
-                    {chDetail.banner_url && <Image source={{ uri: chDetail.banner_url }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />}
+                  <LinearGradient colors={[BRAND, BRAND2]} style={{ height: 160 }}>
+                    <Text style={{ fontSize: 54, alignSelf: 'center', marginTop: 46 }}>{chDetail.emoji}</Text>
                   </LinearGradient>
                   <TouchableOpacity
                     style={{ position: 'absolute', top: 14, left: 14, width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' }}
@@ -1383,124 +1308,79 @@ export default function StoriesScreen() {
                   >
                     <MIcon name="arrow-back" size={20} color="#fff" />
                   </TouchableOpacity>
-                  {/* Avatar superpuesto en el banner */}
-                  <View style={{ position: 'absolute', bottom: -28, left: 20, borderRadius: 32, borderWidth: 3, borderColor: C.bgPrimary, overflow: 'hidden' }}>
-                    <EGAvatar src={chDetail.avatar_url} name={chDetail.name} size={56} />
-                  </View>
                 </View>
-                {/* Info canal */}
-                <View style={{ paddingHorizontal: 16, paddingTop: 36, paddingBottom: 16 }}>
+                <View style={{ paddingHorizontal: 16, paddingTop: 18, paddingBottom: 16 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                     <View style={{ flex: 1 }}>
                       <Text style={{ fontSize: 20, fontWeight: '800', color: C.textPrimary }}>{chDetail.name}</Text>
-                      <Text style={{ fontSize: 12, color: BRAND, fontWeight: '700', marginTop: 2 }}>{chDetail.category}</Text>
+                      <Text style={{ fontSize: 12, color: BRAND, fontWeight: '700', marginTop: 2 }}>{chDetail.tipo}</Text>
                     </View>
                     <TouchableOpacity
-                      style={[chst.followPill, chDetail.followed && { backgroundColor: BRAND + '20', borderColor: BRAND }, { paddingHorizontal: 16, paddingVertical: 9 }]}
-                      onPress={() => { handleChFollow(chDetail); setChDetail((p: any) => p ? { ...p, followed: !p.followed } : p); }}
+                      style={[chst.followPill, chDetail.siguiendo && { backgroundColor: BRAND + '20', borderColor: BRAND }, { paddingHorizontal: 16, paddingVertical: 9 }]}
+                      onPress={() => handleChFollow(chDetail)}
                       activeOpacity={0.8}
                     >
-                      <MIcon name={chDetail.followed ? 'notifications-active' : 'notifications-none'} size={15} color={chDetail.followed ? BRAND : C.textTertiary} />
-                      <Text style={[chst.followPillText, { color: chDetail.followed ? BRAND : C.textTertiary, fontSize: 13 }]}>
-                        {chDetail.followed ? 'Suscrito' : 'Suscribirse'}
+                      <MIcon name={chDetail.siguiendo ? 'notifications-active' : 'notifications-none'} size={15} color={chDetail.siguiendo ? BRAND : C.textTertiary} />
+                      <Text style={[chst.followPillText, { color: chDetail.siguiendo ? BRAND : C.textTertiary, fontSize: 13 }]}>
+                        {chDetail.siguiendo ? tr('chtChSiguiendo') : tr('chtChSeguir')}
                       </Text>
                     </TouchableOpacity>
                   </View>
-                  <Text style={{ fontSize: 13, color: C.textTertiary, marginTop: 6, lineHeight: 20 }}>{chDetail.description}</Text>
+                  {!!chDetail.description && (
+                    <Text style={{ fontSize: 13, color: C.textTertiary, marginTop: 6, lineHeight: 20 }}>{chDetail.description}</Text>
+                  )}
                   <Text style={{ fontSize: 12, color: C.textTertiary, marginTop: 4 }}>
-                    {formatChCount(chDetail.followers_count||0)} suscritos
+                    {formatChCount(chDetail.seguidores)} {tr('chtChSeguidores')}
                   </Text>
                 </View>
                 <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: C.borderLight }} />
 
-                {/* Sub-filtros deportivos — diseño limpio sin fondos */}
-                {chDetail.category === 'Deportes' && (
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ paddingHorizontal: 14, gap: 0, paddingVertical: 0 }}
-                    style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.borderLight }}
-                  >
-                    {SPORT_FILTERS.map((sf: any) => {
-                      const active = chSportFilter === sf.id;
-                      return (
-                        <TouchableOpacity
-                          key={sf.id}
-                          onPress={() => setChSportFilter(sf.id)}
-                          style={{
-                            alignItems: 'center', justifyContent: 'center',
-                            paddingHorizontal: 14, paddingVertical: 10,
-                            borderBottomWidth: active ? 2 : 0,
-                            borderBottomColor: active ? '#16a34a' : 'transparent',
-                          }}
-                          activeOpacity={0.75}
-                        >
-                          <MIcon
-                            name={sf.icon}
-                            size={20}
-                            color={active ? '#16a34a' : C.textTertiary}
-                          />
-                          <Text style={{
-                            fontSize: 10, fontWeight: active ? '700' : '500',
-                            color: active ? '#16a34a' : C.textTertiary,
-                            marginTop: 3, letterSpacing: 0.2,
-                          }}>{sf.label}</Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-                )}
-
-                {/* Posts del canal */}
+                {/* Posts del canal — los que de verdad tiene el espacio */}
                 <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: 40 }}>
-                  {(() => {
-                    const allPosts = chDetail.posts || [];
-                    const filtered = chDetail.category === 'Deportes' && chSportFilter !== 'Todos'
-                      ? allPosts.filter((p: any) => p.sport === chSportFilter || p.category === chSportFilter || (p.tags || []).includes(chSportFilter))
-                      : allPosts;
-                    if (filtered.length === 0) {
-                      return (
-                        <View style={{ alignItems: 'center', paddingVertical: 48 }}>
-                          <MIcon name="sports" size={52} color={C.border} />
-                          <Text style={{ color: C.textSecondary, marginTop: 14, fontSize: 16, fontWeight: '700' }}>
-                            {chDetail.category === 'Deportes' && chSportFilter !== 'Todos'
-                              ? `Sin noticias de ${SPORT_FILTERS.find(s => s.id === chSportFilter)?.label || chSportFilter}`
-                              : tr('xtSinPublicacionesAun')}
-                          </Text>
-                          <Text style={{ color: C.textTertiary, marginTop: 6, fontSize: 13, textAlign: 'center', paddingHorizontal: 24 }}>
-                            {chDetail.category === 'Deportes' && chSportFilter !== 'Todos'
-                              ? 'Prueba otra modalidad o vuelve mas tarde'
-                              : tr('xtLasPublicacionesDelCanalApareceranAqui')}
-                          </Text>
-                        </View>
-                      );
-                    }
-                    return filtered.map((p: any) => (
+                  {chPostsLoading ? (
+                    <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+                      <ActivityIndicator color={BRAND} size="large" />
+                    </View>
+                  ) : chPostsFallo ? (
+                    <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+                      <Text style={{ color: C.textSecondary, fontSize: 15, fontWeight: '700' }}>{tr('xtNoSePudoCargar')}</Text>
+                      <TouchableOpacity style={st.emptyBtn} onPress={() => abrirCanal(chDetail)} activeOpacity={0.85}>
+                        <LinearGradient colors={[BRAND, BRAND2]} style={st.emptyBtnGrad}>
+                          <Text style={st.emptyBtnText}>{tr('retry')}</Text>
+                        </LinearGradient>
+                      </TouchableOpacity>
+                    </View>
+                  ) : chPosts.length === 0 ? (
+                    <View style={{ alignItems: 'center', paddingVertical: 48 }}>
+                      <MIcon name="article" size={52} color={C.border} />
+                      <Text style={{ color: C.textSecondary, marginTop: 14, fontSize: 16, fontWeight: '700' }}>
+                        {tr('xtSinPublicacionesAun')}
+                      </Text>
+                      <Text style={{ color: C.textTertiary, marginTop: 6, fontSize: 13, textAlign: 'center', paddingHorizontal: 24 }}>
+                        {tr('xtLasPublicacionesDelCanalApareceranAqui')}
+                      </Text>
+                    </View>
+                  ) : (
+                    chPosts.map((p: PostCanal) => (
                       <View key={p.id} style={[chst.postCard, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
-                        {/* Etiqueta de deporte si aplica */}
-                        {p.sport && (
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 8 }}>
-                            <Text style={{ fontSize: 11 }}>
-                
-                            </Text>
-                            <Text style={{ fontSize: 11, fontWeight: '700', color: '#16a34a' }}>{p.sport}</Text>
-                          </View>
-                        )}
                         <View style={{ flexDirection: 'row', gap: 10, marginBottom: 8, alignItems: 'center' }}>
-                          <View style={[chst.postAvatar, { backgroundColor: BRAND }]}>
-                            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 11 }}>
-                              {(p.avatar||chDetail.name||'?').slice(0,2).toUpperCase()}
-                            </Text>
-                          </View>
+                          <EGAvatar src={p.avatarUrl} name={p.author || chDetail.name} size={30} />
                           <View style={{ flex: 1 }}>
-                            <Text style={{ color: C.textPrimary, fontSize: 13, fontWeight: '700' }}>{p.author||chDetail.name}</Text>
-                            <Text style={{ color: C.textTertiary, fontSize: 11 }}>{p.time||''}{p.isOfficial ? ' · Oficial' : ''}</Text>
+                            <Text style={{ color: C.textPrimary, fontSize: 13, fontWeight: '700' }}>{p.author || chDetail.name}</Text>
+                            {!!p.time && <Text style={{ color: C.textTertiary, fontSize: 11 }}>{p.time}</Text>}
                           </View>
                         </View>
                         <Text style={{ color: C.textPrimary, fontSize: 14, lineHeight: 21 }}>{p.text}</Text>
+                        {!!p.imageUrl && (
+                          <Image
+                            source={{ uri: p.imageUrl }}
+                            style={{ width: '100%', height: 180, borderRadius: 10, marginTop: 10 }}
+                            resizeMode="cover"
+                          />
+                        )}
                         <View style={{ flexDirection: 'row', gap: 16, marginTop: 10 }}>
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                            <MIcon name="favorite-border" size={14} color={C.textTertiary} />
+                            <MIcon name={p.liked ? 'favorite' : 'favorite-border'} size={14} color={p.liked ? '#ef4444' : C.textTertiary} />
                             <Text style={{ fontSize: 12, color: C.textTertiary }}>{p.likes||0}</Text>
                           </View>
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -1509,8 +1389,8 @@ export default function StoriesScreen() {
                           </View>
                         </View>
                       </View>
-                    ));
-                  })()}
+                    ))
+                  )}
                 </ScrollView>
               </>
             )}
@@ -1518,7 +1398,7 @@ export default function StoriesScreen() {
         </Modal>
       </View>
     );
-  }, [chList, chLoading, chRefreshing, chSearch, chCategory, chTab, chFiltered, chDetail, C, ChannelCard]);
+  }, [chList, chLoading, chRefreshing, chSearch, chCategory, chTab, chFiltered, chDetail, chPosts, chPostsLoading, chPostsFallo, chCargaFallo, C, ChannelCard]);
 
 
   // ── Render ────────────────────────────────────────────────────
@@ -1685,18 +1565,18 @@ export default function StoriesScreen() {
               <Text style={[st.feedLabelText, { color: C.textTertiary, marginBottom: 12 }]}>{tr('xtENVIVOAHORA')}</Text>
               {liveStreams.map(ls => (
                 <TouchableOpacity
-                  key={ls.id}
+                  key={ls.live_id}
                   style={[st.liveBannerCard, { marginBottom: 10, backgroundColor: C.bgSecondary }]}
-                  onPress={() => setViewingLiveId(ls.id)}
+                  onPress={() => setViewingLiveId(ls.live_id)}
                   activeOpacity={0.85}
                 >
                   <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#ef4444' }} />
                   <View style={{ flex: 1, marginLeft: 10 }}>
-                    <Text style={[{ fontSize: 15, fontWeight: '700' }, { color: C.textPrimary }]}>{ls.hostName}</Text>
-                    <Text style={[{ fontSize: 12 }, { color: C.textSecondary }]}>{ls.viewerCount} {tr('xtEspectadores')}</Text>
+                    <Text style={[{ fontSize: 15, fontWeight: '700' }, { color: C.textPrimary }]}>{ls.host_name || tr('xtUnContacto')}</Text>
+                    <Text style={[{ fontSize: 12 }, { color: C.textSecondary }]}>{ls.started_at ? formatRelativeTime(ls.started_at) : tr('xtEnVivo')}</Text>
                   </View>
                   <LinearGradient colors={[BRAND, BRAND2]} style={{ borderRadius: 12, paddingHorizontal: 14, paddingVertical: 7 }}>
-                    <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12 }}>Unirse</Text>
+                    <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12 }}>{tr('xtUnirse')}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               ))}
@@ -1706,7 +1586,7 @@ export default function StoriesScreen() {
           <View style={st.liveEmpty}>
             <MIcon name="videocam" size={64} color={C.border} />
             <Text style={[st.emptyTitle, { color: C.textSecondary, marginTop: 16 }]}>
-              {liveStreams.length === 0 ? 'Sin streams activos' : 'Inicia tu propio directo'}
+              {liveStreams.length === 0 ? tr('xtSinDirectosActivos') : tr('xtIniciaTuDirecto')}
             </Text>
             <Text style={[st.emptySub, { color: C.textTertiary, textAlign: 'center' }]}>
               Cuando alguien inicie un directo aparecerá aquí en tiempo real
@@ -1745,7 +1625,24 @@ export default function StoriesScreen() {
             style={{ flex: 1, backgroundColor: C.bgPrimary }}
             refreshControl={<RefreshControl refreshing={momentRefreshing} onRefresh={() => loadMoments(true)} colors={[BRAND]} tintColor={BRAND} />}
             contentContainerStyle={{ paddingBottom: 40 }}
+            ListHeaderComponent={
+              momentDesdeCache ? (
+                <View style={{ paddingHorizontal: 16, paddingVertical: 8, backgroundColor: isDark ? '#2a2317' : '#fff8e6' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: C.textSecondary }}>{tr('xtSinConexion')}</Text>
+                </View>
+              ) : null
+            }
             ListEmptyComponent={
+              momentCargaFallo ? (
+              <View style={st.empty}>
+                <Text style={[st.emptyTitle, { color: C.textSecondary }]}>{tr('xtNoSePudoCargar')}</Text>
+                <TouchableOpacity style={st.emptyBtn} onPress={() => loadMoments(true)} activeOpacity={0.85}>
+                  <LinearGradient colors={[BRAND, BRAND2]} style={st.emptyBtnGrad}>
+                    <Text style={st.emptyBtnText}>{tr('retry')}</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            ) : (
               <View style={st.empty}>
                 <MIcon name="photo-camera" size={52} color={C.border} />
                 <Text style={[st.emptyTitle, { color: C.textSecondary }]}>{tr('xtSinMomentosAun')}</Text>
@@ -1757,7 +1654,7 @@ export default function StoriesScreen() {
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
-            }
+            )}
             renderItem={({ item }) => (
               <View style={[mps.card, { backgroundColor: C.bgPrimary, borderBottomColor: C.borderLight }]}>
                 <View style={mps.header}>
@@ -1961,7 +1858,17 @@ export default function StoriesScreen() {
       <MomentCreateModal
         visible={showMomentCreate}
         onClose={() => setShowMomentCreate(false)}
-        onCreated={(post) => { setMomentPosts(prev => [post, ...prev]); setShowMomentCreate(false); }}
+        onCreated={(post) => {
+          setMomentPosts(prev => [post, ...prev]);
+          setShowMomentCreate(false);
+          // El aviso sale del servidor: sin esto, quien publica desde /stories no
+          // notifica a sus contactos y quien publica desde /moments si.
+          notifyNewMoment({
+            momentId: post.id,
+            authorName: post.user_name,
+            preview: post.text || undefined,
+          }).catch(() => {});
+        }}
         C={C}
         isDark={isDark}
       />
@@ -2027,9 +1934,7 @@ export default function StoriesScreen() {
       {/* ── Live Stream Modal ──────────────────────────────────── */}
       <LiveStreamModal
         visible={showLive}
-        hostId={meId}
         hostName={myGroup?.userName || ''}
-        hostAvatar={myAvatarUrl}
         onClose={() => { setShowLive(false); loadLiveStreams(); }}
       />
 
@@ -2057,11 +1962,12 @@ export default function StoriesScreen() {
         post={momentViewerPost}
         initialImageIndex={momentViewerImgIdx}
         onClose={() => setMomentViewerPost(null)}
-        onLike={(postId) => {
-          handleMomentLike(postId);
+        onLike={async (postId) => {
+          const estado = await handleMomentLike(postId);
+          if (!estado) return;
           setMomentViewerPost(prev =>
             prev && prev.id === postId
-              ? { ...prev, liked_by_me: !prev.liked_by_me, likes: prev.liked_by_me ? prev.likes - 1 : prev.likes + 1 }
+              ? { ...prev, liked_by_me: estado.liked, likes: estado.likes }
               : prev
           );
         }}
@@ -2139,9 +2045,12 @@ function MomentCreateModal({
     if (videos.length > 0) setUploadingVideos(true);
     try {
       const post = await createMomentPost(text.trim(), images, videos);
-      setUploadingImages(false);
-      setUploadingVideos(false);
-      if (post) { onCreated(post); setText(''); setImages([]); setVideos([]); }
+      onCreated(post);
+      setText(''); setImages([]); setVideos([]);
+    } catch {
+      // El momento no se creo: no se mete en el feed ni se dice que se publico.
+      // El texto y los archivos siguen en el modal para reintentar.
+      toast.error(tr('xtNoSePudoCargar'));
     } finally { setCreating(false); setUploadingImages(false); setUploadingVideos(false); }
   };
 
@@ -2809,9 +2718,7 @@ interface LiveViewer   { userId: string; userName: string; avatarUrl?: string; }
 
 interface LiveStreamModalProps {
   visible: boolean;
-  hostId: string;
   hostName: string;
-  hostAvatar?: string;
   onClose: () => void;
 }
 
@@ -2894,7 +2801,7 @@ const EffectIcon = ({ id, active }: { id: string; active: boolean }) => {
   }
 };
 
-function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: LiveStreamModalProps) {
+function LiveStreamModal({ visible, hostName, onClose }: LiveStreamModalProps) {
   const insets = useSafeAreaInsets();
   const { isDark } = useThemeContext();
 
@@ -2963,8 +2870,10 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: tr('xtEnVivo') }),
       });
-      let id = `live-${Date.now()}`;
-      if (res.ok) { const d = await res.json(); id = d.liveId || id; }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const creado = await res.json();
+      const id = creado?.liveId;
+      if (!id) throw new Error('respuesta sin liveId');
 
       setLiveId(id);
       setIsLive(true);
@@ -2973,17 +2882,6 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
 
       // Notificar por push a todos los contactos
       notifyLiveStarted({ liveId: id, hostName: hostName || tr('xtTuContacto') }).catch(() => {});
-
-      // Registrar en Supabase para que aparezca en tiempo real en la lista de lives
-      void supabase.from('live_streams').upsert({
-        id,
-        host_id: hostId,
-        host_name: hostName,
-        host_avatar: hostAvatar,
-        viewer_count: 0,
-        started_at: new Date().toISOString(),
-        is_active: true,
-      }, { onConflict: 'id' });
 
       const ch = supabase.channel(`live:${id}`)
         .on('broadcast', { event: 'reaction' }, ({ payload }: any) => {
@@ -3008,7 +2906,7 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
         })
         .subscribe();
       channelRef2.current = ch;    } catch {
-      Alert.alert(tr('error'), 'No se pudo iniciar el live');
+      Alert.alert(tr('error'), tr('xtNoSePudoIniciarDirecto'));
     }
   }, [camPerm, micPerm, requestCamPerm, requestMicPerm, hostName]);
 
@@ -3027,8 +2925,6 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
         const token = await getToken();
         await fetch(`${getApiBase()}/api/live/${liveId}/end`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
       } catch {}
-      // Marcar como inactivo en Supabase
-      void supabase.from('live_streams').update({ is_active: false, ended_at: new Date().toISOString() }).eq('id', liveId);
     }
     setIsLive(false); setLiveId(null); setViewers([]); setReactions([]); setComments([]); setDuration(0);
   }, [liveId]);
