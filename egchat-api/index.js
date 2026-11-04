@@ -9315,9 +9315,9 @@ const sendPushToUser = async (userId, payload) => {
           // Asegurar que notificationType siempre está presente para que el cliente
           // pueda distinguir mensajes de llamadas
           notificationType: payload.notificationType || 'message',
-          imageUrl: payload.imageUrl || payload.icon || '',
+          imageUrl: payload.imageUrl || payload.callerAvatar || payload.icon || '',
           senderName: payload.senderName || payload.callerName || '',
-          senderAvatar: payload.senderAvatar || payload.icon || '',
+          senderAvatar: payload.senderAvatar || payload.callerAvatar || payload.icon || '',
           messageType: payload.messageType || 'text',
           chatId: payload.chatId || '',
           // Llamadas: incluir el offer en el push para que el callee
