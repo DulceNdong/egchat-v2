@@ -7917,6 +7917,13 @@ const sendVoipPushToUser = async (userId, call) => {
  */
 const sendVoipSignalToUsers = async (userIds, callId, type, reason) => {
   try {
+    // Un VoIP push obliga al binario a reportar una interacción de CallKit. Los
+    // iPhone con 126/127 no leen `notificationType` y abrirían una llamada
+    // fantasma, así que la señal no se emite solo porque existan las claves
+    // APNs: hace falta además VOIP_SIGNAL_ENABLED=1, cuando el grupo esté en 129.
+    if (process.env.VOIP_SIGNAL_ENABLED !== '1') {
+      return { configured: false, delivered: false, reason: 'signal_disabled' };
+    }
     const apnsJwt = getApnsVoipJwt();
     if (!apnsJwt) return { configured: false, delivered: false };
 
@@ -8980,6 +8987,7 @@ app.get('/api/push/voip-status', auth, async (req, res) => {
 
     res.json({
       apnsConfigured:   !!(process.env.APNS_KEY_P8 && process.env.APNS_KEY_ID && process.env.APNS_TEAM_ID),
+      signalEnabled:    process.env.VOIP_SIGNAL_ENABLED === '1',
       apnsEnv:          process.env.APNS_ENV || 'production',
       apnsBundle:       process.env.APNS_BUNDLE_ID || 'com.jallzstores.egchat',
       edgeFnConfigured: !!(process.env.SUPABASE_URL && process.env.SERVICE_TOKEN),
