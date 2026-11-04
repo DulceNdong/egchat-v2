@@ -7165,7 +7165,7 @@ app.get('/api/users/:userId', auth, async (req, res) => {
 const ensureSpacesSchema = async () => {
   const faltan = [];
   for (const t of ['spaces', 'space_follows', 'space_posts', 'space_post_likes', 'space_post_comments', 'stories',
-                   'moments', 'moment_likes', 'moment_comments']) {
+                   'moments', 'moment_likes', 'moment_comments', 'live_streams']) {
     try {
       const { error } = await supabase.from(t).select('id').limit(1);
       if (error) faltan.push(`${t}: ${error.message}`);
@@ -7712,10 +7712,10 @@ app.get('/api/stories/contacts-new', auth, async (req, res) => {
 // solo viven aqui. El autor se excluye a si mismo y el dueno de la publicacion
 // es el unico que puede dispararlo: si no, cualquiera avisaria a la agenda de
 // otro usuario de un contenido que no es suyo.
-const notificarContactos = async (userId, tabla, idParam, ruta, texto) => {
-  const { data: fila } = await supabase.from(tabla).select('id, user_id').eq('id', idParam).single();
+const notificarContactos = async (userId, tabla, idParam, ruta, texto, columnaDueno = 'user_id') => {
+  const { data: fila } = await supabase.from(tabla).select(`id, ${columnaDueno}`).eq('id', idParam).single();
   if (!fila) return { estado: 404, cuerpo: { error: 'NO_ENCONTRADO', message: `Ese ${ruta} no existe.` } };
-  if (fila.user_id !== userId) return { estado: 403, cuerpo: { error: 'NO_ES_TUYO', message: `Ese ${ruta} no es tuyo.` } };
+  if (fila[columnaDueno] !== userId) return { estado: 403, cuerpo: { error: 'NO_ES_TUYO', message: `Ese ${ruta} no es tuyo.` } };
 
   const destinatarios = await contactosDeUsuario(userId);
   await Promise.allSettled(
@@ -7759,6 +7759,107 @@ app.post('/api/stories/:storyId/notify', auth, async (req, res) => {
       storyId: req.params.storyId,
       senderName: nombre,
     });
+    res.status(r.estado).json(r.cuerpo);
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// ════════════════════════════════════════════════════════════════════
+// DIRECTOS (LIVE) — el registro, no el video
+// ════════════════════════════════════════════════════════════════════
+// El video viaja por los canales de realtime del telefono. Lo que faltaba era el
+// registro: sin live_streams la pestaña de vivos no tenia donde leer quien estaba
+// en directo, y el cliente inventaba un id y se lo apuntaba a si mismo.
+// No hay columna de espectadores: nadie sabe ese numero hasta que exista presencia
+// real, y un conteo escrito aparte es un numero que puede mentir.
+
+app.post('/api/live/start', auth, async (req, res) => {
+  try {
+    const titulo = (req.body?.title || 'Directo').toString().slice(0, 80);
+    // Un usuario no puede tener dos directos abiertos: si no se cierra el anterior
+    // la lista de activos queda duplicada y nunca se apaga.
+    await supabase.from('live_streams')
+      .update({ is_active: false, ended_at: new Date().toISOString() })
+      .eq('host_id', req.user.id).eq('is_active', true);
+    const { data, error } = await supabase
+      .from('live_streams').insert({ host_id: req.user.id, title: titulo }).select().single();
+    if (error) return espacioFallo(res, error);
+    const { data: anfitrion } = await supabase
+      .from('users').select('full_name, avatar_url').eq('id', req.user.id).single();
+    res.status(201).json({
+      liveId: data.id,
+      host_id: req.user.id,
+      host_name: anfitrion?.full_name || 'Usuario',
+      host_avatar: anfitrion?.avatar_url || '',
+      started_at: data.started_at,
+    });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.get('/api/live/active', auth, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('live_streams')
+      .select('id, host_id, title, started_at')
+      .eq('is_active', true)
+      .gte('started_at', desdeHace24h())
+      .order('started_at', { ascending: false });
+    if (error) return espacioFallo(res, error);
+    const hosts = [...new Set((data || []).map(l => l.host_id))];
+    let perfiles = [];
+    if (hosts.length > 0) {
+      const r = await supabase.from('users').select('id, full_name, avatar_url').in('id', hosts);
+      perfiles = r.data || [];
+    }
+    const mapa = {};
+    perfiles.forEach(u => { mapa[u.id] = u; });
+    res.json((data || []).map(l => ({
+      live_id: l.id,
+      id: l.id,
+      host_id: l.host_id,
+      host_name: mapa[l.host_id]?.full_name || 'Usuario',
+      host_avatar: mapa[l.host_id]?.avatar_url || '',
+      title: l.title,
+      started_at: l.started_at,
+    })));
+  } catch (e) { espacioFallo(res, e); }
+});
+
+// POST /api/live/:liveId/end — lo llama el propio anfitrion al colgar. Antes el
+// telefono hacia el update contra la tabla: sin un registro compartido el directo
+// se quedaba activo para los demas aunque el dueno ya hubiera salido.
+app.post('/api/live/:liveId/end', auth, async (req, res) => {
+  try {
+    const { data: directo } = await supabase
+      .from('live_streams').select('id, host_id').eq('id', req.params.liveId).single();
+    if (!directo) return res.status(404).json({ error: 'NO_ENCONTRADO', message: 'Ese directo no existe.' });
+    if (directo.host_id !== req.user.id) {
+      return res.status(403).json({ error: 'NO_ES_TUYO', message: 'Ese directo no es tuyo.' });
+    }
+    const { data, error } = await supabase
+      .from('live_streams')
+      .update({ is_active: false, ended_at: new Date().toISOString() })
+      .eq('id', req.params.liveId).eq('host_id', req.user.id).eq('is_active', true)
+      .select('id');
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      return res.status(404).json({ error: 'NO_ENCONTRADO', message: 'Ese directo ya termino.' });
+    }
+    res.json({ ok: true, id: data[0].id });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.post('/api/live/:liveId/notify', auth, async (req, res) => {
+  try {
+    const nombre = (req.body?.hostName || 'Un contacto').toString().slice(0, 60);
+    const r = await notificarContactos(req.user.id, 'live_streams', req.params.liveId, 'directo', {
+      title: `${nombre} esta en directo`,
+      body: 'Toca para unirte',
+      notificationType: 'live_new',
+      url: '/stories',
+      tag: `directo-${req.params.liveId}`,
+      liveId: req.params.liveId,
+      senderName: nombre,
+    }, 'host_id');
     res.status(r.estado).json(r.cuerpo);
   } catch (e) { res.status(500).json({ message: e.message }); }
 });

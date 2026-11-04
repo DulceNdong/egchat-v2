@@ -18,6 +18,11 @@
 -- produccion `spaces` tiene 0 filas y aqui se deja. La semilla que inventaba seguidores
 -- (48200, 31500, 22100...) vive en index.js:7214-7219 y se quita del codigo, no de la base.
 --
+-- `live_streams` se suma aqui: la app llevaba meses haciendo `upsert` a una tabla que no
+-- existia, el fallo se tragaba con `void` y la lista de directos salia vacia. El registro
+-- (quien esta en directo y desde cuando) pasa a escribirlo el API; el video sigue yendo
+-- por el canal de realtime.
+--
 -- Idempotente: `create table if not exists`, `add column if not exists`, defaults y checks
 -- comprobados, indices estrictos y RLS sin politicas. Se puede pegar dos veces.
 --
@@ -187,6 +192,27 @@ alter table public.moment_comments add column if not exists user_id    uuid;
 alter table public.moment_comments add column if not exists text       text;
 alter table public.moment_comments add column if not exists created_at timestamptz default now();
 
+-- ── live_streams: el registro del directo, no el video ───────────────────────
+-- La app escribia esta tabla desde el telefono y leia una copia propia. No
+-- existia: el upsert fallaba en silencio y la lista de vivos salia vacia.
+-- Aqui vive solo el registro (quien esta en directo y desde cuando). El video
+-- va por el canal de realtime de Supabase, igual que las reacciones.
+-- Sin `viewer_count`: un conteo escrito aparte es un numero que puede mentir.
+create table if not exists public.live_streams (
+  id         uuid default gen_random_uuid() primary key,
+  host_id    uuid,
+  title      text,
+  started_at timestamptz default now(),
+  ended_at   timestamptz,
+  is_active  boolean default true
+);
+
+alter table public.live_streams add column if not exists host_id    uuid;
+alter table public.live_streams add column if not exists title      text;
+alter table public.live_streams add column if not exists started_at timestamptz default now();
+alter table public.live_streams add column if not exists ended_at   timestamptz;
+alter table public.live_streams add column if not exists is_active  boolean default true;
+
 -- ── relaciones: un solo seguimiento y un solo like por usuario y post ────────
 -- Las claves unicas son lo que impide que un doble clic cuente dos veces.
 do $$ begin
@@ -239,6 +265,8 @@ begin
     + (select count(*) from public.moment_comments c
         where not exists (select 1 from public.users u where u.id = c.user_id)
            or not exists (select 1 from public.moments m where m.id = c.moment_id))
+    + (select count(*) from public.live_streams v
+        where not exists (select 1 from public.users u where u.id = v.host_id))
   into h;
 
   if h > 0 then
@@ -321,6 +349,11 @@ begin
     alter table public.moment_comments add constraint moment_comments_user_id_fkey
       foreign key (user_id) references public.users(id) on delete cascade;
   end if;
+  if not exists (select 1 from pg_constraint
+                 where conrelid = 'public.live_streams'::regclass and conname = 'live_streams_host_id_fkey') then
+    alter table public.live_streams add constraint live_streams_host_id_fkey
+      foreign key (host_id) references public.users(id) on delete cascade;
+  end if;
 end $$;
 
 -- ── indices de las lecturas que hace la app ──────────────────────────────────
@@ -336,6 +369,8 @@ create index if not exists idx_moments_created         on public.moments (create
 create index if not exists idx_moments_user            on public.moments (user_id, created_at desc);
 create index if not exists idx_moment_likes_moment     on public.moment_likes (moment_id);
 create index if not exists idx_moment_comments_moment  on public.moment_comments (moment_id, created_at);
+create index if not exists idx_live_active             on public.live_streams (is_active, started_at desc);
+create index if not exists idx_live_host               on public.live_streams (host_id, started_at desc);
 
 -- El unico acceso legitimo es el API con la clave de servicio: RLS sin politicas,
 -- igual que en S1/S2/S3. `space_*_delta` ya estan revocadas a anon/authenticated.
@@ -348,13 +383,15 @@ alter table public.stories              enable row level security;
 alter table public.moments              enable row level security;
 alter table public.moment_likes         enable row level security;
 alter table public.moment_comments      enable row level security;
+alter table public.live_streams         enable row level security;
 
 -- ── autocomprobacion ─────────────────────────────────────────────────────────
 -- `columnas` tiene que dar 9 en spaces, 8 en space_posts, 4 en space_follows y
--- space_post_likes, 5 en space_post_comments, 9 en stories, 5 en moments, 4 en
--- moment_likes y 5 en moment_comments. `claves_foraneas` tiene que dar 1 en spaces,
--- stories y moments, 2 en el resto. `huerfanas_cero` es el numero de filas sin
--- dueno: si no es 0, las claves foraneas no se crearon.
+-- space_post_likes, 5 en space_post_comments, 9 en stories, 6 en moments, 4 en
+-- moment_likes, 5 en moment_comments y 6 en live_streams. `claves_foraneas` tiene
+-- que dar 1 en spaces, stories, moments y live_streams, 2 en el resto.
+-- `huerfanas_cero` es el numero de filas sin dueno: si no es 0, las claves
+-- foraneas no se crearon.
 select x.tabla,
        (to_regclass('public.' || x.tabla) is not null) as existe,
        (select count(*) from information_schema.columns c
@@ -364,7 +401,7 @@ select x.tabla,
   from (values
     ('spaces'), ('space_follows'), ('space_posts'),
     ('space_post_likes'), ('space_post_comments'), ('stories'),
-    ('moments'), ('moment_likes'), ('moment_comments')
+    ('moments'), ('moment_likes'), ('moment_comments'), ('live_streams')
   ) x(tabla)
  order by x.tabla;
 
@@ -383,6 +420,10 @@ select
          or (p.author_id is not null and not exists (select 1 from public.users u where u.id = p.author_id)))
   + (select count(*) from public.stories t
       where not exists (select 1 from public.users u where u.id = t.user_id))
+  + (select count(*) from public.moments m
+      where not exists (select 1 from public.users u where u.id = m.user_id))
+  + (select count(*) from public.live_streams v
+      where not exists (select 1 from public.users u where u.id = v.host_id))
   as huerfanas_cero;
 
 commit;
