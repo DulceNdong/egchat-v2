@@ -71,7 +71,7 @@
         ],
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "130"
+      "buildNumber": "131"
     },
     "android": {
       "package": "com.egchat.app",
@@ -148,6 +148,7 @@
         "expo-task-manager",
         {}
       ],
+      "./plugins/withNotificationServiceExtension.js",
       [
         "react-native-vision-camera",
         {
