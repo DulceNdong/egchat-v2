@@ -277,15 +277,17 @@ export const liaAPI = {
 // SERVICIOS PÚBLICOS
 // ══════════════════════════════════════════════════════════════════
 export const serviciosAPI = {
+  // Deuda real: la trae el proveedor, la app solo elige que factura paga.
+  facturas:               () => get<any>('/servicios/facturas'),
   // Electricidad SEGESA
   consultarFacturaElec: (contrato:string) => post<any>('/servicios/segesa/consultar', { contrato }),
-  pagarElectricidad:    (contrato:string, importe:number, metodo:string) => post<any>('/servicios/segesa/pagar', { contrato, importe, metodo }),
+  pagarElectricidad:    (facturaId:string) => post<any>('/servicios/segesa/pagar', { factura_id: facturaId }),
   // Agua SNGE
   consultarFacturaAgua: (contrato:string) => post<any>('/servicios/snge/consultar', { contrato }),
-  pagarAgua:            (contrato:string, importe:number, metodo:string) => post<any>('/servicios/snge/pagar', { contrato, importe, metodo }),
+  pagarAgua:            (facturaId:string) => post<any>('/servicios/snge/pagar', { factura_id: facturaId }),
   // Impuestos DGI
-  consultarImpuesto:    (nif:string, tipo:string) => post<any>('/servicios/dgi/consultar', { nif, tipo }),
-  pagarImpuesto:        (nif:string, importe:number, referencia:string) => post<any>('/servicios/dgi/pagar', { nif, importe, referencia }),
+  consultarImpuesto:    (nif:string) => post<any>('/servicios/dgi/consultar', { nif }),
+  pagarImpuesto:        (facturaId:string) => post<any>('/servicios/dgi/pagar', { factura_id: facturaId }),
   // Correos
   enviarPaquete:        (data:any) => post<any>('/servicios/correos/enviar', data),
 };
