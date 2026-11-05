@@ -3968,6 +3968,10 @@ app.post('/api/wallet/ledger/journals/:id/reject', requireAdmin, async (req, res
   res.json({ message: 'Asiento rechazado', journal_id: id });
 });
 
+// Anuncio y exigencia son los mismos numeros: una llamada directa no pasa por la pantalla.
+const CEMAC_MIN_AMOUNT = 1000;
+const CEMAC_MAX_AMOUNT = 1000000;
+
 app.get('/api/cemac/rates', auth, async (_req, res) => {
   try {
     const comision = await readTariff('cemac', 'fee');
@@ -3976,8 +3980,8 @@ app.get('/api/cemac/rates', auth, async (_req, res) => {
       countries: ['GQ', 'CM', 'GA', 'CG', 'TD', 'CF'],
       transfer_fee_flat: comision ? Number(comision.amount) : null,
       sandbox: true,
-      max_amount: 1000000,
-      min_amount: 1000
+      max_amount: CEMAC_MAX_AMOUNT,
+      min_amount: CEMAC_MIN_AMOUNT
     });
   } catch (error) {
     console.error('CEMAC rates error:', error);
@@ -3998,6 +4002,14 @@ app.post('/api/cemac/transfers', auth, walletLimiter, async (req, res) => {
     const validCountries = ['GQ', 'CM', 'GA', 'CG', 'TD', 'CF'];
     if (!validCountries.includes(from_country) || !validCountries.includes(to_country)) {
       return res.status(400).json({ message: 'Paises no soportados', code: 'INVALID_COUNTRY' });
+    }
+
+    const importeCemac = Number(amount);
+    if (!Number.isFinite(importeCemac) || importeCemac < CEMAC_MIN_AMOUNT || importeCemac > CEMAC_MAX_AMOUNT) {
+      return res.status(400).json({
+        message: `El importe debe estar entre ${CEMAC_MIN_AMOUNT} y ${CEMAC_MAX_AMOUNT.toLocaleString('es-ES')} XAF`,
+        code: 'AMOUNT_OUT_OF_RANGE',
+      });
     }
     
     // Reintentar el mismo pedido devuelve la transferencia ya creada.
