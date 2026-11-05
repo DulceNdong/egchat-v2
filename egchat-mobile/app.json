@@ -9,8 +9,9 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "com.jallzstores.egchat",
+      "appleTeamId": "XU6YD7ZJ2K",
       "supportsTablet": false,
-      "buildNumber": "143",
+      "buildNumber": "144",
       "config": {
         "usesNonExemptEncryption": false
       },
@@ -84,10 +85,10 @@
         "origin": false
       },
       "eas": {
-        "projectId": "8fde846d-979b-468a-933d-2768cc5cd39f"
+        "projectId": "0ebb7958-d09b-4590-a7b7-80977a62b642"
       }
     },
-    "owner": "dutti98",
+    "owner": "reddington120",
     "runtimeVersion": "1.0.0"
   }
 }

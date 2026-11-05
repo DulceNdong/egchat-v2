@@ -1,0 +1,2151 @@
+// Burbuja de mensaje — paridad EGCHAT v2.5.2
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  View, Text, TouchableOpacity, StyleSheet, Linking, Animated,
+  PanResponder, LayoutChangeEvent, ActivityIndicator,
+} from 'react-native';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Audio } from 'expo-av';
+import Svg, { Path, Rect, Polygon, Line, Circle, Polyline, G } from 'react-native-svg';
+import { useAudioPlayer } from '../../hooks/useAudioPlayer';
+import { EGAvatar } from '../ui';
+import { MessageStatusIndicator } from './MessageStatusIndicator';
+import { ReactionBubble, ReactionPopAnimation } from './ReactionBubble';
+import { PollMessage, parsePoll } from './PollMessage';
+import { ImageViewer } from '../ImageViewer';
+import { LinkPreview, extractUrl } from './LinkPreview';
+import { VideoViewerModal } from './VideoViewerModal';
+import { MarkdownText } from './MarkdownText';
+import { downloadMediaIfNeeded } from '../../services/autoDownload';
+import { useFont } from '../../context/FontContext';
+import type { ChatMessage } from '../../types/chat';
+
+// ── Tarjeta VIDEO — estilo WhatsApp ──────────────────────────────
+const VideoCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean }) => {
+  const [playing, setPlaying] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const videoRef = useRef<any>(null);
+
+  const url = message.file_url || '';
+  // Nombre limpio: quitar prefijo 🎥, hash técnico → mostrar "Video"
+  const rawName = (message.text || '').replace(/^🎥\s*/, '').trim();
+  const isHashName = /^[a-z0-9]{20,}/i.test(rawName.split('.')[0]);
+  const fileName = isHashName ? 'Video' : (rawName || 'Video');
+  const ext = rawName.split('.').pop()?.toLowerCase() || 'mp4';
+
+  // Pausa el inline antes de abrir el visor para evitar doble audio
+  const openViewer = useCallback(async () => {
+    if (videoRef.current) {
+      try { await videoRef.current.pauseAsync(); } catch {}
+      setPlaying(false);
+    }
+    setViewerOpen(true);
+  }, []);
+
+  const togglePlay = async () => {
+    if (!videoRef.current) return;
+    try {
+      if (playing) {
+        await videoRef.current.pauseAsync();
+      } else {
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          allowsRecordingIOS: false,
+          shouldDuckAndroid: true,
+          staysActiveInBackground: false,
+        });
+        await videoRef.current.playAsync();
+      }
+      setPlaying(p => !p);
+    } catch {}
+  };
+
+  // En web: usar elemento <video> nativo con fullscreen nativo del browser
+  if (typeof document !== 'undefined') {
+    return (
+      <View style={vd.card}>
+        <View style={vd.videoBox}>
+          {/* @ts-ignore */}
+          <video
+            src={url}
+            controls
+            style={{ width: '100%', maxWidth: 260, borderRadius: 10, display: 'block', maxHeight: 180, backgroundColor: '#000' }}
+            preload="metadata"
+          />
+        </View>
+        <View style={vd.meta}>
+          <Text style={vd.name} numberOfLines={1}>{fileName}</Text>
+          <Text style={vd.ext}>{ext.toUpperCase()}</Text>
+        </View>
+      </View>
+    );
+  }
+
+  // En nativo: miniatura + play inline + botón expandir
+  const { Video } = require('expo-av');
+  return (
+    <>
+      <View style={vd.card}>
+        {/* Área de video — toque abre pantalla completa, play inline secundario */}
+        <TouchableOpacity onPress={openViewer} activeOpacity={0.9} style={vd.videoBox}>
+          <Video
+            ref={videoRef}
+            source={{ uri: url }}
+            style={vd.video}
+            contentFit="cover" cachePolicy="memory-disk"
+            shouldPlay={false}
+            isMuted={false}
+            onReadyForDisplay={() => setReady(true)}
+            onPlaybackStatusUpdate={(s: any) => {
+              if (s.didJustFinish) setPlaying(false);
+            }}
+          />
+
+          {/* Overlay con play cuando está pausado */}
+          {!playing && (
+            <View style={vd.overlay}>
+              <View style={vd.playBtn}>
+                <View style={vd.playTriangle} />
+              </View>
+            </View>
+          )}
+
+          {/* Botón expandir — esquina superior derecha */}
+          <TouchableOpacity
+            style={vd.expandBtn}
+            onPress={openViewer}
+            hitSlop={8}
+            activeOpacity={0.75}
+          >
+            <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+              <Path d="M8 3H5a2 2 0 0 0-2 2v3" />
+              <Path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+              <Path d="M3 16v3a2 2 0 0 0 2 2h3" />
+              <Path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+            </Svg>
+          </TouchableOpacity>
+
+          {/* Botón play/pause inline — centro inferior */}
+          {ready && (
+            <TouchableOpacity
+              style={vd.inlinePlayBtn}
+              onPress={(e) => { e.stopPropagation?.(); togglePlay(); }}
+              hitSlop={8}
+              activeOpacity={0.75}
+            >
+              <View style={vd.inlinePlayCircle}>
+                {playing
+                  ? <View style={vd.pauseBars}><View style={vd.pauseBar}/><View style={vd.pauseBar}/></View>
+                  : <View style={vd.playTriangleSmall} />
+                }
+              </View>
+            </TouchableOpacity>
+          )}
+        </TouchableOpacity>
+
+        <View style={vd.meta}>
+          <Text style={vd.name} numberOfLines={1}>{fileName}</Text>
+          <Text style={[vd.ext, { color: isOwn ? '#00c8a0' : '#00B4E6' }]}>{ext.toUpperCase()}</Text>
+        </View>
+      </View>
+
+      {/* Visor a pantalla completa */}
+      <VideoViewerModal
+        visible={viewerOpen}
+        uri={url}
+        title={fileName}
+        onClose={() => setViewerOpen(false)}
+      />
+    </>
+  );
+};
+
+const vd = StyleSheet.create({
+  card: { minWidth: 200, maxWidth: 260 },
+  videoBox: {
+    borderRadius: 10,
+    overflow: 'hidden',
+    backgroundColor: '#000',
+    position: 'relative',
+    marginBottom: 6,
+  },
+  video: { width: 260, height: 160 },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playBtn: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  playTriangle: {
+    width: 0, height: 0,
+    borderTopWidth: 9, borderBottomWidth: 9, borderLeftWidth: 16,
+    borderTopColor: 'transparent', borderBottomColor: 'transparent',
+    borderLeftColor: '#111', marginLeft: 4,
+  },
+  // Botón expandir esquina superior derecha
+  expandBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Play/pause inline pequeño abajo centro
+  inlinePlayBtn: {
+    position: 'absolute',
+    bottom: 8,
+    left: '50%' as any,
+    marginLeft: -16,
+  },
+  inlinePlayCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playTriangleSmall: {
+    width: 0, height: 0,
+    borderTopWidth: 5, borderBottomWidth: 5, borderLeftWidth: 9,
+    borderTopColor: 'transparent', borderBottomColor: 'transparent',
+    borderLeftColor: '#fff', marginLeft: 2,
+  },
+  pauseBars: { flexDirection: 'row', gap: 3 },
+  pauseBar: { width: 3, height: 10, backgroundColor: '#fff', borderRadius: 1 },
+  // Meta
+  meta: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 2 },
+  name: { fontSize: 12, fontWeight: '600', color: '#374151', flex: 1, marginRight: 6 },
+  ext: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
+});
+
+// ── Tarjeta LLAMADA — compacta y profesional (sin fondos de color) ──
+
+const PhoneIcon = ({ color, size = 16 }: { color: string; size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <Path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.38 2 2 0 0 1 3.6 1.2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.79a16 16 0 0 0 6.29 6.29l1.86-1.86a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+  </Svg>
+);
+
+const VideoIcon = ({ color, size = 16 }: { color: string; size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <Polygon points="23 7 16 12 23 17 23 7"/>
+    <Rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+  </Svg>
+);
+
+const ArrowDownLeft = ({ color, size = 12 }: { color: string; size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+    <Path d="M17 7L7 17M17 17H7V7"/>
+  </Svg>
+);
+
+const ArrowUpRight = ({ color, size = 12 }: { color: string; size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+    <Path d="M7 17L17 7M7 7h10v10"/>
+  </Svg>
+);
+
+// ── CallCard helpers ────────────────────────────────────────────────
+
+/** Parsea message.metadata (string JSON u objeto) de forma segura. */
+function _parseCallMeta(raw: unknown): Record<string, unknown> | null {
+  if (!raw) return null;
+  try {
+    const obj = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (obj && typeof obj === 'object' && 'callId' in (obj as object)) {
+      return obj as Record<string, unknown>;
+    }
+  } catch { /* */ }
+  return null;
+}
+
+/** Formatea segundos en "m:ss" o "Xs". */
+function _fmtDur(s: number | null | undefined): string {
+  if (!s || s <= 0) return '';
+  if (s < 60) return `${s}s`;
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
+const CallCard = ({ message, isOwn, onCallback }: {
+  message: ChatMessage; isOwn: boolean; onCallback?: () => void;
+}) => {
+  // ── 1. Intentar datos estructurados desde metadata ──
+  const meta = _parseCallMeta((message as any).metadata);
+
+  let isVideo    = false;
+  let isPerdida  = false;
+  let isRejected = false;
+  let isFailed   = false;
+  let isCancelled= false;
+  let isSaliente = isOwn;
+  let durStr     = '';
+
+  if (meta) {
+    // Datos ricos desde metadata JSONB
+    isVideo     = meta.callType === 'video';
+    const st    = (meta.status as string) || 'ended';
+    const reason= (meta.end_reason as string) || '';
+    isPerdida   = st === 'missed';
+    isRejected  = st === 'rejected';
+    isFailed    = st === 'failed';
+    isCancelled = reason === 'cancelled_by_caller';
+    isSaliente  = isOwn;  // isOwn sigue siendo el proxy más fiable en el chat
+    durStr      = _fmtDur(meta.duration_seconds as number | null);
+  } else {
+    // Fallback legacy: parsear texto con emoji/palabras
+    const txt   = message.text || '';
+    isVideo     = txt.includes('📹') || txt.toLowerCase().includes('video');
+    isPerdida   = txt.toLowerCase().includes('perdida') || txt.toLowerCase().includes('missed');
+    isSaliente  = txt.toLowerCase().includes('saliente') || txt.toLowerCase().includes('outgoing') || isOwn;
+    const m     = txt.match(/\((\d+:\d+)\)/);
+    durStr      = m ? m[1] : '';
+  }
+
+  const isCompleted = !isPerdida && !isRejected && !isFailed && !isCancelled;
+
+  // ── 2. Paleta visual por estado ──
+  // Verde = completada | Rojo = perdida/fallida | Naranja = rechazada/cancelada | Azul = vídeo
+  const iconBg: string = isPerdida || isFailed
+    ? '#ef4444'
+    : isRejected || isCancelled
+      ? '#f97316'
+      : isVideo
+        ? '#3b82f6'
+        : '#22c55e';
+
+  const statusColor: string = isPerdida || isFailed
+    ? '#ef4444'
+    : isRejected || isCancelled
+      ? '#f97316'
+      : isCompleted
+        ? '#22c55e'
+        : '#6b7280';
+
+  // ── 3. Etiquetas ──
+  const title = isVideo ? 'Llamada de vídeo' : 'Llamada de voz';
+
+  const statusLabel = isPerdida
+    ? 'Perdida'
+    : isRejected
+      ? 'Rechazada'
+      : isFailed
+        ? 'No conectó'
+        : isCancelled
+          ? 'Cancelada'
+          : isSaliente
+            ? (durStr ? 'Tú llamaste' : 'Saliente')
+            : (durStr ? 'Recibida'   : 'Recibida');
+
+  const canCallback = (isPerdida || isRejected) && !!onCallback;
+
+  return (
+    <TouchableOpacity
+      onPress={canCallback ? onCallback : undefined}
+      activeOpacity={canCallback ? 0.7 : 1}
+      style={cl.card}
+    >
+      {/* Icono circular con flecha de dirección */}
+      <View style={[cl.iconCircle, { backgroundColor: iconBg }]}>
+        {isVideo
+          ? <VideoIcon color="#fff" size={24} />
+          : <PhoneIcon color="#fff" size={24} />}
+        {/* Indicador de dirección en la esquina */}
+        <View style={[cl.dirBadge, { backgroundColor: iconBg }]}>
+          {isSaliente
+            ? <ArrowUpRight   color="#fff" size={9} />
+            : <ArrowDownLeft  color="#fff" size={9} />}
+        </View>
+      </View>
+
+      {/* Texto */}
+      <View style={cl.info}>
+        <Text style={cl.title}>{title}</Text>
+        <Text style={[cl.status, { color: statusColor }]}>{statusLabel}</Text>
+        {durStr !== '' && (
+          <View style={cl.durRow}>
+            <ClockIcon size={11} color="#9ca3af" />
+            <Text style={cl.durText}>{durStr}</Text>
+          </View>
+        )}
+        {canCallback && (
+          <Text style={cl.callbackHint}>Toca para volver a llamar</Text>
+        )}
+      </View>
+
+      {/* Flecha "devolver" en perdidas/rechazadas */}
+      {canCallback && (
+        <View style={cl.arrow}>
+          <ArrowUpRight color="#9ca3af" size={16} />
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+};
+
+const ClockIcon = ({ size = 12, color = '#9ca3af' }: { size?: number; color?: string }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <Path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
+    <Path d="M12 6v6l4 2"/>
+  </Svg>
+);
+
+const cl = StyleSheet.create({
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    minWidth: 240,
+    paddingVertical: 6,
+    paddingHorizontal: 2,
+  },
+  iconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    position: 'relative',
+  },
+  dirBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#fff',
+  },
+  info: { flex: 1, gap: 2 },
+  title: { fontSize: 14, fontWeight: '700', color: '#111827', lineHeight: 18 },
+  status: { fontSize: 13, fontWeight: '500', lineHeight: 16 },
+  durRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 1 },
+  durText: { fontSize: 11, color: '#9ca3af', fontWeight: '400' },
+  callbackHint: { fontSize: 12, color: '#6b7280', marginTop: 2 },
+  arrow: { paddingLeft: 4, flexShrink: 0 },
+});
+
+
+// Detecta si es mensaje de voz (grabado en app) vs canción compartida
+const isVoiceMessage = (msg: ChatMessage): boolean => {
+  const text = msg.text || '';
+  const url  = msg.file_url || '';
+  // Grabación de voz: nombre es audio.m4a / audio.wav, o texto tiene "Audio (Xs)"
+  if (/audio\.(m4a|wav|ogg|aac|opus)$/i.test(url)) return true;
+  if (/^🎵\s*Audio\s*(\(\d+s\))?$/i.test(text.trim())) return true;
+  if (/^audio\.(m4a|wav|ogg|aac|opus)$/i.test(text.trim())) return true;
+  return false;
+};
+
+const VOICE_BARS = [0.3,0.5,0.8,0.6,1.0,0.7,0.4,0.9,0.5,0.8,0.6,0.3,0.7,1.0,0.5,0.4,0.9,0.6,0.8,0.3,0.5,0.7,1.0,0.4,0.6,0.9,0.5,0.3,0.8,0.6];
+
+// ── VoiceCard — mensaje de voz con velocidad 1×/1.5×/2×, scrubbing táctil
+// y reproducción continua al salir del chat (usa reproductor global singleton)
+const VoiceCard = ({ message, isOwn, onTranscribed }: { message: ChatMessage; isOwn: boolean; onTranscribed?: (t: string) => void }) => {
+  const url = message.file_url || '';
+  const { playing, progress, position, duration, speed, togglePlay, cycleSpeed, seek } =
+    useAudioPlayer(url);
+  // C8 — transcripción: usar guardada si existe, sino null
+  const [transcript, setTranscript] = useState<string | null>(message.voice_transcript || null);
+  const [transcribing, setTranscribing] = useState(false);
+
+  const handleTranscribe = async () => {
+    if (transcript) { setTranscript(null); return; } // toggle
+    if (!url) return;
+    setTranscribing(true);
+    try {
+      const { getToken, getApiBase } = await import('../../api');
+      const token = await getToken();
+      const base = getApiBase();
+      const res = await fetch(`${base}/api/lia/transcribe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ audio_url: url }),
+      });
+      const data = await res.json();
+      const text = data.text || data.transcript || 'No se pudo transcribir';
+      setTranscript(text);
+      // C8 — persistir en el estado del chat
+      onTranscribed?.(text);
+    } catch {
+      setTranscript('Error al transcribir');
+    } finally {
+      setTranscribing(false);
+    }
+  };
+
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  // Ancho de la barra de progreso para calcular ratio de scrubbing
+  const waveWidthRef = useRef(0);
+
+  const fmtTime = (s: number) =>
+    `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
+  // Pulso del botón play mientras reproduce
+  useEffect(() => {
+    if (playing) {
+      Animated.loop(Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.12, duration: 500, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.0,  duration: 500, useNativeDriver: true }),
+      ])).start();
+    } else {
+      pulseAnim.stopAnimation();
+      pulseAnim.setValue(1);
+    }
+  }, [playing]);
+
+  // PanResponder para scrubbing táctil en nativo
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => {
+        if (waveWidthRef.current <= 0) return;
+        const ratio = Math.max(0, Math.min(1, evt.nativeEvent.locationX / waveWidthRef.current));
+        seek(ratio);
+      },
+      onPanResponderMove: (evt) => {
+        if (waveWidthRef.current <= 0) return;
+        const ratio = Math.max(0, Math.min(1, evt.nativeEvent.locationX / waveWidthRef.current));
+        seek(ratio);
+      },
+    }),
+  ).current;
+
+  const accent   = isOwn ? '#00c8a0' : '#00B4E6';
+  const barFill  = isOwn ? '#00c8a0' : '#00B4E6';
+  const barEmpty = isOwn ? 'rgba(0,200,160,0.25)' : 'rgba(0,180,230,0.25)';
+
+  return (
+    <>
+    <View style={vc.card}>
+      {/* Botón play/pause con pulso animado */}
+      <TouchableOpacity onPress={togglePlay} activeOpacity={0.8}>
+        <Animated.View style={[vc.btn, { backgroundColor: accent, transform: [{ scale: pulseAnim }] }]}>
+          {playing ? (
+            <View style={vc.pauseWrap}>
+              <View style={[vc.pauseBar, { backgroundColor: '#fff' }]} />
+              <View style={[vc.pauseBar, { backgroundColor: '#fff' }]} />
+            </View>
+          ) : (
+            <View style={vc.playTriangle} />
+          )}
+        </Animated.View>
+      </TouchableOpacity>
+
+      {/* Forma de onda con scrubbing */}
+      <View style={vc.mid}>
+        <View
+          style={vc.waveRow}
+          onLayout={(e: LayoutChangeEvent) => { waveWidthRef.current = e.nativeEvent.layout.width; }}
+          {...panResponder.panHandlers}
+        >
+          {VOICE_BARS.map((h, i) => {
+            const filled = progress > 0 && i / VOICE_BARS.length < progress;
+            return (
+              <View
+                key={i}
+                style={[vc.bar, {
+                  height: Math.max(3, h * 24),
+                  backgroundColor: filled ? barFill : barEmpty,
+                }]}
+              />
+            );
+          })}
+          {/* Thumb indicador de posición */}
+          {progress > 0 && (
+            <View
+              style={[vc.scrubThumb, {
+                left: `${Math.round(progress * 100)}%` as any,
+                backgroundColor: accent,
+              }]}
+            />
+          )}
+        </View>
+        <View style={vc.timeRow}>
+          <Text style={vc.timeText}>
+            {playing && position > 0 ? fmtTime(position) : duration > 0 ? fmtTime(duration) : '0:00'}
+          </Text>
+          {duration > 0 && position > 0 && (
+            <Text style={[vc.timeText, { marginLeft: 'auto' as any, opacity: 0.5 }]}>
+              -{fmtTime(Math.max(0, duration - position))}
+            </Text>
+          )}
+        </View>
+      </View>
+
+      {/* Botón velocidad: toca para ciclar 1× → 1.5× → 2× */}
+      <TouchableOpacity onPress={cycleSpeed} style={[vc.speedBtn, { borderColor: accent }]} activeOpacity={0.7}>
+        <Text style={[vc.speedText, { color: accent }]}>{speed}×</Text>
+      </TouchableOpacity>
+
+      {/* A4 — Botón de transcripción */}
+      <TouchableOpacity onPress={handleTranscribe} style={vc.transcribeBtn} activeOpacity={0.7}>
+        {transcribing ? (
+          <Text style={{ fontSize: 12 }}>⏳</Text>
+        ) : (
+          <Text style={vc.transcribeIcon}>{transcript ? '✕' : '🔤'}</Text>
+        )}
+      </TouchableOpacity>
+    </View>
+    {transcript ? (
+      <View style={[vc.transcriptBox, { borderColor: accent }]}>
+        <Text style={vc.transcriptText}>🔤 {transcript}</Text>
+      </View>
+    ) : null}
+  </>
+  );};
+
+const vc = StyleSheet.create({
+  card: { flexDirection: 'row', alignItems: 'center', gap: 8, minWidth: 220, maxWidth: 280, paddingVertical: 4 },
+  btn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  playTriangle: { width: 0, height: 0, borderTopWidth: 7, borderBottomWidth: 7, borderLeftWidth: 12, borderTopColor: 'transparent', borderBottomColor: 'transparent', borderLeftColor: '#fff', marginLeft: 3 },
+  pauseWrap: { flexDirection: 'row', gap: 3 },
+  pauseBar: { width: 3, height: 13, borderRadius: 2 },
+  mid: { flex: 1, gap: 4 },
+  waveRow: { flexDirection: 'row', alignItems: 'center', gap: 2, height: 26, position: 'relative' },
+  bar: { width: 3, borderRadius: 2 },
+  scrubThumb: {
+    position: 'absolute',
+    top: -2,
+    width: 10,
+    height: 30,
+    borderRadius: 3,
+    opacity: 0.85,
+    marginLeft: -5,
+  },
+  timeRow: { flexDirection: 'row', alignItems: 'center' },
+  timeText: { fontSize: 11, color: '#9ca3af', fontWeight: '600' },
+  speedBtn: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, borderWidth: 1.5, flexShrink: 0, minWidth: 42, alignItems: 'center' },
+  speedText: { fontSize: 12, fontWeight: '800', letterSpacing: 0.3 },
+  transcribeBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.05)', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  transcribeIcon: { fontSize: 14 },
+  transcriptBox: {
+    marginTop: 6, backgroundColor: '#f9fafb', borderRadius: 8, padding: 8,
+    borderWidth: 1, borderColor: '#e5e7eb',
+  },
+  transcriptText: { fontSize: 12, color: '#374151', lineHeight: 16, fontStyle: 'italic' },
+});
+
+
+const parseTrackInfo = (raw: string) => {
+  const clean = (raw || '')
+    .replace(/^🎵\s*/, '')
+    .replace(/\s*\(\d+(\.\d+)?\s*(MB|KB|GB|B)\)/i, '')
+    .replace(/\.[a-z0-9]{2,4}$/i, '')
+    .trim();
+  const isHash = /^[a-z0-9_\-]{20,}$/i.test(clean);
+  if (isHash || !clean) return { title: 'Sin título', artist: 'Artista desconocido' };
+  const sep = clean.match(/\s[-–]\s/) ? clean.match(/\s[-–]\s/)![0] : null;
+  if (sep) {
+    const parts = clean.split(sep);
+    return { title: parts[1]?.trim() || clean, artist: parts[0]?.trim() || 'Artista desconocido' };
+  }
+  return { title: clean, artist: 'Artista desconocido' };
+};
+
+// Colores de portada generados por hash del título
+const COVER_PALETTES: [string, string][] = [
+  ['#667eea', '#764ba2'], ['#f093fb', '#f5576c'], ['#4facfe', '#00f2fe'],
+  ['#43e97b', '#38f9d7'], ['#fa709a', '#fee140'], ['#a18cd1', '#fbc2eb'],
+  ['#ffecd2', '#fcb69f'], ['#ff9a9e', '#fecfef'], ['#a1c4fd', '#c2e9fb'],
+  ['#fd7043', '#ff8a65'],
+];
+const getCoverGradient = (title: string): [string, string] => {
+  let hash = 0;
+  for (let i = 0; i < title.length; i++) hash = title.charCodeAt(i) + ((hash << 5) - hash);
+  return COVER_PALETTES[Math.abs(hash) % COVER_PALETTES.length];
+};
+
+// ── MusicCard — tarjeta de música con play/pausa y seek táctil ────
+const MusicCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean }) => {
+  const [playing, setPlaying]   = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [position, setPosition] = useState(0);
+  const [loading, setLoading]   = useState(false);
+  const soundRef    = useRef<Audio.Sound | null>(null);
+  const audioElRef  = useRef<HTMLAudioElement | null>(null);
+  const trackWidthRef = useRef(0);
+  const spinAnim    = useRef(new Animated.Value(0)).current;
+  const pulseAnim   = useRef(new Animated.Value(1)).current;
+  const isWeb       = typeof document !== 'undefined';
+
+  const rawText           = message.text || message.file_url?.split('/').pop() || '';
+  const { title, artist } = parseTrackInfo(rawText);
+  const [gradA, gradB]    = getCoverGradient(title);
+  const url               = message.file_url || '';
+  const accentColor       = isOwn ? '#00c8a0' : '#667eea';
+
+  const fmtTime = (s: number) =>
+    `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
+  // Animación disco giratorio
+  useEffect(() => {
+    if (playing) {
+      Animated.loop(
+        Animated.timing(spinAnim, { toValue: 1, duration: 5000, useNativeDriver: true })
+      ).start();
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.06, duration: 800, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1.0,  duration: 800, useNativeDriver: true }),
+        ])
+      ).start();
+    } else {
+      spinAnim.stopAnimation();
+      pulseAnim.stopAnimation();
+      Animated.timing(pulseAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+    }
+  }, [playing]);
+
+  const spin = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+
+  // Web: elemento <audio> oculto
+  useEffect(() => {
+    if (!isWeb || !url) return;
+    const el = new (window as any).Audio(url) as HTMLAudioElement;
+    el.preload = 'metadata';
+    el.onloadedmetadata = () => setDuration(el.duration || 0);
+    el.ontimeupdate = () => {
+      setPosition(el.currentTime);
+      setProgress(el.duration ? el.currentTime / el.duration : 0);
+    };
+    el.onended = () => { setPlaying(false); setProgress(0); setPosition(0); el.currentTime = 0; };
+    audioElRef.current = el;
+    return () => { el.pause(); el.src = ''; audioElRef.current = null; };
+  }, [isWeb, url]);
+
+  const togglePlay = useCallback(async () => {
+    if (!url) return;
+    if (isWeb) {
+      const el = audioElRef.current;
+      if (!el) return;
+      if (playing) { el.pause(); setPlaying(false); }
+      else { el.play().catch(() => {}); setPlaying(true); }
+      return;
+    }
+    try {
+      if (soundRef.current) {
+        const st = await soundRef.current.getStatusAsync();
+        if (st.isLoaded) {
+          if (st.isPlaying) { await soundRef.current.pauseAsync(); setPlaying(false); }
+          else              { await soundRef.current.playAsync();  setPlaying(true);  }
+          return;
+        }
+      }
+      setLoading(true);
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, allowsRecordingIOS: false });
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: url }, { shouldPlay: true },
+        (st) => {
+          if (!st.isLoaded) return;
+          const dur = (st.durationMillis || 0) / 1000;
+          const pos = (st.positionMillis || 0) / 1000;
+          setDuration(dur); setPosition(pos);
+          setProgress(dur > 0 ? pos / dur : 0);
+          if (st.didJustFinish) {
+            setPlaying(false); setProgress(0); setPosition(0);
+            sound.setPositionAsync(0).catch(() => {});
+          }
+        }
+      );
+      soundRef.current = sound;
+      setPlaying(true);
+    } catch {
+      // silenciar error de audio
+    } finally {
+      setLoading(false);
+    }
+  }, [url, playing, isWeb]);
+
+  // Seek nativo via PanResponder en la barra de progreso
+  const seekPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => {
+        const ratio = Math.max(0, Math.min(1, evt.nativeEvent.locationX / trackWidthRef.current));
+        applySeek(ratio);
+      },
+      onPanResponderMove: (evt) => {
+        const ratio = Math.max(0, Math.min(1, evt.nativeEvent.locationX / trackWidthRef.current));
+        applySeek(ratio);
+      },
+    })
+  ).current;
+
+  const applySeek = (ratio: number) => {
+    setProgress(ratio);
+    if (isWeb && audioElRef.current) {
+      audioElRef.current.currentTime = ratio * (audioElRef.current.duration || 0);
+      return;
+    }
+    soundRef.current?.getStatusAsync().then(st => {
+      if (st.isLoaded && st.durationMillis) {
+        soundRef.current?.setPositionAsync(ratio * st.durationMillis).catch(() => {});
+      }
+    }).catch(() => {});
+  };
+
+  useEffect(() => () => { soundRef.current?.unloadAsync().catch(() => {}); }, []);
+
+  const initials = title.slice(0, 2).toUpperCase();
+  const pct = Math.round(progress * 100);
+
+  return (
+    <View style={mc.card}>
+      {/* ── Portada con disco giratorio ── */}
+      <Animated.View style={[mc.coverWrap, { transform: [{ scale: pulseAnim }] }]}>
+        <LinearGradient colors={[gradA, gradB]} style={mc.coverGrad}>
+          <Animated.View style={[mc.disc, { transform: [{ rotate: spin }] }]}>
+            <LinearGradient colors={['#111827', '#1f2937']} style={mc.discInner}>
+              <View style={mc.discHole} />
+            </LinearGradient>
+          </Animated.View>
+          <Text style={mc.coverInitials}>{initials}</Text>
+        </LinearGradient>
+        {/* Badge verde Spotify-style */}
+        <View style={[mc.badge, { backgroundColor: accentColor }]}>
+          <Svg width={10} height={10} viewBox="0 0 24 24" fill="#fff">
+            <Path d="M9 18V5l12-2v13M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm12-2a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
+          </Svg>
+        </View>
+      </Animated.View>
+
+      {/* ── Info + controles ── */}
+      <View style={mc.right}>
+        {/* Título y artista */}
+        <View style={mc.titleRow}>
+          <Text style={mc.title} numberOfLines={1}>{title}</Text>
+          <Text style={mc.artist} numberOfLines={1}>{artist}</Text>
+        </View>
+
+        {/* Barra de progreso con seek táctil (nativo + web) */}
+        <View
+          style={mc.progressTrack}
+          onLayout={e => { trackWidthRef.current = e.nativeEvent.layout.width; }}
+          {...seekPanResponder.panHandlers}
+        >
+          <View style={[mc.progressBg]} />
+          <View style={[mc.progressFill, { width: `${pct}%` as any, backgroundColor: accentColor }]} />
+          <View style={[mc.progressThumb, { left: `${pct}%` as any, backgroundColor: accentColor }]} />
+        </View>
+
+        {/* Tiempo + botón play central */}
+        <View style={mc.controls}>
+          <Text style={mc.timeText}>{position > 0 ? fmtTime(position) : '0:00'}</Text>
+
+          <TouchableOpacity
+            onPress={togglePlay}
+            style={mc.playBtn}
+            activeOpacity={0.85}
+            accessibilityLabel={playing ? 'Pausar' : 'Reproducir'}
+            accessibilityRole="button"
+            disabled={loading}
+          >
+            <LinearGradient
+              colors={isOwn ? ['#00c8a0', '#00B4E6'] : ['#667eea', '#764ba2']}
+              style={mc.playBtnGrad}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : playing ? (
+                <View style={mc.pauseWrap}>
+                  <View style={mc.pauseBar} />
+                  <View style={mc.pauseBar} />
+                </View>
+              ) : (
+                <View style={mc.playTriangle} />
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <Text style={[mc.timeText, { textAlign: 'right' }]}>
+            {duration > 0 ? fmtTime(duration) : '--:--'}
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+};
+
+const mc = StyleSheet.create({
+  card: {
+    flexDirection: 'row',
+    gap: 12,
+    minWidth: 250,
+    maxWidth: 310,
+    paddingVertical: 4,
+    alignItems: 'center',
+  },
+  coverWrap: { position: 'relative', width: 68, height: 68, flexShrink: 0 },
+  coverGrad: {
+    width: 68, height: 68, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  disc: {
+    position: 'absolute',
+    width: 48, height: 48, borderRadius: 24,
+    alignItems: 'center', justifyContent: 'center',
+    opacity: 0.4,
+  },
+  discInner: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  discHole: { width: 7, height: 7, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.5)' },
+  coverInitials: {
+    fontSize: 20, fontWeight: '900', color: 'rgba(255,255,255,0.92)',
+    textShadowColor: 'rgba(0,0,0,0.35)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
+  },
+  badge: {
+    position: 'absolute', bottom: -5, right: -5,
+    width: 22, height: 22, borderRadius: 11,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: '#fff',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2, elevation: 3,
+  },
+  right: { flex: 1, gap: 7 },
+  titleRow: { gap: 1 },
+  title: { fontSize: 13, fontWeight: '700', color: '#111827', lineHeight: 17 },
+  artist: { fontSize: 11, color: '#6b7280', fontWeight: '500' },
+  progressTrack: {
+    height: 18, justifyContent: 'center',
+    position: 'relative',
+  },
+  progressBg: {
+    position: 'absolute', left: 0, right: 0,
+    height: 3, borderRadius: 2, backgroundColor: 'rgba(0,0,0,0.10)',
+  },
+  progressFill: {
+    height: 3, borderRadius: 2,
+    position: 'absolute', left: 0, top: 7,
+  },
+  progressThumb: {
+    width: 11, height: 11, borderRadius: 6,
+    position: 'absolute', top: 3,
+    marginLeft: -5,
+    backgroundColor: '#1DB954',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3, shadowRadius: 2, elevation: 3,
+  },
+  controls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  timeText: { fontSize: 10, color: '#9ca3af', fontWeight: '600', minWidth: 34 },
+  playBtn: {},
+  playBtnGrad: {
+    width: 36, height: 36, borderRadius: 18,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.22, shadowRadius: 4, elevation: 5,
+  },
+  playTriangle: {
+    width: 0, height: 0,
+    borderTopWidth: 6, borderBottomWidth: 6, borderLeftWidth: 11,
+    borderTopColor: 'transparent', borderBottomColor: 'transparent',
+    borderLeftColor: '#fff',
+    marginLeft: 3,
+  },
+  pauseWrap: { flexDirection: 'row', gap: 4, alignItems: 'center' },
+  pauseBar: { width: 3, height: 13, borderRadius: 2, backgroundColor: '#fff' },
+});
+
+// ── Tarjeta CONTACTO ──────────────────────────────────────────────
+// Formato de texto serializado del contacto:
+//   línea 0: nombre
+//   línea 1: teléfono
+//   línea 2: avatar_url (opcional, puede estar vacío)
+const ContactCard = ({
+  text,
+  isOwn,
+  onOpenContact,
+  onContactCall,
+  onContactMessage,
+}: {
+  text: string;
+  isOwn: boolean;
+  onOpenContact?: (phone: string, name: string, avatarUrl?: string) => void;
+  onContactCall?: (type: 'audio' | 'video', phone: string, name: string) => void;
+  onContactMessage?: (phone: string, name: string) => void;
+}) => {
+  const lines = (text || '').split('\n');
+  const name      = lines[0]?.replace(/^👤\s*/, '').trim() || 'Contacto';
+  const phone     = lines[1]?.replace(/^📞\s*/, '').trim() || '';
+  const avatarUrl = lines[2]?.trim() || '';
+  const isValidUrl = avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://');
+  const color = isOwn ? '#00c8a0' : '#00B4E6';
+
+  return (
+    <View style={cs.card}>
+      {/* Fila principal: avatar + datos — toca nombre/foto para abrir info */}
+      <TouchableOpacity
+        activeOpacity={0.75}
+        onPress={() => onOpenContact?.(phone, name, isValidUrl ? avatarUrl : undefined)}
+        accessibilityLabel={`Ver información de ${name}`}
+        accessibilityRole="button"
+      >
+        <View style={cs.row}>
+          <View style={cs.avatarWrap}>
+            {isValidUrl ? (
+              <Image source={{ uri: avatarUrl }} style={cs.avatarImg} />
+            ) : (
+              <EGAvatar name={name} size={48} />
+            )}
+          </View>
+          <View style={cs.info}>
+            <Text style={cs.name} numberOfLines={1}>{name}</Text>
+            {!!phone && <Text style={cs.phone}>{phone}</Text>}
+          </View>
+        </View>
+      </TouchableOpacity>
+
+      {/* Separador */}
+      <View style={[cs.divider, isOwn ? cs.divOwn : cs.divTheir]} />
+
+      {/* Acciones: Mensaje | Video | Audio */}
+      <View style={cs.actions}>
+        {/* Enviar mensaje */}
+        <TouchableOpacity
+          onPress={() => onContactMessage?.(phone, name)}
+          activeOpacity={0.7}
+          style={cs.actionBtn}
+          accessibilityLabel="Enviar mensaje"
+          accessibilityRole="button"
+        >
+          <Svg width={15} height={15} viewBox="0 0 24 24" fill="none"
+            stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <Path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </Svg>
+          <Text style={[cs.actionText, { color }]}>Mensaje</Text>
+        </TouchableOpacity>
+
+        <View style={[cs.actionDivider, isOwn ? cs.divOwn : cs.divTheir]} />
+
+        {/* Video llamada */}
+        <TouchableOpacity
+          onPress={() => onContactCall?.('video', phone, name)}
+          activeOpacity={0.7}
+          style={cs.actionBtn}
+          accessibilityLabel="Videollamada"
+          accessibilityRole="button"
+        >
+          <Svg width={15} height={15} viewBox="0 0 24 24" fill="none"
+            stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <Polygon points="23 7 16 12 23 17 23 7"/>
+            <Rect x={1} y={5} width={15} height={14} rx={2}/>
+          </Svg>
+          <Text style={[cs.actionText, { color }]}>Video</Text>
+        </TouchableOpacity>
+
+        <View style={[cs.actionDivider, isOwn ? cs.divOwn : cs.divTheir]} />
+
+        {/* Audio llamada */}
+        <TouchableOpacity
+          onPress={() => onContactCall?.('audio', phone, name)}
+          activeOpacity={0.7}
+          style={cs.actionBtn}
+          accessibilityLabel="Llamada de voz"
+          accessibilityRole="button"
+        >
+          <Svg width={15} height={15} viewBox="0 0 24 24" fill="none"
+            stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <Path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.63 3.4 2 2 0 0 1 3.6 1.21h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.81a16 16 0 0 0 6 6l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+          </Svg>
+          <Text style={[cs.actionText, { color }]}>Audio</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+};
+const cs = StyleSheet.create({
+  card: { minWidth: 220, maxWidth: 270 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingBottom: 12 },
+  avatarWrap: {
+    width: 48, height: 48, borderRadius: 24,
+    overflow: 'hidden', backgroundColor: '#e5e7eb',
+  },
+  avatarImg: { width: 48, height: 48, borderRadius: 24 },
+  info: { flex: 1, minWidth: 0 },
+  name: { fontSize: 14, fontWeight: '700', color: '#111827' },
+  phone: { fontSize: 12, color: '#6b7280', marginTop: 2 },
+  divider: { height: 1, marginHorizontal: -10, marginBottom: 0 },
+  divOwn: { backgroundColor: 'rgba(0,200,160,0.2)' },
+  divTheir: { backgroundColor: 'rgba(0,0,0,0.07)' },
+  actions: { flexDirection: 'row', alignItems: 'center', paddingTop: 8 },
+  actionBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'center', gap: 4, paddingVertical: 4,
+  },
+  actionDivider: { width: 1, height: 20, marginHorizontal: 2 },
+  actionText: { fontSize: 12, fontWeight: '700' },
+  actionOwn: { color: '#00c8a0' },
+  actionTheir: { color: '#00B4E6' },
+});
+
+// ── Tarjeta UBICACIÓN ─────────────────────────────────────────────
+const LocationCard = ({ text, isOwn, isLive }: { text: string; isOwn: boolean; isLive?: boolean }) => {
+  const lines = (text || '').split('\n');
+  const label = lines[0]?.replace(/^📍\s*/, '').trim() || 'Ubicación';
+  const url = lines[1]?.trim() || '';
+  // Extraer coordenadas de live_location: "lat:X,lng:Y"
+  const coordMatch = text.match(/lat:([-\d.]+),lng:([-\d.]+)/);
+  const mapsUrl = coordMatch
+    ? `https://www.google.com/maps?q=${coordMatch[1]},${coordMatch[2]}`
+    : url;
+  return (
+    <View style={ls.card}>
+      <TouchableOpacity activeOpacity={0.85} onPress={() => mapsUrl && Linking.openURL(mapsUrl)}>
+        <LinearGradient colors={isLive ? ['#ef4444', '#f97316'] : ['#4facfe', '#00f2fe']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={ls.preview}>
+          <View style={ls.gridH1} /><View style={ls.gridH2} />
+          <View style={ls.gridV1} /><View style={ls.gridV2} />
+          <View style={ls.pin}><Text style={ls.pinEmoji}>{isLive ? '🔴' : '📍'}</Text></View>
+          {isLive && (
+            <View style={ls.liveBadge}>
+              <Text style={ls.liveText}>EN VIVO</Text>
+            </View>
+          )}
+        </LinearGradient>
+      </TouchableOpacity>
+      <Text style={ls.label} numberOfLines={2}>{isLive ? '📍 Ubicación en vivo' : label}</Text>
+      <TouchableOpacity onPress={() => mapsUrl && Linking.openURL(mapsUrl)}
+        style={[ls.btn, isOwn ? ls.btnOwn : ls.btnTheir]} activeOpacity={0.7}>
+        <Text style={ls.btnText}>{isLive ? 'Ver en Maps' : 'Abrir en Maps'}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
+const ls = StyleSheet.create({
+  card: { minWidth: 220, maxWidth: 260, overflow: 'hidden', marginHorizontal: -4 },
+  preview: { height: 120, borderRadius: 10, marginBottom: 8, alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  gridH1: { position: 'absolute', left: 0, right: 0, top: '33%', height: 1, backgroundColor: 'rgba(255,255,255,0.22)' },
+  gridH2: { position: 'absolute', left: 0, right: 0, top: '66%', height: 1, backgroundColor: 'rgba(255,255,255,0.22)' },
+  gridV1: { position: 'absolute', top: 0, bottom: 0, left: '33%', width: 1, backgroundColor: 'rgba(255,255,255,0.22)' },
+  gridV2: { position: 'absolute', top: 0, bottom: 0, left: '66%', width: 1, backgroundColor: 'rgba(255,255,255,0.22)' },
+  pin: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4 },
+  pinEmoji: { fontSize: 18 },
+  label: { fontSize: 12, color: '#374151', fontWeight: '600', marginBottom: 6, paddingHorizontal: 4 },
+  btn: { paddingVertical: 6, borderRadius: 8, alignItems: 'center' },
+  btnOwn: { backgroundColor: 'rgba(0,200,160,0.12)' },
+  btnTheir: { backgroundColor: 'rgba(0,180,230,0.10)' },
+  btnText: { fontSize: 12, fontWeight: '700', color: '#00B4E6' },
+  liveBadge: {
+    position: 'absolute', top: 8, right: 8,
+    backgroundColor: '#ef4444', borderRadius: 6,
+    paddingHorizontal: 6, paddingVertical: 2,
+  },
+  liveText: { color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+});
+
+// ── Tarjeta ÁLBUM (múltiples fotos) ──────────────────────────────
+const AlbumCard = ({ urls, onOpenImage }: { urls: string[]; onOpenImage?: (uri: string) => void }) => {
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
+  const visible = urls.slice(0, 6);
+  const extra = urls.length > 6 ? urls.length - 6 : 0;
+
+  const openAt = (i: number) => {
+    setViewerIndex(i);
+    setViewerOpen(true);
+  };
+
+  if (visible.length === 1) {
+    return (
+      <>
+        <TouchableOpacity onPress={() => openAt(0)} activeOpacity={0.9}>
+          <Image source={{ uri: visible[0] }} style={{ width: 240, height: 200, borderRadius: 10 }} contentFit="cover" cachePolicy="memory-disk" />
+        </TouchableOpacity>
+        <ImageViewer visible={viewerOpen} images={urls} initialIndex={viewerIndex} onClose={() => setViewerOpen(false)} />
+      </>
+    );
+  }
+
+  const cols = visible.length === 2 ? 2 : 3;
+  const cellSize = cols === 2 ? 118 : 78;
+
+  return (
+    <>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 2, borderRadius: 10, overflow: 'hidden', maxWidth: 240 }}>
+        {visible.map((uri, i) => (
+          <TouchableOpacity key={i} onPress={() => openAt(i)} activeOpacity={0.85}>
+            <View style={{ width: cellSize, height: cellSize }}>
+              <Image source={{ uri }} style={{ width: cellSize, height: cellSize }} contentFit="cover" cachePolicy="memory-disk" />
+              {i === 5 && extra > 0 && (
+                <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 20 }}>+{extra}</Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
+        ))}
+      </View>
+      <ImageViewer visible={viewerOpen} images={urls} initialIndex={viewerIndex} onClose={() => setViewerOpen(false)} />
+    </>
+  );
+};
+
+// ── Tarjeta TRANSFERENCIA ─────────────────────────────────────────
+
+// Iconos SVG para MoneyCard
+function McIconSend()   {
+  return (
+    <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+      <Path d="M22 2L11 13" stroke="#6366f1" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/>
+      <Path d="M22 2L15 22l-4-9-9-4 20-7z" stroke="#6366f1" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/>
+    </Svg>
+  );
+}
+function McIconReceive() {
+  return (
+    <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 4v16M5 13l7 7 7-7" stroke="#059669" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/>
+    </Svg>
+  );
+}
+function McIconClock()  {
+  return (
+    <Svg width={12} height={12} viewBox="0 0 24 24" fill="none">
+      <Circle cx="12" cy="12" r="9" stroke="#d97706" strokeWidth={2}/>
+      <Path d="M12 7v5l3 3" stroke="#d97706" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/>
+    </Svg>
+  );
+}
+function McIconCheck()  {
+  return (
+    <Svg width={12} height={12} viewBox="0 0 24 24" fill="none">
+      <Polyline points="20,6 9,17 4,12" stroke="#059669" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"/>
+    </Svg>
+  );
+}
+function McIconX()      {
+  return (
+    <Svg width={12} height={12} viewBox="0 0 24 24" fill="none">
+      <Line x1="18" y1="6" x2="6" y2="18" stroke="#dc2626" strokeWidth={2.5} strokeLinecap="round"/>
+      <Line x1="6" y1="6" x2="18" y2="18" stroke="#dc2626" strokeWidth={2.5} strokeLinecap="round"/>
+    </Svg>
+  );
+}
+function McIconUser()   {
+  return (
+    <Svg width={11} height={11} viewBox="0 0 24 24" fill="none">
+      <Circle cx="12" cy="8" r="4" stroke="#64748b" strokeWidth={2}/>
+      <Path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="#64748b" strokeWidth={2} strokeLinecap="round"/>
+    </Svg>
+  );
+}
+function McIconHash()   {
+  return (
+    <Svg width={10} height={10} viewBox="0 0 24 24" fill="none">
+      <Line x1="4" y1="9" x2="20" y2="9" stroke="#94a3b8" strokeWidth={2} strokeLinecap="round"/>
+      <Line x1="4" y1="15" x2="20" y2="15" stroke="#94a3b8" strokeWidth={2} strokeLinecap="round"/>
+      <Line x1="10" y1="3" x2="8" y2="21" stroke="#94a3b8" strokeWidth={2} strokeLinecap="round"/>
+      <Line x1="16" y1="3" x2="14" y2="21" stroke="#94a3b8" strokeWidth={2} strokeLinecap="round"/>
+    </Svg>
+  );
+}
+
+const MoneyCard = ({
+  text, isOwn, onAccept, onCancel,
+}: {
+  text: string;
+  isOwn?: boolean;
+  onAccept?: () => void;
+  onCancel?: () => void;
+}) => {
+  const [loading, setLoading] = React.useState<'accept' | 'cancel' | null>(null);
+  const [done, setDone]       = React.useState<'accepted' | 'cancelled' | null>(null);
+
+  const lines      = (text || '').split('\n');
+  const amountLine = lines.find(l => l.includes('💰')) || '';
+  const toLine     = lines.find(l => l.includes('👤')) || '';
+  const refLine    = lines.find(l => l.includes('🔑')) || '';
+
+  const amount = amountLine.replace(/^💰\s*/, '').trim();
+  const to     = toLine.replace(/^👤 Para:\s*/i, '').trim();
+  const ref    = refLine.replace(/^🔑 Ref:\s*/i, '').trim();
+
+  const isPending   = text.includes('⏳ Pendiente');
+  const showButtons = isPending && !isOwn && !done && !!onAccept && !!onCancel;
+
+  const handleAccept = async () => {
+    if (!onAccept || loading) return;
+    setLoading('accept');
+    try   { await onAccept(); setDone('accepted'); }
+    catch { /* el padre maneja el error */ }
+    finally { setLoading(null); }
+  };
+
+  const handleCancel = async () => {
+    if (!onCancel || loading) return;
+    setLoading('cancel');
+    try   { await onCancel(); setDone('cancelled'); }
+    catch { /* el padre maneja el error */ }
+    finally { setLoading(null); }
+  };
+
+  const isAccepted  = done === 'accepted';
+  const isCancelled = done === 'cancelled';
+
+  // Paleta pendiente/enviado
+  const cardBg     = isPending ? (isOwn ? '#f5f3ff' : '#ecfdf5') : '#f5f3ff';
+  const accentColor = isPending ? (isOwn ? '#6366f1' : '#059669') : '#6366f1';
+  const borderColor = isPending ? (isOwn ? '#ddd6fe' : '#a7f3d0') : '#ddd6fe';
+
+  // ── Vista de resultado tras acción ──────────────────────────────
+  if (done) {
+    return (
+      <View style={[ms.card, isAccepted ? ms.cardAccepted : ms.cardCancelled]}>
+        {/* Círculo con icono grande */}
+        <View style={ms.doneIconWrap}>
+          <View style={isAccepted ? ms.doneCircleGreen : ms.doneCircleRed}>
+            {isAccepted ? (
+              <Svg width={30} height={30} viewBox="0 0 24 24" fill="none">
+                <Polyline points="20,6 9,17 4,12" stroke="#059669" strokeWidth={2.8} strokeLinecap="round" strokeLinejoin="round"/>
+              </Svg>
+            ) : (
+              <Svg width={30} height={30} viewBox="0 0 24 24" fill="none">
+                <Line x1="18" y1="6" x2="6" y2="18" stroke="#dc2626" strokeWidth={2.8} strokeLinecap="round"/>
+                <Line x1="6" y1="6" x2="18" y2="18" stroke="#dc2626" strokeWidth={2.8} strokeLinecap="round"/>
+              </Svg>
+            )}
+          </View>
+        </View>
+        {/* Título */}
+        <Text style={[ms.doneTitle, isAccepted ? ms.doneTitleGreen : ms.doneTitleRed]}>
+          {isAccepted ? 'Transferencia recibida' : 'Transferencia rechazada'}
+        </Text>
+        {/* Monto */}
+        <Text style={ms.doneAmount}>{amount}</Text>
+        {/* Subtítulo */}
+        <Text style={ms.doneSub}>
+          {isAccepted
+            ? `${to} · Fondos disponibles en tu monedero`
+            : `El dinero fue devuelto a ${to}`}
+        </Text>
+        {/* Ref */}
+        {!!ref && (
+          <View style={ms.doneRefRow}>
+            <McIconHash />
+            <Text style={ms.refText}>{ref}</Text>
+          </View>
+        )}
+      </View>
+    );
+  }
+
+  // ── Vista normal (pendiente / enviado) ──────────────────────────
+  return (
+    <View style={[ms.card, { backgroundColor: cardBg, borderColor }]}>
+
+      {/* Cabecera */}
+      <View style={ms.header}>
+        <View style={[ms.iconBadge, { backgroundColor: accentColor + '18' }]}>
+          {isPending && !isOwn ? <McIconReceive /> : <McIconSend />}
+        </View>
+        <Text style={[ms.headerTitle, { color: accentColor }]}>
+          {isPending
+            ? (isOwn ? 'Transferencia enviada' : 'Transferencia recibida')
+            : 'Transferencia enviada'}
+        </Text>
+      </View>
+
+      {/* Monto */}
+      <View style={ms.amountRow}>
+        <Text style={[ms.amountValue, { color: '#111827' }]}>{amount}</Text>
+      </View>
+
+      {/* Remitente / Destinatario */}
+      {!!to && (
+        <View style={ms.toRow}>
+          <McIconUser />
+          <Text style={ms.toText}>{isOwn ? `Para: ${to}` : `De: ${to}`}</Text>
+        </View>
+      )}
+
+      {/* Divider */}
+      <View style={[ms.divider, { backgroundColor: borderColor }]} />
+
+      {/* Footer */}
+      <View style={ms.footer}>
+        <View style={ms.statusRow}>
+          <McIconClock />
+          <Text style={[ms.statusText, { color: accentColor }]}>
+            {isPending ? 'Pendiente de aceptación' : 'Completada'}
+          </Text>
+        </View>
+        {!!ref && (
+          <View style={ms.refRow}>
+            <McIconHash />
+            <Text style={ms.refText}>{ref}</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Botones */}
+      {showButtons && (
+        <View style={ms.btnRow}>
+          <TouchableOpacity
+            style={[ms.btn, ms.btnCancel, loading !== null && ms.btnDisabled]}
+            onPress={handleCancel}
+            disabled={loading !== null}
+            activeOpacity={0.75}
+          >
+            {loading === 'cancel'
+              ? <ActivityIndicator size="small" color="#dc2626" />
+              : (
+                <View style={ms.btnInner}>
+                  <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+                    <Line x1="18" y1="6" x2="6" y2="18" stroke="#dc2626" strokeWidth={2.5} strokeLinecap="round"/>
+                    <Line x1="6" y1="6" x2="18" y2="18" stroke="#dc2626" strokeWidth={2.5} strokeLinecap="round"/>
+                  </Svg>
+                  <Text style={ms.btnCancelText}>Rechazar</Text>
+                </View>
+              )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[ms.btn, ms.btnAccept, loading !== null && ms.btnDisabled]}
+            onPress={handleAccept}
+            disabled={loading !== null}
+            activeOpacity={0.75}
+          >
+            {loading === 'accept'
+              ? <ActivityIndicator size="small" color="#fff" />
+              : (
+                <View style={ms.btnInner}>
+                  <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+                    <Polyline points="20,6 9,17 4,12" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"/>
+                  </Svg>
+                  <Text style={ms.btnAcceptText}>Recibir</Text>
+                </View>
+              )}
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+};
+
+const ms = StyleSheet.create({
+  card: {
+    borderRadius: 14,
+    padding: 13,
+    minWidth: 220,
+    maxWidth: 280,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  header:     { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 10 },
+  iconBadge:  { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  headerTitle:{ fontSize: 11, fontWeight: '700', flex: 1, letterSpacing: 0.1 },
+
+  amountRow:  { marginBottom: 5 },
+  amountValue:{ fontSize: 24, fontWeight: '800', letterSpacing: -0.5 },
+
+  toRow:      { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 9 },
+  toText:     { fontSize: 11, color: '#64748b', fontWeight: '500' },
+
+  divider:    { height: 1, marginBottom: 9 },
+
+  footer:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 4 },
+  statusRow:  { flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 },
+  statusText: { fontSize: 11, fontWeight: '600' },
+  refRow:     { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  refText:    { fontSize: 10, color: '#94a3b8' },
+
+  btnRow:     { flexDirection: 'row', gap: 7, marginTop: 11 },
+  btn:        { flex: 1, paddingVertical: 9, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  btnInner:   { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  btnDisabled:{ opacity: 0.45 },
+
+  btnCancel:     { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#fecaca' },
+  btnCancelText: { fontSize: 12, fontWeight: '700', color: '#dc2626' },
+
+  btnAccept:     { backgroundColor: '#059669' },
+  btnAcceptText: { fontSize: 12, fontWeight: '700', color: '#fff' },
+
+  // ── Tarjeta de resultado post-acción ──
+  cardAccepted:  {
+    backgroundColor: '#f0fdf4',
+    borderColor: '#86efac',
+    alignItems: 'center',
+    paddingVertical: 18,
+  },
+  cardCancelled: {
+    backgroundColor: '#fafafa',
+    borderColor: '#e2e8f0',
+    alignItems: 'center',
+    paddingVertical: 18,
+  },
+  doneIconWrap:    { marginBottom: 10 },
+  doneCircleGreen: {
+    width: 52, height: 52, borderRadius: 26,
+    backgroundColor: '#dcfce7',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: '#86efac',
+  },
+  doneCircleRed:   {
+    width: 52, height: 52, borderRadius: 26,
+    backgroundColor: '#fef2f2',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: '#fca5a5',
+  },
+  doneTitle:       { fontSize: 13, fontWeight: '800', marginBottom: 4, letterSpacing: 0.1 },
+  doneTitleGreen:  { color: '#059669' },
+  doneTitleRed:    { color: '#dc2626' },
+  doneAmount:      { fontSize: 22, fontWeight: '900', color: '#111827', marginBottom: 5 },
+  doneSub:         { fontSize: 10, color: '#64748b', textAlign: 'center', marginBottom: 8, paddingHorizontal: 8 },
+  doneRefRow:      { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
+});
+
+const formatTime = (dateStr: string) => {
+  const d = new Date(dateStr);
+  return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+};
+
+// Función para parsear datos de transferencia del mensaje
+const parseTransferData = (text: string, messageDate: string) => {
+  const lines = (text || '').split('\n');
+  const amountLine = lines.find(l => l.includes('💰')) || '';
+  const toLine = lines.find(l => l.includes('👤')) || '';
+  const refLine = lines.find(l => l.includes('🔑')) || '';
+  
+  const amount = amountLine.replace(/^💰\s*/, '').trim();
+  const recipient = toLine.replace(/^👤 Para:\s*/i, '').trim();
+  const reference = refLine.replace(/^🔑 Ref:\s*/i, '').trim();
+  
+  return {
+    amount: amount || '0 CFA',
+    recipient: recipient || 'Destinatario desconocido',
+    reference: reference || 'Sin referencia',
+    status: 'completed' as const,
+    date: new Date(messageDate).toLocaleString('es-ES'),
+  };
+};
+
+export interface ChatMessageBubbleProps {
+  message: ChatMessage;
+  isOwn: boolean;
+  isGroup: boolean;
+  myAvatar?: string;
+  myName?: string;
+  // Datos del otro participante para cuando sender no viene del servidor
+  otherName?: string;
+  otherAvatar?: string;
+  replyPreview?: { author: string; text: string; imageUri?: string };
+  showReadReceipts?: boolean;
+  highlight?: boolean;
+  onLongPress: (msg: ChatMessage) => void;
+  onRetry?: (msg: ChatMessage) => void;
+  onOpenImage?: (uri: string) => void;
+  onCallback?: () => void;
+  onTransferPress?: (transferData: any) => void;
+  /** Transferencia pendiente — receptor acepta (devuelve transferId del mensaje) */
+  onTransferAccept?: (transferId: string) => Promise<void>;
+  /** Transferencia pendiente — receptor rechaza (devuelve transferId del mensaje) */
+  onTransferCancel?: (transferId: string) => Promise<void>;
+  reactions?: Record<string, number>;
+  /** Swipe-to-reply: se dispara cuando el usuario desliza la burbuja */
+  onSwipeReply?: (msg: ChatMessage) => void;
+  /** Ver quién reaccionó */
+  onReactionPress?: (msgId: string, reactions: Record<string, number>) => void;
+  /** Saltar al mensaje original al tocar el reply preview */
+  onReplyTap?: (parentId: string) => void;
+  /** C8 — Guardar transcripción de voz en el estado del chat */
+  onTranscribed?: (msgId: string, transcript: string) => void;
+  /** Tarjeta contacto — abre info del contacto al tocar nombre/foto */
+  onOpenContact?: (phone: string, name: string, avatarUrl?: string) => void;
+  /** Tarjeta contacto — inicia llamada audio o video */
+  onContactCall?: (type: 'audio' | 'video', phone: string, name: string) => void;
+  /** Tarjeta contacto — envía mensaje al contacto */
+  onContactMessage?: (phone: string, name: string) => void;
+}
+
+export const ChatMessageBubble = React.memo(({
+  message,
+  isOwn,
+  isGroup,
+  myAvatar,
+  myName,
+  otherName,
+  otherAvatar,
+  replyPreview,
+  showReadReceipts = true,
+  highlight,
+  onLongPress,
+  onRetry,
+  onOpenImage,
+  onCallback,
+  onTransferPress,
+  onTransferAccept,
+  onTransferCancel,
+  reactions,
+  onSwipeReply,
+  onReactionPress,
+  onReplyTap,
+  onTranscribed,
+  onOpenContact,
+  onContactCall,
+  onContactMessage,
+}: ChatMessageBubbleProps) => {
+  const [imageViewerOpen, setImageViewerOpen] = useState(false);
+  const [localReactions, setLocalReactions] = useState<Record<string, number>>({});
+  const [popEmoji, setPopEmoji] = useState<string | null>(null);
+  const { fontScale } = useFont();
+
+  // ── Animación de entrada ──────────────────────────────────────
+  const entranceAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.spring(entranceAnim, {
+      toValue: 1,
+      tension: 120,
+      friction: 10,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+  const entranceStyle = {
+    opacity: entranceAnim,
+    transform: [
+      { scale: entranceAnim.interpolate({ inputRange: [0, 1], outputRange: [0.88, 1] }) },
+      { translateY: entranceAnim.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) },
+    ],
+  };
+
+  // ── Swipe-to-reply ────────────────────────────────────────────
+  const SWIPE_THRESHOLD = 60;
+  const swipeX = useRef(new Animated.Value(0)).current;
+  const swipeFired = useRef(false);
+
+  const swipePan = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_evt, gs) =>
+        Math.abs(gs.dx) > 8 && Math.abs(gs.dx) > Math.abs(gs.dy) * 1.5,
+      onPanResponderGrant: () => {
+        swipeFired.current = false;
+        swipeX.setValue(0);
+      },
+      onPanResponderMove: (_evt, gs) => {
+        // Sólo hacia la derecha (dx > 0) con resistencia
+        if (gs.dx > 0) {
+          const clamped = Math.min(gs.dx, SWIPE_THRESHOLD * 1.2);
+          swipeX.setValue(clamped);
+          if (!swipeFired.current && gs.dx >= SWIPE_THRESHOLD) {
+            swipeFired.current = true;
+            onSwipeReply?.(message);
+          }
+        }
+      },
+      onPanResponderRelease: () => {
+        Animated.spring(swipeX, { toValue: 0, useNativeDriver: true, tension: 200, friction: 20 }).start();
+        swipeFired.current = false;
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(swipeX, { toValue: 0, useNativeDriver: true, tension: 200, friction: 20 }).start();
+        swipeFired.current = false;
+      },
+    })
+  ).current;
+  // ──────────────────────────────────────────────────────────────
+
+  const time = formatTime(message.created_at);
+  const canRetry = isOwn && message.status === 'failed';
+  const rawImageUri = message.type === 'image' ? message.imageUrl || message.file_url : undefined;
+  // Auto-descarga de imagen si hay WiFi (no bloquea el render; usa la remota mientras descarga)
+  const [imageUri, setImageUri] = useState<string | undefined>(rawImageUri);
+  useEffect(() => {
+    if (!rawImageUri || typeof rawImageUri !== 'string') return;
+    let cancelled = false;
+    downloadMediaIfNeeded(rawImageUri, 'image').then(local => {
+      if (!cancelled) setImageUri(local);
+    });
+    return () => { cancelled = true; };
+  }, [rawImageUri]);
+  const canOpenImage = !!imageUri && !canRetry;
+  const showUploadState = isOwn && message.status === 'pending' && !!message.uploadState;
+  const uploadPercent = Math.max(5, Math.min(99, Math.round((message.uploadProgress || 0.05) * 100)));
+
+  const isMoneyMsg   = message.text?.startsWith('💸') || message.type === 'money';
+  const isContactMsg = message.type === 'contact'
+    || (message.type === 'text' && !!message.text?.startsWith('👤'));
+  const isLocationMsg = message.type === 'location'
+    || message.type === 'live_location'
+    || (message.type === 'text' && !!message.text?.startsWith('📍'));
+  const isCallMsg = message.type === 'call'
+    || (message.type === 'text' && !!(
+      message.text?.includes('Llamada') || message.text?.includes('llamada')
+    ));
+  const pollData = message.type === 'poll' || message.text?.startsWith('📊')
+    ? parsePoll(message.text || '') : null;
+  const isCardType = isMoneyMsg || isContactMsg || isLocationMsg || isCallMsg || !!pollData
+    || message.type === 'music';
+
+  const renderAvatar = (side: 'left' | 'right') => {
+    if (side === 'left' && isOwn) return null;
+    if (side === 'right' && !isOwn) return null;
+
+    const ringSize = Math.round(30 * fontScale);
+    const avatarSize = Math.round(36 * fontScale);
+
+    if (isOwn) {
+      return (
+        <View style={s.avatarCol}>
+          <LinearGradient colors={['#00c8a0', '#00B4E6']}
+            style={[s.avatarRing, { width: ringSize, height: ringSize, borderRadius: ringSize / 2 }]}>
+            <EGAvatar src={myAvatar} name={myName || 'Yo'} size={avatarSize} />
+          </LinearGradient>
+        </View>
+      );
+    }
+
+    const senderName = message.sender?.full_name || otherName || 'Usuario';
+    // Usar avatar del sender si es válido; si sender existe pero no tiene avatar, caer a otherAvatar
+    const rawSenderAvatar = message.sender?.avatar_url;
+    const isValidSenderAvatar =
+      !!rawSenderAvatar &&
+      rawSenderAvatar.trim().length > 0 &&
+      (rawSenderAvatar.startsWith('http://') || rawSenderAvatar.startsWith('https://') || rawSenderAvatar.startsWith('file://')) &&
+      !rawSenderAvatar.includes('egchat-api-xlxj.onrender.com/static/avatars/');
+    const senderAvatar = isValidSenderAvatar ? rawSenderAvatar : otherAvatar;
+    const gradColors = isGroup ? ['#a855f7', '#6366f1'] : ['#00c8a0', '#00B4E6'];
+    return (
+      <View style={s.avatarCol}>
+        <LinearGradient colors={gradColors as [string, string]}
+          style={[s.avatarRing, { width: ringSize, height: ringSize, borderRadius: ringSize / 2 }]}>
+          <EGAvatar src={senderAvatar} name={senderName} size={avatarSize} />
+        </LinearGradient>
+      </View>
+    );
+  };
+
+  const bubbleContent = (
+    <>
+      {!isOwn && isGroup && message.sender?.full_name && (
+        <Text style={s.senderName}>{message.sender.full_name}</Text>
+      )}
+      {replyPreview && (
+        <TouchableOpacity
+          onPress={() => message.reply_to && onReplyTap?.(message.reply_to)}
+          activeOpacity={0.7}
+          style={s.replyQuote}
+        >
+          <Text style={s.replyAuthor} numberOfLines={1}>{replyPreview.author}</Text>
+          {replyPreview.imageUri ? (
+            <View style={s.replyImageRow}>
+              <Image source={{ uri: replyPreview.imageUri }} style={s.replyThumb} />
+              <Text style={s.replyText} numberOfLines={1}>{replyPreview.text || '📷 Foto'}</Text>
+            </View>
+          ) : (
+            <Text style={s.replyText} numberOfLines={2}>{replyPreview.text}</Text>
+          )}
+        </TouchableOpacity>
+      )}
+      {/* Tarjetas especiales */}
+      {isCallMsg    && <CallCard message={message} isOwn={isOwn} onCallback={onCallback} />}
+      {pollData     && <PollMessage poll={pollData} currentUserId={''} isOwn={isOwn} onVote={() => {}} />}
+      {isContactMsg && !!message.text && (
+        <ContactCard
+          text={message.text}
+          isOwn={isOwn}
+          onOpenContact={onOpenContact}
+          onContactCall={onContactCall}
+          onContactMessage={onContactMessage}
+        />
+      )}
+      {isLocationMsg && !!message.text && (
+        <LocationCard
+          text={message.text}
+          isOwn={isOwn}
+          isLive={message.type === 'live_location'}
+        />
+      )}
+      {isMoneyMsg && !!message.text && (
+        <MoneyCard
+          text={message.text}
+          isOwn={isOwn}
+          onAccept={(!isOwn && onTransferAccept) ? (() => {
+            const idLine = message.text!.split('\n').find(l => l.startsWith('🆔 '));
+            const transferId = idLine?.replace(/^🆔\s*/, '').trim() || '';
+            return onTransferAccept(transferId);
+          }) : undefined}
+          onCancel={(!isOwn && onTransferCancel) ? (() => {
+            const idLine = message.text!.split('\n').find(l => l.startsWith('🆔 '));
+            const transferId = idLine?.replace(/^🆔\s*/, '').trim() || '';
+            return onTransferCancel(transferId);
+          }) : undefined}
+        />
+      )}
+
+      {/* Texto normal */}
+      {!isCardType && message.type === 'text' && !!message.text && (
+        <>
+          <MarkdownText text={message.text} style={[s.bubbleText, { fontSize: 13.5 * fontScale, lineHeight: 18 * fontScale }]} />
+          {/* Sprint 3.4 — Link Preview */}
+          {(() => {
+            const url = extractUrl(message.text);
+            return url ? <LinkPreview url={url} isOwn={isOwn} /> : null;
+          })()}
+        </>
+      )}
+      {/* Album */}
+      {message.type === 'album' && Array.isArray(message.album_urls) && message.album_urls.length > 0 && (
+        <AlbumCard urls={message.album_urls} onOpenImage={onOpenImage} />
+      )}
+      {message.type === 'image' && imageUri ? (
+        <TouchableOpacity onPress={() => setImageViewerOpen(true)} activeOpacity={0.9}>
+          <Image source={{ uri: imageUri }} style={s.bubbleImage} contentFit="cover" cachePolicy="memory-disk" />
+        </TouchableOpacity>
+      ) : message.type === 'image' ? (
+        <Text style={[s.bubbleText, { fontSize: 13.5 * fontScale }]}>Foto</Text>
+      ) : null}
+      {message.type === 'video' && (
+        <VideoCard message={message} isOwn={isOwn} />
+      )}
+      {message.type === 'music' && (
+        <MusicCard message={message} isOwn={isOwn} />
+      )}
+      {message.type === 'audio' && (
+        isVoiceMessage(message)
+          ? <VoiceCard message={message} isOwn={isOwn} onTranscribed={onTranscribed ? (t) => onTranscribed(message.id, t) : undefined} />
+          : <MusicCard message={message} isOwn={isOwn} />
+      )}
+      {message.type === 'file' && (
+        <TouchableOpacity
+          onPress={() => {
+            const url = message.file_url;
+            if (url) {
+              if (typeof window !== 'undefined') {
+                window.open(url, '_blank');
+              } else {
+                Linking.openURL(url).catch(() => {});
+              }
+            }
+          }}
+          activeOpacity={0.7}
+          style={s.fileCard}
+        >
+          {(() => {
+            // Obtener nombre limpio del archivo (quitar emoji si ya viene en text)
+            const rawName = message.text || message.file_url?.split('/').pop() || 'Archivo';
+            const fileName = rawName.replace(/^📄\s*/, '').replace(/^📁\s*/, '').trim();
+            const ext = fileName.split('.').pop()?.toLowerCase() || '';
+            const isWord = ['doc', 'docx'].includes(ext);
+            const isPdf = ext === 'pdf';
+            const isExcel = ['xls', 'xlsx'].includes(ext);
+            const isPpt = ['ppt', 'pptx'].includes(ext);
+            const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
+            const fileIcon = isPdf ? '📕' : isWord ? '📘' : isExcel ? '📗' : isPpt ? '📙' : isImage ? '🖼️' : '📄';
+            const fileColor = isPdf ? '#e53e3e' : isWord ? '#2b5ce6' : isExcel ? '#1d6f42' : isPpt ? '#d04a02' : '#6b7280';
+            return (
+              <View style={s.fileWrap}>
+                <View style={s.fileInner}>
+                  <View style={[s.fileIconBox, { borderColor: fileColor }]}>
+                    <Text style={s.fileIconText}>{fileIcon}</Text>
+                  </View>
+                  <View style={s.fileInfo}>
+                    <Text style={[s.fileName, { fontSize: 13 * fontScale }]} numberOfLines={2}>{fileName}</Text>
+                    <Text style={[s.fileExt, { color: fileColor, fontSize: 11 * fontScale }]}>{ext.toUpperCase() || 'ARCHIVO'}</Text>
+                  </View>
+                </View>
+                <View style={s.fileActionRow}>
+                  <Text style={[s.fileAction, { color: fileColor }]}>
+                    {message.file_url ? '↓ Descargar' : 'Preparando archivo'}
+                  </Text>
+                </View>
+              </View>
+            );
+          })()}
+        </TouchableOpacity>
+      )}
+      <View style={s.meta}>
+        {message.edited && (
+          <Text style={s.editedLabel}>editado</Text>
+        )}
+        <Text style={s.time}>{time}</Text>
+        {isOwn && showReadReceipts && <MessageStatusIndicator status={message.status} />}
+      </View>
+      {showUploadState && (
+        <View style={s.uploadBox}>
+          <View style={s.uploadTrack}>
+            <View style={[s.uploadFill, { width: `${uploadPercent}%` }]} />
+          </View>
+          <Text style={s.uploadText}>
+            {message.uploadState === 'processing' ? 'Procesando...' : `Subiendo ${uploadPercent}%`}
+          </Text>
+        </View>
+      )}
+      {canRetry && <Text style={s.retryHint}>Toca para reintentar</Text>}
+    </>
+  );
+
+  return (
+    <Animated.View
+      style={[entranceStyle, { transform: [{ translateX: swipeX }] }]}
+      {...(onSwipeReply ? swipePan.panHandlers : {})}
+    >
+      {/* Icono de responder visible durante el swipe */}
+      {onSwipeReply && (
+        <Animated.View
+          style={[
+            s.swipeReplyIcon,
+            isOwn ? s.swipeReplyIconOwn : s.swipeReplyIconTheir,
+            {
+              opacity: swipeX.interpolate({ inputRange: [0, 30, SWIPE_THRESHOLD], outputRange: [0, 0.4, 1] }),
+              transform: [{
+                scale: swipeX.interpolate({ inputRange: [0, SWIPE_THRESHOLD], outputRange: [0.5, 1], extrapolate: 'clamp' }),
+              }],
+            },
+          ]}
+        >
+          <Text style={{ fontSize: 16 }}>↩️</Text>
+        </Animated.View>
+      )}
+    <TouchableOpacity
+      onPress={canRetry ? () => onRetry?.(message) : canOpenImage ? () => onOpenImage?.(imageUri!) : undefined}
+      onLongPress={() => onLongPress(message)}
+      activeOpacity={0.8}
+      delayLongPress={500}
+    >
+      <View style={[
+        s.row,
+        isOwn ? s.rowOwn : s.rowTheir,
+        highlight && s.rowHighlight,
+      ]}>
+        {renderAvatar('left')}
+        {isOwn ? (
+          isMoneyMsg ? (
+            <View style={[s.bubble, s.ownBubble, s.cardBubble]}>
+              {bubbleContent}
+            </View>
+          ) : (
+            <LinearGradient
+              colors={['#e8f5e9', '#f0fdf4']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[s.bubble, s.ownBubble, isCardType && s.cardBubble]}
+            >
+              {bubbleContent}
+            </LinearGradient>
+          )
+        ) : (
+          <View style={[s.bubble, s.theirBubble, isCardType && s.cardBubble]}>
+            {bubbleContent}
+          </View>
+        )}
+        {renderAvatar('right')}
+      </View>
+
+      {/* Reacciones bajo la burbuja */}
+      {(reactions && Object.keys(reactions).length > 0) || Object.keys(localReactions).length > 0 ? (
+        <TouchableOpacity
+          onPress={() => {
+            const merged = { ...reactions, ...localReactions };
+            onReactionPress?.(message.id, merged);
+          }}
+          activeOpacity={0.7}
+        >
+          <View style={[s.reactionsRow, isOwn ? s.reactionsOwn : s.reactionsTheir]}>
+            {Object.entries({ ...reactions, ...localReactions }).map(([emoji, count]) => (
+              <ReactionBubble key={emoji} emoji={emoji} count={count as number} isOwn={isOwn} />
+            ))}
+          </View>
+        </TouchableOpacity>
+      ) : null}
+
+      {/* Pop de emoji al reaccionar */}
+      {popEmoji && (
+        <View style={[s.popWrap, isOwn ? { right: 60 } : { left: 60 }]}>
+          <ReactionPopAnimation emoji={popEmoji} onDone={() => setPopEmoji(null)} />
+        </View>
+      )}
+
+      {/* Visor de imagen a pantalla completa */}
+      {imageUri && (
+        <ImageViewer
+          visible={imageViewerOpen}
+          images={[imageUri]}
+          onClose={() => setImageViewerOpen(false)}
+        />
+      )}
+    </TouchableOpacity>
+    </Animated.View>
+  );
+});
+
+const s = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 6,
+    marginVertical: 1,
+    paddingHorizontal: 2,
+  },
+  rowOwn: { justifyContent: 'flex-end' },
+  rowTheir: { justifyContent: 'flex-start' },
+  rowHighlight: { backgroundColor: 'rgba(0,180,230,0.10)', borderRadius: 8 },
+  avatarCol: { marginBottom: 2, flexShrink: 0 },
+  avatarRing: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  bubble: {
+    maxWidth: '78%',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    overflow: 'hidden',
+  },
+  cardBubble: {
+    paddingVertical: 5,
+    paddingHorizontal: 6,
+  },
+  ownBubble: {
+    borderTopLeftRadius: 14,
+    borderTopRightRadius: 14,
+    borderBottomLeftRadius: 14,
+    borderBottomRightRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0,200,160,0.12)',
+    shadowColor: '#00c8a0',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  theirBubble: {
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 14,
+    borderTopRightRadius: 14,
+    borderBottomLeftRadius: 4,
+    borderBottomRightRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.04)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  moneyBubble: { padding: 0 },
+  senderName: { fontSize: 10, fontWeight: '700', color: '#00B4E6', marginBottom: 2 },
+  replyQuote: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#00B4E6',
+    backgroundColor: 'rgba(0,180,230,0.08)',
+    borderRadius: 5,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    marginBottom: 4,
+  },
+  replyAuthor: { fontSize: 10, fontWeight: '700', color: '#00B4E6', marginBottom: 2 },
+  replyText: { fontSize: 11, color: '#6b7280' },
+  replyImageRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  replyThumb: { width: 30, height: 30, borderRadius: 4, backgroundColor: '#e5e7eb' },
+  bubbleText: { fontSize: 13.5, color: '#111827', lineHeight: 18 },
+  bubbleImage: { width: 220, height: 180, borderRadius: 8, marginBottom: 3 },
+  meta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 3, marginTop: 3 },
+  time: { fontSize: 10, color: '#9ca3af' },
+  editedLabel: { fontSize: 10, color: '#9ca3af', fontStyle: 'italic' },
+  uploadBox: { marginTop: 6, gap: 4 },
+  uploadTrack: { height: 3, borderRadius: 2, backgroundColor: 'rgba(0,0,0,0.12)', overflow: 'hidden' },
+  uploadFill: { height: 3, backgroundColor: '#00c8a0', borderRadius: 2 },
+  uploadText: { fontSize: 11, color: '#9ca3af', textAlign: 'right' },
+  retryHint: { fontSize: 11, color: '#ef4444', fontWeight: '600', marginTop: 3, textAlign: 'right' },
+  // Reacciones bajo la burbuja
+  reactionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 3, marginTop: 2, marginHorizontal: 6 },
+  reactionsOwn:  { justifyContent: 'flex-end',   paddingRight: 44 },
+  reactionsTheir:{ justifyContent: 'flex-start',  paddingLeft: 44 },
+  popWrap: { position: 'absolute', top: 0, zIndex: 50 },
+  // ── Swipe-to-reply ──
+  swipeReplyIcon: {
+    position: 'absolute',
+    top: '40%',
+    zIndex: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,180,230,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  swipeReplyIconOwn:   { left: 6 },
+  swipeReplyIconTheir: { left: 6 },
+  // ── Tarjeta archivo ──
+  fileCard: {
+    minWidth: 200,
+    maxWidth: 260,
+  },
+  fileWrap: {
+    gap: 8,
+  },
+  fileInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 4,
+  },
+  fileIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    backgroundColor: 'rgba(255,255,255,0.54)',
+    borderWidth: 1,
+  },
+  fileIconText: {
+    fontSize: 24,
+  },
+  fileInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  fileName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#111827',
+    lineHeight: 18,
+  },
+  fileExt: {
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 2,
+    letterSpacing: 0.5,
+  },
+  fileActionRow: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.06)',
+    paddingTop: 8,
+  },
+  fileAction: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+});
