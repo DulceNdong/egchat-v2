@@ -56,16 +56,37 @@ create index if not exists ix_transactions_ledger_link
 update public.transactions
    set ledger_link = 'previa'
  where ledger_journal_id is null
-   and ledger_link = 'libro'
    and created_at < timestamp with time zone '2026-11-03 00:00:00+01';
 
--- Autocomprobacion: una fila, seis columnas.
-select
-  (select count(*) from public.transactions) as transacciones,
-  (select count(*) from public.transactions where ledger_link = 'libro') as con_asiento,
-  (select count(*) from public.transactions where ledger_link = 'previa') as era_sin_libro,
-  (select count(*) from public.transactions where ledger_link = 'anomala') as anomalas,
-  (select count(*) from public.transactions t
-     where t.ledger_journal_id is not null
-       and not exists (select 1 from public.ledger_journals j where j.id = t.ledger_journal_id)) as asientos_huerfanos,
-  (select count(*) from public.ledger_journals) as asientos_en_el_libro;
+-- Y las posteriores sin vinculo son un defecto del API, no historia antigua:
+-- se quedan visibles (el cliente las cobro) pero contadas como anomalias.
+update public.transactions
+   set ledger_link = 'anomala'
+ where ledger_journal_id is null
+   and created_at >= timestamp with time zone '2026-11-03 00:00:00+01';
+
+-- Con asiento escrito, siempre 'libro', sin importar la fecha.
+update public.transactions
+   set ledger_link = 'libro'
+ where ledger_journal_id is not null
+   and ledger_link <> 'libro';
+
+-- Autocomprobacion: seis lineas de nombre y valor, para leerlas sin desplazar.
+select 'transacciones' as medida, (select count(*) from public.transactions)::text as valor
+union all
+select 'con_asiento', (select count(*) from public.transactions where ledger_link = 'libro')::text
+union all
+select 'era_sin_libro', (select count(*) from public.transactions where ledger_link = 'previa')::text
+union all
+select 'anomalas', (select count(*) from public.transactions where ledger_link = 'anomala')::text
+union all
+select 'asientos_huerfanos',
+       (select count(*) from public.transactions t
+          where t.ledger_journal_id is not null
+            and not exists (select 1 from public.ledger_journals j
+                             where j.id = t.ledger_journal_id))::text
+union all
+select 'columnas_del_lote',
+       (select count(*) from information_schema.columns
+          where table_schema = 'public' and table_name = 'transactions'
+            and column_name in ('ledger_link', 'ledger_journal_id'))::text;
