@@ -296,16 +296,24 @@ grant execute on function public.service_basket_charge(uuid, text, jsonb, text) 
 grant execute on function public.service_refund(uuid, text, text, numeric) to service_role;
 
 -- Comprobacion del pegado. Debe dar: 4 tablas, 8 tarifas, 9 productos y 3 funciones.
-select
-  (select count(*) from information_schema.tables
-     where table_schema = 'public'
-       and table_name in ('service_tariffs','service_products','taxi_rides','cemac_transfers')) as tablas,
-  (select count(*) from public.service_tariffs) as tarifas,
-  (select count(*) from public.service_products) as productos,
-  (select count(*) from pg_proc p
-     join pg_namespace n on n.oid = p.pronamespace
-    where n.nspname = 'public'
-      and p.proname in ('service_charge','service_basket_charge','service_refund')) as funciones,
-  (select (v->>'rotos')::int from public.ledger_verify_chain() v) as cadenas_rotas;
+-- Comprobacion en lista vertical: una fila por medida. Espera tablas=4,
+-- tarifas=8, productos=9, funciones=3, cadenas_rotas=0.
+select 'tablas' as medida,
+       (select count(*) from information_schema.tables
+          where table_schema = 'public'
+            and table_name in ('service_tariffs','service_products','taxi_rides','cemac_transfers'))::text as valor
+union all
+select 'tarifas', (select count(*) from public.service_tariffs)::text
+union all
+select 'productos', (select count(*) from public.service_products)::text
+union all
+select 'funciones',
+       (select count(*) from pg_proc p
+          join pg_namespace n on n.oid = p.pronamespace
+         where n.nspname = 'public'
+           and p.proname in ('service_charge','service_basket_charge','service_refund'))::text
+union all
+select 'cadenas_rotas',
+       (select (v->>'rotos')::int from public.ledger_verify_chain() v)::text;
 
 commit;

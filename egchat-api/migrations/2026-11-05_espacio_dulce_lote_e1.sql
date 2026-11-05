@@ -392,38 +392,40 @@ alter table public.live_streams         enable row level security;
 -- que dar 1 en spaces, stories, moments y live_streams, 2 en el resto.
 -- `huerfanas_cero` es el numero de filas sin dueno: si no es 0, las claves
 -- foraneas no se crearon.
-select x.tabla,
-       (to_regclass('public.' || x.tabla) is not null) as existe,
+with t(tabla) as (
+  values ('spaces'), ('space_follows'), ('space_posts'), ('space_post_likes'),
+         ('space_post_comments'), ('stories'), ('moments'), ('moment_likes'),
+         ('moment_comments'), ('live_streams')
+)
+select 'huerfanas_cero' as medida,
+       ((select count(*) from public.space_follows f
+          where not exists (select 1 from public.users u where u.id = f.user_id)
+             or not exists (select 1 from public.spaces s where s.id = f.space_id))
+        + (select count(*) from public.space_post_likes l
+          where not exists (select 1 from public.users u where u.id = l.user_id)
+             or not exists (select 1 from public.space_posts p where p.id = l.post_id))
+        + (select count(*) from public.space_post_comments c
+          where not exists (select 1 from public.users u where u.id = c.author_id)
+             or not exists (select 1 from public.space_posts p where p.id = c.post_id))
+        + (select count(*) from public.space_posts p
+          where not exists (select 1 from public.spaces s where s.id = p.space_id)
+             or (p.author_id is not null and not exists (select 1 from public.users u where u.id = p.author_id)))
+        + (select count(*) from public.stories s2
+          where not exists (select 1 from public.users u where u.id = s2.user_id))
+        + (select count(*) from public.moments m
+          where not exists (select 1 from public.users u where u.id = m.user_id))
+        + (select count(*) from public.live_streams v
+          where not exists (select 1 from public.users u where u.id = v.host_id)))::text as valor
+union all
+select 'columnas_' || t.tabla,
        (select count(*) from information_schema.columns c
-         where c.table_schema = 'public' and c.table_name = x.tabla) as columnas,
+          where c.table_schema = 'public' and c.table_name = t.tabla)::text
+  from t
+union all
+select 'claves_foraneas_' || t.tabla,
        (select count(*) from pg_constraint k
-         where k.conrelid = ('public.' || x.tabla)::regclass and k.contype = 'f') as claves_foraneas
-  from (values
-    ('spaces'), ('space_follows'), ('space_posts'),
-    ('space_post_likes'), ('space_post_comments'), ('stories'),
-    ('moments'), ('moment_likes'), ('moment_comments'), ('live_streams')
-  ) x(tabla)
- order by x.tabla;
-
-select
-    (select count(*) from public.space_follows f
-      where not exists (select 1 from public.users u where u.id = f.user_id)
-         or not exists (select 1 from public.spaces s where s.id = f.space_id))
-  + (select count(*) from public.space_post_likes l
-      where not exists (select 1 from public.users u where u.id = l.user_id)
-         or not exists (select 1 from public.space_posts p where p.id = l.post_id))
-  + (select count(*) from public.space_post_comments c
-      where not exists (select 1 from public.users u where u.id = c.author_id)
-         or not exists (select 1 from public.space_posts p where p.id = c.post_id))
-  + (select count(*) from public.space_posts p
-      where not exists (select 1 from public.spaces s where s.id = p.space_id)
-         or (p.author_id is not null and not exists (select 1 from public.users u where u.id = p.author_id)))
-  + (select count(*) from public.stories t
-      where not exists (select 1 from public.users u where u.id = t.user_id))
-  + (select count(*) from public.moments m
-      where not exists (select 1 from public.users u where u.id = m.user_id))
-  + (select count(*) from public.live_streams v
-      where not exists (select 1 from public.users u where u.id = v.host_id))
-  as huerfanas_cero;
+          where k.conrelid = ('public.' || t.tabla)::regclass and k.contype = 'f')::text
+  from t
+order by 1;
 
 commit;

@@ -150,19 +150,32 @@ grant select, insert, update, delete on public.service_bills to service_role;
 revoke all on function public.service_pay_bill(uuid, uuid, text) from public, anon, authenticated;
 grant execute on function public.service_pay_bill(uuid, uuid, text) to service_role;
 
--- Comprobacion del pegado. Debe dar: 1 tabla, 3 indices, 1 gatillo, 0 pagadas.
-select
-  (select count(*) from information_schema.tables
-     where table_schema = 'public' and table_name = 'service_bills') as tabla,
-  (select count(*) from pg_indexes
-     where schemaname = 'public' and tablename = 'service_bills') as indices,
-  (select count(*) from pg_trigger t
-     join pg_class c on c.oid = t.tgrelid
-     join pg_namespace n on n.oid = c.relnamespace
-    where n.nspname = 'public' and c.relname = 'service_bills' and not t.tgisinternal) as gatillos,
-  (select count(*) from public.service_bills where status = 'paid') as pagadas,
-  (select count(*) from pg_proc p
-     join pg_namespace n on n.oid = p.pronamespace
-    where n.nspname = 'public' and p.proname = 'service_pay_bill') as funcion;
+-- Comprobacion del pegado, en lista vertical: una fila por medida. Espera
+-- tabla=1, indices=4 (las tres de este lote mas la clave primaria), gatillos=1,
+-- pagadas=0, funcion=1, cadenas_rotas=0.
+select 'tabla' as medida,
+       (select count(*) from information_schema.tables
+          where table_schema = 'public' and table_name = 'service_bills')::text as valor
+union all
+select 'indices',
+       (select count(*) from pg_indexes
+          where schemaname = 'public' and tablename = 'service_bills')::text
+union all
+select 'gatillos',
+       (select count(*) from pg_trigger t
+          join pg_class c on c.oid = t.tgrelid
+          join pg_namespace n on n.oid = c.relnamespace
+         where n.nspname = 'public' and c.relname = 'service_bills'
+           and not t.tgisinternal)::text
+union all
+select 'pagadas', (select count(*) from public.service_bills where status = 'paid')::text
+union all
+select 'funcion',
+       (select count(*) from pg_proc p
+          join pg_namespace n on n.oid = p.pronamespace
+         where n.nspname = 'public' and p.proname = 'service_pay_bill')::text
+union all
+select 'cadenas_rotas',
+       (select (v->>'rotos')::int from public.ledger_verify_chain() v)::text;
 
 commit;
