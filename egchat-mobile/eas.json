@@ -141,7 +141,7 @@
         "GRADLE_OPTS": "-Dorg.gradle.jvmargs=-Xmx4096m -Dorg.gradle.daemon=false -Dkotlin.incremental=false"
       },
       "ios": {
-        "autoIncrement": false,
+        "autoIncrement": true,
         "resourceClass": "m-medium",
         "buildConfiguration": "Release",
         "image": "latest",
