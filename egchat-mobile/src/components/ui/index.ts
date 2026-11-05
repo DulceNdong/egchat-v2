@@ -7,4 +7,4 @@ export { EGCard } from './EGCard';
 export { EGInput } from './EGInput';
 export { EGErrorMessage } from './EGErrorMessage';
 export { OfflineBanner } from './OfflineBanner';
-export { ImageViewerModal } from './ImageViewerModal';
+export { BeacShield } from './BeacShield';

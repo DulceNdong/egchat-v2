@@ -4,33 +4,23 @@
 // Fiel a la versión web
 // ══════════════════════════════════════════════════════════════════
 import React, { useState, useRef, useEffect } from 'react';
+import type { AppNotification } from '../store/appStore';
+export type { AppNotification };
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
   Modal, Pressable, Alert, Image, Animated, Dimensions,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Circle, Line, Rect, Polyline, Polygon } from 'react-native-svg';
 import { router } from 'expo-router';
 import { authAPI } from '../api';
 import { Colors, Spacing, BorderRadius, FontSize, FontWeight, Shadow } from '../theme';
 
-// ── Tipos ─────────────────────────────────────────────────────────
-export interface AppNotification {
-  id: string;
-  type: 'message' | 'payment' | 'system' | 'security' | 'taxi' | 'bet';
-  title: string;
-  body: string;
-  time: string;
-  read: boolean;
-  chatId?: string;
-}
-
 // ── Helpers ───────────────────────────────────────────────────────
 const colorForType = (type: AppNotification['type']) => {
   if (type === 'message')  return '#00b4e6';
   if (type === 'payment')  return '#00c8a0';
-  if (type === 'taxi')     return '#f59e0b';
-  if (type === 'security') return '#ef4444';
-  if (type === 'bet')      return '#a855f7';
+  if (type === 'call')     return '#f59e0b';
   return '#6b7280';
 };
 
@@ -47,17 +37,9 @@ const IconForType = ({ type }: { type: AppNotification['type'] }) => {
       <Line x1="2" y1="10" x2="22" y2="10"/>
     </Svg>
   );
-  if (type === 'taxi') return (
+  if (type === 'call') return (
     <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={2} strokeLinecap="round">
-      <Rect x="1" y="3" width="15" height="13" rx="2"/>
-      <Path d="M16 8h4l3 3v5h-7V8z"/>
-      <Circle cx="5.5" cy="18.5" r="2.5"/>
-      <Circle cx="18.5" cy="18.5" r="2.5"/>
-    </Svg>
-  );
-  if (type === 'security') return (
-    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={2} strokeLinecap="round">
-      <Path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      <Path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.82a16 16 0 0 0 6.29 6.29l.96-.96a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
     </Svg>
   );
   return (
@@ -131,7 +113,7 @@ export const NotificationsPanel = ({
                 activeOpacity={0.7}
               >
                 {/* Icono tipo */}
-                <View style={[np.iconWrap, { backgroundColor: colorForType(n.type) + '18', borderColor: colorForType(n.type) + '30' }]}>
+                <View style={np.iconWrap}>
                   <IconForType type={n.type} />
                 </View>
                 {/* Texto */}
@@ -219,7 +201,9 @@ const np = StyleSheet.create({
   iconWrap: {
     width: 34, height: 34, borderRadius: 17,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, flexShrink: 0,
+    borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)',
+    backgroundColor: 'transparent',
+    flexShrink: 0,
   },
   itemText: { flex: 1, minWidth: 0 },
   itemTitle: { fontSize: FontSize.sm, fontWeight: FontWeight.medium, color: Colors.textPrimary, marginBottom: 2 },
@@ -239,24 +223,58 @@ const np = StyleSheet.create({
 });
 
 // ══════════════════════════════════════════════════════════════════
-// MENÚ HAMBURGUESA — Drawer lateral desde la derecha
-// Fiel a la imagen: avatar grande, iconos SVG morados, subtítulos
+// MENÚ HAMBURGUESA — Dropdown top-right (paridad renderMenuPanel web)
 // ══════════════════════════════════════════════════════════════════
 const SCREEN_W = Dimensions.get('window').width;
-const DRAWER_W = Math.min(SCREEN_W * 0.82, 340);
-const ICON_COLOR = '#5B4FCF'; // morado de la imagen
+const MENU_PANEL_W = 220;
+const ICON_COLOR = '#374151';
 
 // ── Iconos SVG del menú ───────────────────────────────────────────
 const MenuIcon = ({ name }: { name: string }) => {
   const c = name === 'salir' ? '#EF4444' : ICON_COLOR;
-  const s = { width: 22, height: 22 };
+  const s = { width: 18, height: 18 };
   switch (name) {
     case 'perfil':
       return <Svg {...s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round"><Path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><Circle cx="12" cy="7" r="4"/></Svg>;
     case 'nuevo-contacto':
-      return <Svg {...s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round"><Line x1="12" y1="5" x2="12" y2="19"/><Line x1="5" y1="12" x2="19" y2="12"/></Svg>;
+      return <Svg {...s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round"><Path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><Circle cx="9" cy="7" r="4"/><Line x1="19" y1="8" x2="19" y2="14"/><Line x1="22" y1="11" x2="16" y2="11"/></Svg>;
+    case 'ayuda':
+      return <Svg {...s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round"><Circle cx="12" cy="12" r="10"/><Path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><Line x1="12" y1="17" x2="12.01" y2="17"/></Svg>;
     case 'crear-grupo':
       return <Svg {...s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round"><Path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><Circle cx="9" cy="7" r="4"/><Path d="M23 21v-2a4 4 0 0 0-3-3.87"/><Path d="M16 3.13a4 4 0 0 1 0 7.75"/></Svg>;
+    case 'moments':
+      return <Svg {...s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round"><Rect x="3" y="3" width="18" height="18" rx="2"/><Circle cx="8.5" cy="8.5" r="1.5"/><Polyline points="21 15 16 10 5 21"/></Svg>;
+    case 'escanear-qr':
+      return (
+        <Svg {...s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+          <Path d="M3 7V5a2 2 0 0 1 2-2h2"/>
+          <Path d="M17 3h2a2 2 0 0 1 2 2v2"/>
+          <Path d="M21 17v2a2 2 0 0 1-2 2h-2"/>
+          <Path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
+          <Rect x="7" y="7" width="3" height="3" rx="0.5"/>
+          <Rect x="14" y="14" width="3" height="3" rx="0.5"/>
+          <Path d="M14 7h3v3"/>
+          <Path d="M7 14v3h3"/>
+        </Svg>
+      );
+    case 'business':
+      return (
+        <Svg {...s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+          <Path d="M3 21h18"/>
+          <Path d="M5 21V7l7-4 7 4v14"/>
+          <Path d="M9 21v-4a3 3 0 0 1 6 0v4"/>
+          <Rect x="9" y="9" width="2" height="2" rx="0.3"/>
+          <Rect x="13" y="9" width="2" height="2" rx="0.3"/>
+        </Svg>
+      );
+    case 'broadcast':
+      return <Svg {...s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round"><Path d="M22 12h-4l-3 9L9 3l-3 9H2"/></Svg>;
+    case 'notas':
+      return <Svg {...s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round"><Path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><Path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></Svg>;
+    case 'global-search':
+      return <Svg {...s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round"><Circle cx="11" cy="11" r="8"/><Path d="M21 21l-4.35-4.35"/></Svg>;
+    case 'channels':
+      return <Svg {...s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round"><Path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8 9a16 16 0 0 0 6 6l1.11-1.11a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></Svg>;
     case 'contactos':
       return <Svg {...s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round"><Rect x="5" y="2" width="14" height="20" rx="2"/><Line x1="9" y1="7" x2="15" y2="7"/><Line x1="9" y1="11" x2="15" y2="11"/><Line x1="9" y1="15" x2="13" y2="15"/></Svg>;
     case 'mensajes-arch':
@@ -278,27 +296,28 @@ export const HamburgerMenu = ({
   visible,
   onClose,
   user,
+  headerHeight = 56,
 }: {
   visible: boolean;
   onClose: () => void;
   user?: { full_name?: string; avatar_url?: string; phone?: string } | null;
+  headerHeight?: number;
 }) => {
-  const slideAnim = useRef(new Animated.Value(DRAWER_W)).current;
-  const fadeAnim  = useRef(new Animated.Value(0)).current;
+  const insets = useSafeAreaInsets();
+  const scaleAnim = useRef(new Animated.Value(0.92)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) {
       Animated.parallel([
-        Animated.timing(slideAnim, { toValue: 0,        duration: 260, useNativeDriver: true }),
-        Animated.timing(fadeAnim,  { toValue: 1,        duration: 220, useNativeDriver: true }),
+        Animated.timing(scaleAnim, { toValue: 1, duration: 140, useNativeDriver: true }),
+        Animated.timing(opacityAnim, { toValue: 1, duration: 140, useNativeDriver: true }),
       ]).start();
     } else {
-      Animated.parallel([
-        Animated.timing(slideAnim, { toValue: DRAWER_W, duration: 220, useNativeDriver: true }),
-        Animated.timing(fadeAnim,  { toValue: 0,        duration: 180, useNativeDriver: true }),
-      ]).start();
+      scaleAnim.setValue(0.92);
+      opacityAnim.setValue(0);
     }
-  }, [visible]);
+  }, [visible, scaleAnim, opacityAnim]);
 
   const initials = user?.full_name
     ?.split(' ').filter(Boolean).map((w: string) => w[0].toUpperCase()).slice(0, 2).join('') || 'EG';
@@ -307,52 +326,72 @@ export const HamburgerMenu = ({
     { id: 'perfil',         label: 'Mi Perfil',           sub: 'Ver y editar tu perfil'    },
     { id: 'nuevo-contacto', label: 'Nuevo contacto',       sub: 'Añadir a tu lista'         },
     { id: 'crear-grupo',    label: 'Crear grupo',          sub: 'Nuevo grupo de chat'       },
+    { id: 'escanear-qr',    label: 'Escanear QR',         sub: 'Escanea códigos y contactos'},
+    { id: 'global-search',  label: 'Buscar en chats',     sub: 'Busca mensajes y contactos'},
+    { id: 'business',       label: 'Perfil empresarial',  sub: 'Catálogo y cuenta negocio' },
+    { id: 'broadcast',      label: 'Difusión',            sub: 'Mensaje a múltiples chats' },
     { id: 'contactos',      label: 'Mis contactos',        sub: 'Ver todos tus contactos'   },
     { id: 'mensajes-arch',  label: 'Mensajes archivados',  sub: 'Chats archivados'          },
     { id: 'notificaciones', label: 'Notificaciones',       sub: 'Gestionar alertas'         },
     { id: 'privacidad',     label: 'Privacidad',           sub: 'Configurar privacidad'     },
     { id: 'ajustes',        label: 'Ajustes',              sub: 'Configuración de la app'   },
+    { id: 'ayuda',          label: 'Ayuda y soporte',      sub: 'Centro de ayuda'           },
     { id: 'salir',          label: 'Cerrar sesión',        sub: 'Salir de tu cuenta'        },
   ];
 
-  const handlePress = (id: string) => {
+  const handlePress = async (id: string) => {
     onClose();
-    setTimeout(() => {
+    setTimeout(async () => {
       switch (id) {
-        case 'perfil':         router.push('/(tabs)/ajustes' as any); break;
+        case 'escanear-qr':    router.push('/_qr-scanner' as any); break;
+        case 'perfil':         router.push('/ajustes/perfil' as any); break;
         case 'nuevo-contacto': router.push('/contacts' as any); break;
         case 'crear-grupo':    router.push('/new-chat' as any); break;
+        case 'broadcast':      router.push('/broadcast' as any); break;
+        case 'global-search':  router.push('/global-search' as any); break;
+        case 'business':       router.push('/business-profile' as any); break;
         case 'contactos':      router.push('/contacts' as any); break;
-        case 'mensajes-arch':  router.push('/(tabs)/mensajeria' as any); break;
-        case 'notificaciones': router.push('/(tabs)/ajustes' as any); break;
-        case 'privacidad':     router.push('/(tabs)/ajustes' as any); break;
+        case 'mensajes-arch':  router.push('/ajustes/historial-chat' as any); break;
+        case 'notificaciones': router.push('/ajustes/notificaciones' as any); break;
+        case 'privacidad':     router.push('/ajustes/privacidad' as any); break;
         case 'ajustes':        router.push('/(tabs)/ajustes' as any); break;
+        case 'ayuda':          router.push('/ajustes/acerca' as any); break;
         case 'salir':
           Alert.alert('Cerrar sesión', '¿Estás seguro de que quieres salir?', [
             { text: 'Cancelar', style: 'cancel' },
             { text: 'Cerrar sesión', style: 'destructive', onPress: async () => {
-              await authAPI.logout();
-              router.replace('/(auth)/login' as any);
+              try { await authAPI.logout(); } catch {}
+              if (typeof window !== 'undefined' && window.location) {
+                window.location.href = '/';
+              } else {
+                router.replace('/(auth)/login' as any);
+              }
             }},
           ]);
           break;
       }
-    }, 200);
+    }, 50);
   };
 
   if (!visible) return null;
 
+  const panelTop = insets.top + headerHeight;
+
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
       <View style={hm.root}>
-        {/* Overlay oscuro */}
-        <Animated.View style={[hm.overlay, { opacity: fadeAnim }]}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-        </Animated.View>
-
-        {/* Panel deslizante */}
-        <Animated.View style={[hm.panel, { transform: [{ translateX: slideAnim }] }]}>
-          {/* ── Header usuario ── */}
+        <Pressable style={hm.overlay} onPress={onClose} />
+        <Animated.View
+          style={[
+            hm.panel,
+            {
+              top: panelTop,
+              opacity: opacityAnim,
+              transform: [{ scale: scaleAnim }],
+              maxWidth: SCREEN_W * 0.72,
+            },
+          ]}
+        >
           <View style={hm.userHeader}>
             {user?.avatar_url ? (
               <Image source={{ uri: user.avatar_url }} style={hm.avatar} />
@@ -362,19 +401,27 @@ export const HamburgerMenu = ({
               </View>
             )}
             <View style={hm.userInfo}>
-              <Text style={hm.userName} numberOfLines={1}>{user?.full_name || 'Usuario'}</Text>
+              <Text style={hm.userName} numberOfLines={1}>{user?.full_name || 'Cargando...'}</Text>
               <Text style={hm.userStatus}>● En línea</Text>
             </View>
           </View>
 
-          {/* ── Items ── */}
-          <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+            style={hm.scroll}
+            scrollEventThrottle={16}
+            decelerationRate="normal"
+            overScrollMode="never"
+            removeClippedSubviews={false}
+          >
             {items.map((item, i) => (
               <TouchableOpacity
                 key={item.id}
                 style={[hm.item, i < items.length - 1 && hm.itemBorder]}
                 onPress={() => handlePress(item.id)}
-                activeOpacity={0.65}
+                activeOpacity={0.5}
+                delayPressIn={0}
               >
                 <View style={hm.iconWrap}>
                   <MenuIcon name={item.id} />
@@ -387,7 +434,6 @@ export const HamburgerMenu = ({
                 </View>
               </TouchableOpacity>
             ))}
-            <View style={{ height: 24 }} />
           </ScrollView>
         </Animated.View>
       </View>
@@ -396,72 +442,59 @@ export const HamburgerMenu = ({
 };
 
 const hm = StyleSheet.create({
-  root: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-  },
+  root: { flex: 1 },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: 'rgba(0,0,0,0.3)',
   },
   panel: {
-    width: DRAWER_W,
-    height: '100%',
-    backgroundColor: '#F7F8FA',
+    position: 'absolute',
+    right: 8,
+    width: MENU_PANEL_W,
+    maxHeight: '75%',
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: -6, height: 0 },
-    shadowOpacity: 0.18,
-    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.22,
+    shadowRadius: 16,
     elevation: 24,
   },
-  // Header usuario
   userHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    paddingHorizontal: 20,
-    paddingTop: 56,
-    paddingBottom: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F2F5',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: '#00c8a0',
   },
-  avatar: { width: 52, height: 52, borderRadius: 26 },
+  avatar: { width: 38, height: 38, borderRadius: 19 },
   avatarFallback: {
-    width: 52, height: 52, borderRadius: 26,
-    backgroundColor: Colors.brand,
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.7)',
     alignItems: 'center', justifyContent: 'center',
   },
-  avatarText: { fontSize: 18, fontWeight: '800', color: '#fff' },
+  avatarText: { fontSize: 14, fontWeight: '800', color: '#fff' },
   userInfo: { flex: 1, minWidth: 0 },
-  userName: { fontSize: 17, fontWeight: '700', color: '#111827' },
-  userStatus: { fontSize: 13, color: Colors.brand, fontWeight: '600', marginTop: 2 },
-
-  // Items
+  userName: { fontSize: 17, fontWeight: '800', color: '#fff' },
+  userStatus: { fontSize: 11, color: 'rgba(255,255,255,0.9)', fontWeight: '600', marginTop: 2 },
+  scroll: { flexGrow: 0 },
   item: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#fff',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    backgroundColor: 'transparent',
   },
-  itemBorder: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#F0F2F5',
-  },
-  iconWrap: {
-    width: 40, height: 40,
-    borderRadius: 12,
-    backgroundColor: '#F3F0FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  itemText: { flex: 1 },
-  itemLabel: { fontSize: 15, fontWeight: '700', color: '#111827', lineHeight: 20 },
-  itemSub: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
+  itemBorder: { borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
+  iconWrap: { flexShrink: 0 },
+  itemText: { flex: 1, minWidth: 0 },
+  itemLabel: { fontSize: 12, fontWeight: '600', color: '#111827', lineHeight: 16 },
+  itemSub: { fontSize: 10, color: '#9CA3AF', marginTop: 1 },
 });
 
 // ══════════════════════════════════════════════════════════════════

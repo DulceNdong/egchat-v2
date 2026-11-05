@@ -4,6 +4,7 @@
 // APPS grid, FAB +, LIA-25 flotante
 // ══════════════════════════════════════════════════════════════════
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { TabErrorBoundary } from '../../src/components/TabErrorBoundary';
 import {
   View,
   Text,
@@ -16,27 +17,38 @@ import {
   RefreshControl,
   Image,
   Dimensions,
-  PanResponder,
   Alert,
   Linking,
+  PanResponder,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Rect, Line, Polyline, Polygon } from 'react-native-svg';
 import { router } from 'expo-router';
 import { walletAPI, authAPI } from '../../src/api';
-import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification } from '../../src/components/HeaderPanels';
+import { useLanguage } from '../../src/context/LanguageContext';
+import { t } from '../../src/translations';
+import { NotificationsPanel, HamburgerMenu, WeatherModal } from '../../src/components/HeaderPanels';
+import type { AppNotification } from '../../src/store/appStore';
 import { EGChatHeader, WeatherCondition } from '../../src/components/EGChatHeader';
 import { HomeNoticiasModal, HomeIdDigitalModal } from '../../src/components/home/HomeModals';
 import { HOME_NEWS } from '../../src/data/homeNews';
 import { fetchLiveHomeNews } from '../../src/services/newsRss';
 import { mergePersistentAvatar, onProfileUpdated } from '../../src/utils/profileEvents';
+import SessionManager from '../../src/sessionManager';
 import { SpinningLogo } from '../../src/components/SpinningLogo';
 import {
   Colors, Spacing, BorderRadius, FontSize, FontWeight, Shadow,
 } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
+import { useAppStore } from '../../src/store/useAppStore';
+import {
+  fetchWeatherIfStale,
+  markAllRead, clearAllNotifications, removeNotification, markNotificationRead,
+} from '../../src/store/appStore';
+import * as Haptics from 'expo-haptics';
 
 // ── Tipos ─────────────────────────────────────────────────────────
 interface UserProfile {
@@ -93,10 +105,11 @@ const IconClose = ({ color = '#fff', size = 22 }: { color?: string; size?: numbe
 
 // ── APPS principales (grid visible en home) ───────────────────────
 const HOME_APPS = [
-  { id: 'estados',  label: 'Estados',  route: '/stories',  color: '#00B4E6' },
-  { id: 'apuestas', label: 'Juegos',   route: '/apuestas', color: '#8b5cf6' },
-  { id: 'cemac',    label: 'Cemac',    route: '/cemac',    color: '#00C8A0' },
-  { id: 'mitaxi',   label: 'MiTaxi',   route: '/mitaxi',   color: '#f59e0b' },
+  { id: 'estados',   label: 'Estados',    route: '/stories',    color: '#00B4E6' },
+  { id: 'apuestas',  label: 'Juegos',     route: '/apuestas',   color: '#8b5cf6' },
+  { id: 'cemac',     label: 'Cemac',      route: '/cemac',      color: '#00C8A0' },
+  { id: 'mitaxi',    label: 'MiTaxi',     route: '/mitaxi',     color: '#f59e0b' },
+  { id: 'miniapps',  label: 'Mini-Apps',  route: '/mini-apps',  color: '#ec4899' },
 ];
 
 // ── Iconos SVG para APPS y FAB — idénticos a la versión web ──────
@@ -145,33 +158,44 @@ const SvgIcon = ({ id, color = '#00C8A0', size = 24 }: { id: string; color?: str
       return <Svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><Path d="M3 22V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/><Path d="M17 22V11l4-4v15"/><Line x1="3" y1="22" x2="21" y2="22"/><Line x1="7" y1="10" x2="11" y2="10"/></Svg>;
     case 'ocio':
       return <Svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><Polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></Svg>;
+    case 'miniapps':
+      return <Svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><Rect x="3" y="3" width="7" height="7" rx="1"/><Rect x="14" y="3" width="7" height="7" rx="1"/><Rect x="3" y="14" width="7" height="7" rx="1"/><Rect x="14" y="14" width="7" height="7" rx="1"/></Svg>;
     default:
       return <Svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><Circle cx="12" cy="12" r="10"/></Svg>;
   }
 };
 
-// ── TODOS los servicios del FAB + ─────────────────────────────────
+// ── Servicios del FAB + (sin correos, impuestos, cartera, mensajes, bancos, agua, cemac) ──
 const FAB_SERVICES = [
-  { id: 'mitaxi',       label: 'MiTaxi',       route: '/mitaxi',           color: '#f59e0b' },
-  { id: 'electricidad', label: 'Electricidad', route: '/(tabs)/servicios?service=electricidad', color: '#eab308' },
-  { id: 'internet',     label: 'Internet',     route: '/(tabs)/servicios?service=internet', color: '#8b5cf6' },
-  { id: 'recarga',      label: 'Recarga',      route: '/(tabs)/servicios?service=recarga', color: '#06b6d4' },
-  { id: 'tv',           label: 'Canales TV',   route: '/(tabs)/servicios?service=tv', color: '#ec4899' },
-  { id: 'salud',        label: 'Salud',        route: '/(tabs)/servicios?service=salud',        color: '#ef4444' },
-  { id: 'seguros',      label: 'Seguros',      route: '/(tabs)/servicios?service=seguros',      color: '#10b981' },
-  { id: 'super',        label: 'Supermercado', route: '/(tabs)/servicios?service=supermercado', color: '#84cc16' },
-  { id: 'restaurantes', label: 'Restaurantes', route: '/(tabs)/servicios?service=restaurantes', color: '#f43f5e' },
-  { id: 'vuelos',       label: 'Vuelos',       route: '/(tabs)/servicios?service=vuelos', color: '#0ea5e9' },
-  { id: 'gasolineras',  label: 'Gasolineras',  route: '/(tabs)/servicios?service=gasolineras', color: '#d97706' },
-  { id: 'ocio',         label: 'Ocio',         route: '/ocio',             color: '#a855f7' },
-  { id: 'apuestas',     label: 'Apuestas',     route: '/apuestas',         color: '#6366f1' },
+  { id: 'mitaxi',       label: 'MiTaxi',       route: '/mitaxi',                                color: '#FBBF24' },
+  { id: 'electricidad', label: 'Electricidad', route: '/(tabs)/servicios?service=electricidad', color: '#FDE68A' },
+  { id: 'internet',     label: 'Internet',     route: '/(tabs)/servicios?service=internet',     color: '#C4B5FD' },
+  { id: 'recarga',      label: 'Recarga',      route: '/(tabs)/servicios?service=recarga',      color: '#67E8F9' },
+  { id: 'tv',           label: 'TV',           route: '/(tabs)/servicios?service=tv',           color: '#F9A8D4' },
+  { id: 'salud',        label: 'Salud',        route: '/(tabs)/servicios?service=salud',        color: '#FCA5A5' },
+  { id: 'seguros',      label: 'Seguros',      route: '/(tabs)/servicios?service=seguros',      color: '#6EE7B7' },
+  { id: 'super',        label: 'Super',        route: '/(tabs)/servicios?service=supermercado', color: '#BEF264' },
+  { id: 'restaurantes', label: 'Rest. ',       route: '/(tabs)/servicios?service=restaurantes', color: '#FDA4AF' },
+  { id: 'vuelos',       label: 'Vuelos',       route: '/(tabs)/servicios?service=vuelos',       color: '#7DD3FC' },
+  { id: 'gasolineras',  label: 'Gasolina',     route: '/(tabs)/servicios?service=gasolineras',  color: '#FCD34D' },
+  { id: 'ocio',         label: 'Ocio',         route: '/ocio',                                  color: '#D8B4FE' },
+  { id: 'apuestas',     label: 'Apuestas',     route: '/apuestas',                              color: '#A5B4FC' },
 ];
 
 // ── Componente AppIcon (grid home) ────────────────────────────────
 const AppIcon = ({ id, label, color, onPress }: { id: string; label: string; color: string; onPress: () => void }) => (
-  <TouchableOpacity style={st.appItem} onPress={onPress} activeOpacity={0.75}>
-    <View style={[st.appIconBox, { borderColor: color + '30' }]}>
-      <SvgIcon id={id} color={color} size={32} />
+  <TouchableOpacity
+    style={st.appItem}
+    onPress={() => {
+      if (Platform.OS === 'android') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+      onPress();
+    }}
+    activeOpacity={0.7}
+  >
+    <View style={[st.appIconBox, { backgroundColor: `${color}18` }]}>
+      <SvgIcon id={id} color={color} size={24} />
     </View>
     <Text style={st.appLabel}>{label}</Text>
   </TouchableOpacity>
@@ -180,7 +204,7 @@ const AppIcon = ({ id, label, color, onPress }: { id: string; label: string; col
 // ══════════════════════════════════════════════════════════════════
 // PANTALLA PRINCIPAL — HomeScreen
 // ══════════════════════════════════════════════════════════════════
-export default function HomeScreen() {
+function HomeScreenInner() {
   const [balance, setBalance] = useState(0);
   const [currency, setCurrency] = useState('XAF');
   const [balanceVisible, setBalanceVisible] = useState(false);
@@ -191,76 +215,67 @@ export default function HomeScreen() {
   const [showIdDigital, setShowIdDigital] = useState(false);
   const [liveNews, setLiveNews] = useState(HOME_NEWS);
   const [fabOpen, setFabOpen] = useState(false);
-  const [temp, setTemp] = useState(24);
-  const [city, setCity] = useState('Malabo');
-  const [weatherCondition, setWeatherCondition] = useState<WeatherCondition>('cloudy');
+  // Posición Y donde termina el bloque Servicios Dutti (medido con onLayout)
+  const [duttiBottomY, setDuttiBottomY] = useState<number | null>(null);
+
+  // ── Store global — clima y notificaciones (no se reinician al cambiar de pestaña)
+  const { weather, notifications } = useAppStore();
+  const { language } = useLanguage();
 
   // ── Estados de los paneles del header ───────────────────────────
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showWeather, setShowWeather] = useState(false);
-  const [notifications, setNotifications] = useState<AppNotification[]>([
-    { id: '1', type: 'message',  title: '💬 Bienvenido a EGCHAT', body: 'Tu cuenta está activa y lista para usar', time: 'Ahora', read: false },
-    { id: '2', type: 'system',   title: '🔒 Cifrado E2E activado', body: 'Todos tus mensajes están cifrados', time: 'Hoy', read: false },
-  ]);
 
   // Animaciones FAB — una por cada servicio
   const fabRotate = useRef(new Animated.Value(0)).current;
   const fabOverlayOpacity = useRef(new Animated.Value(0)).current;
   const fabItemAnims = useRef(FAB_SERVICES.map(() => new Animated.Value(0))).current;
-  // Animación LIA — pulso continuo
-  const liaPulse = useRef(new Animated.Value(1)).current;
-
-  // ── LIA arrastrable ─────────────────────────────────────────────
+  // LIA — arrastrable con makeDraggable (sin conflicto de gestos en iOS)
   const { width: SW, height: SH } = Dimensions.get('window');
-  const LIA_SIZE = 36;
-  // Posición inicial: esquina inferior derecha
-  const liaPan = useRef(new Animated.ValueXY({
-    x: SW - LIA_SIZE - Spacing.lg,
-    y: SH - LIA_SIZE - 160,
-  })).current;
-  const liaLastPos = useRef({ x: SW - LIA_SIZE - Spacing.lg, y: SH - LIA_SIZE - 160 });
+  const BTN_SIZE = 44;
+  // Posición inicial del LIA: esquina inferior derecha, por encima del FAB y tab bar
+  const TAB_BAR_H = Platform.OS === 'ios' ? 92 : 68;
+  const LIA_INIT_X = SW - BTN_SIZE - 16;
+  const LIA_INIT_Y = SH - TAB_BAR_H - BTN_SIZE - 90; // encima del FAB
+  const liaPan = useRef(new Animated.ValueXY({ x: LIA_INIT_X, y: LIA_INIT_Y })).current;
   const liaDragging = useRef(false);
 
-  const liaPanResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, gs) =>
-        Math.abs(gs.dx) > 4 || Math.abs(gs.dy) > 4,
+  function makeDraggable(
+    pos: Animated.ValueXY,
+    dragging: React.MutableRefObject<boolean>,
+    onTap: () => void,
+  ) {
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 4 || Math.abs(g.dy) > 4,
       onPanResponderGrant: () => {
-        liaDragging.current = false;
-        liaPan.setOffset({ x: liaLastPos.current.x, y: liaLastPos.current.y });
-        liaPan.setValue({ x: 0, y: 0 });
+        dragging.current = false;
+        pos.setOffset({ x: (pos.x as any)._value, y: (pos.y as any)._value });
+        pos.setValue({ x: 0, y: 0 });
       },
-      onPanResponderMove: (_, gs) => {
-        if (Math.abs(gs.dx) > 4 || Math.abs(gs.dy) > 4) liaDragging.current = true;
-        Animated.event(
-          [null, { dx: liaPan.x, dy: liaPan.y }],
-          { useNativeDriver: false }
-        )(_, gs);
+      onPanResponderMove: (_, g) => {
+        if (Math.abs(g.dx) > 4 || Math.abs(g.dy) > 4) dragging.current = true;
+        Animated.event([null, { dx: pos.x, dy: pos.y }], { useNativeDriver: false })(_, g);
       },
-      onPanResponderRelease: (_, gs) => {
-        liaPan.flattenOffset();
-        // Guardar posición final, con límites de pantalla
-        const newX = Math.max(0, Math.min(SW - LIA_SIZE, liaLastPos.current.x + gs.dx));
-        const newY = Math.max(0, Math.min(SH - LIA_SIZE - 80, liaLastPos.current.y + gs.dy));
-        liaLastPos.current = { x: newX, y: newY };
-        liaPan.setValue({ x: newX, y: newY });
+      onPanResponderRelease: () => {
+        pos.flattenOffset();
+        if (!dragging.current) { onTap(); return; }
+        const curX = (pos.x as any)._value;
+        const snapX = curX < SW / 2 ? 12 : SW - BTN_SIZE - 12;
+        const rawY = (pos.y as any)._value;
+        const snapY = Math.max(60, Math.min(rawY, SH - BTN_SIZE - 80));
+        Animated.spring(pos, { toValue: { x: snapX, y: snapY }, useNativeDriver: false, damping: 18, stiffness: 200 }).start();
+        dragging.current = false;
       },
-    })
-  ).current;
+    });
+  }
+
+  const liaPanResponder = useRef(makeDraggable(liaPan, liaDragging, () => router.push('/(tabs)/lia' as any))).current;
 
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
-  // ── Animación LIA pulso ─────────────────────────────────────────
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(liaPulse, { toValue: 1.12, duration: 900, useNativeDriver: true }),
-        Animated.timing(liaPulse, { toValue: 1.0,  duration: 900, useNativeDriver: true }),
-      ])
-    ).start();
-  }, []);
+  // Animación LIA desactivada — LIA comentado en JSX
 
   // ── Carga de datos ──────────────────────────────────────────────
   const loadData = useCallback(async () => {
@@ -292,7 +307,16 @@ export default function HomeScreen() {
     }
   }, []);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    let active = true;
+    void SessionManager.getInstance().getUser().then(async cachedUser => {
+      if (!cachedUser || !active) return;
+      setUser(await mergePersistentAvatar(cachedUser));
+      if (active) setLoading(false);
+    }).catch(() => {});
+    void loadData();
+    return () => { active = false; };
+  }, [loadData]);
 
   useEffect(() => {
     return onProfileUpdated(patch => {
@@ -301,26 +325,15 @@ export default function HomeScreen() {
   }, []);
 
   useEffect(() => {
-    fetchLiveHomeNews().then(setLiveNews).catch(() => {});
+    const timer = setTimeout(() => {
+      fetchLiveHomeNews().then(setLiveNews).catch(() => {});
+    }, 1200);
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
-    const fetchWeather = async () => {
-      try {
-        const res = await fetch(
-          'https://api.open-meteo.com/v1/forecast?latitude=3.75&longitude=8.78&current_weather=true',
-        );
-        const data = await res.json();
-        const t = Math.round(data?.current_weather?.temperature ?? 24);
-        const code = data?.current_weather?.weathercode ?? 0;
-        setTemp(t);
-        let cond: WeatherCondition = 'cloudy';
-        if (code === 0) cond = 'sunny';
-        else if (code >= 51 && code <= 67) cond = 'rain';
-        setWeatherCondition(cond);
-      } catch {}
-    };
-    fetchWeather();
+    const timer = setTimeout(() => { fetchWeatherIfStale(); }, 1800);
+    return () => clearTimeout(timer);
   }, []);
 
   const onRefresh = () => { setRefreshing(true); loadData(); };
@@ -329,15 +342,15 @@ export default function HomeScreen() {
   const openFab = () => {
     setFabOpen(true);
     Animated.parallel([
-      Animated.spring(fabRotate, { toValue: 1, useNativeDriver: true, tension: 120, friction: 8 }),
-      Animated.timing(fabOverlayOpacity, { toValue: 1, duration: 250, useNativeDriver: true }),
+      Animated.timing(fabRotate, { toValue: 1, duration: 250, useNativeDriver: true }),
+      Animated.timing(fabOverlayOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
       ...fabItemAnims.map((anim, i) =>
         Animated.spring(anim, {
           toValue: 1,
+          delay: i * 30,
           useNativeDriver: true,
-          tension: 90,
-          friction: 7,
-          delay: i * 25,
+          tension: 180,
+          friction: 10,
         })
       ),
     ]).start();
@@ -347,13 +360,8 @@ export default function HomeScreen() {
     Animated.parallel([
       Animated.timing(fabRotate, { toValue: 0, duration: 200, useNativeDriver: true }),
       Animated.timing(fabOverlayOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
-      ...fabItemAnims.map((anim, i) =>
-        Animated.timing(anim, {
-          toValue: 0,
-          duration: 140,
-          delay: i * 10,
-          useNativeDriver: true,
-        })
+      ...fabItemAnims.map(anim =>
+        Animated.timing(anim, { toValue: 0, duration: 130, useNativeDriver: true })
       ),
     ]).start(() => setFabOpen(false));
   };
@@ -390,50 +398,41 @@ export default function HomeScreen() {
 
   // news preview removed
 
-  if (loading) {
-    return (
-      <View style={[st.center, { backgroundColor: C.bgPrimary }]}>
-        <ActivityIndicator size="large" color={Colors.brand} />
-      </View>
-    );
-  }
-
   return (
-    <SafeAreaView style={[st.container, { backgroundColor: C.bgPrimary }]} edges={['bottom', 'left', 'right']}>
+    <SafeAreaView style={[st.container, { backgroundColor: C.bgPrimary }]} edges={['left', 'right']}>
 
       <EGChatHeader
-        temp={`${temp}°`}
-        city={city}
-        weatherCondition={weatherCondition}
-        unreadCount={notifications.filter(n => !n.read).length}
         notificationsOpen={showNotifications}
         menuOpen={showMenu}
         onWeatherPress={() => setShowWeather(true)}
         onNotificationsPress={() => {
           setShowNotifications(true);
-          setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+          markAllRead();
         }}
         onMenuPress={() => setShowMenu(true)}
       />
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.brand} colors={[Colors.brand]} />
-        }
-        contentContainerStyle={st.scrollContent}
-      >
-
+<View style={st.fixedContent}>
         {/* ════════════════════════════════════════════════════════
             BANNER SALDO DISPONIBLE
         ════════════════════════════════════════════════════════ */}
         <LinearGradient
-          colors={['#1a3a5c', '#0d2d4a', '#0a2240']}
+          colors={['#0d2d4a', '#1a3a5c', '#0e4a6e']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={st.balanceBanner}
         >
-          <Text style={st.balanceTitle}>SALDO DISPONIBLE</Text>
+          {/* Nombre usuario */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', fontWeight: '500' }}>
+              {user?.full_name ? `Hola, ${user.full_name.split(' ')[0]}` : 'Mi Monedero'}
+            </Text>
+            <View style={{ backgroundColor: 'rgba(0,200,160,0.2)', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3, borderWidth: 1, borderColor: 'rgba(0,200,160,0.35)' }}>
+              <Text style={{ fontSize: 10, color: '#00C8A0', fontWeight: '700', letterSpacing: 0.5 }}>EGCHAT PAY</Text>
+            </View>
+          </View>
+
+          <Text style={st.balanceTitle}>{t('availableBalance')}</Text>
 
           {/* Saldo con puntos y ojo */}
           <View style={st.balanceRow}>
@@ -455,19 +454,25 @@ export default function HomeScreen() {
             <TouchableOpacity
               style={st.balanceBtn}
               activeOpacity={0.85}
-              onPress={() => router.push('/(tabs)/monedero' as any)}
+              onPress={() => {
+                if (Platform.OS === 'android') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push('/(tabs)/monedero' as any);
+              }}
             >
               <IconRefresh color={Colors.brand} size={15} />
-              <Text style={st.balanceBtnText}>RECARGAR</Text>
+              <Text style={st.balanceBtnText}>{t('recharge')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={st.balanceBtn}
               activeOpacity={0.85}
-              onPress={openSendMoney}
+              onPress={() => {
+                if (Platform.OS === 'android') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                openSendMoney();
+              }}
             >
               <IconSend color={Colors.brand} size={15} />
-              <Text style={st.balanceBtnText}>ENVIAR</Text>
+              <Text style={st.balanceBtnText}>{t('send')}</Text>
             </TouchableOpacity>
           </View>
         </LinearGradient>
@@ -483,12 +488,16 @@ export default function HomeScreen() {
             onPress={() => setShowIdDigital(true)}
           >
             <View style={st.infoCardIcon}>
-              <Text style={st.infoCardEmoji}>🪪</Text>
+              <Svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+                <Rect x="2" y="4" width="20" height="16" rx="2"/>
+                <Path d="M8 10a2 2 0 1 0 4 0 2 2 0 0 0-4 0"/>
+                <Path d="M14 10h4M14 14h4M8 14h4"/>
+              </Svg>
             </View>
             <View style={st.infoCardText}>
-              <Text style={[st.infoCardTitle, { color: C.textPrimary }]}>ID Digital</Text>
+              <Text style={[st.infoCardTitle, { color: C.textPrimary }]}>{t('digitalId')}</Text>
               <Text style={[st.infoCardSub, { color: Colors.accent }]}>
-                {user?.verified ? '✓ Verificado' : user ? 'Cuenta activa' : 'Sin verificar'}
+                {user?.verified ? '✓ Verificado' : user ? t('activeAccount') : 'Sin verificar'}
               </Text>
             </View>
           </TouchableOpacity>
@@ -500,39 +509,54 @@ export default function HomeScreen() {
             onPress={() => setShowNews(true)}
           >
             <View style={st.infoCardIcon}>
-              <Text style={st.infoCardEmoji}>📰</Text>
+              <Svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+                <Path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/>
+                <Path d="M18 14h-8M15 18h-5M10 6h8v4h-8z"/>
+              </Svg>
             </View>
             <View style={st.infoCardText}>
-              <Text style={[st.infoCardTitle, { color: C.textPrimary }]}>Noticias</Text>
+              <Text style={[st.infoCardTitle, { color: C.textPrimary }]}>{t('news')}</Text>
               <Text style={[st.infoCardSub, { color: C.textSecondary }]}>
-                {liveNews.length} titulares
+                {liveNews.length} {t('headlines')}
               </Text>
             </View>
           </TouchableOpacity>
         </View>
+      </View>
 
-        {/* Noticias preview removed per request */}
-
-        {/* ════════════════════════════════════════════════════════
-            APPS — Estados, Juegos, Cemac, MiTaxi
-        ════════════════════════════════════════════════════════ */}
-        <View style={st.appsSection}>
-          <Text style={[st.sectionLabel, { color: C.textSecondary }]}>APPS</Text>
-          <View style={st.appsGrid}>
-            {HOME_APPS.map(app => (
-              <AppIcon
-                key={app.id}
-                id={app.id}
-                label={app.label}
-                color={app.color}
-                onPress={() => router.push(app.route as any)}
-              />
-            ))}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.brand} colors={[Colors.brand]} />
+        }
+        contentContainerStyle={st.scrollContent}
+      >
+        <View style={st.fixedContent}>
+          <View
+            style={[st.appsSection, { backgroundColor: C.bgSecondary }]}
+            onLayout={(e) => {
+              if (Platform.OS === 'android') {
+                const { y, height } = e.nativeEvent.layout;
+                setDuttiBottomY(y + height);
+              }
+            }}
+          >
+            <Text style={[st.sectionLabel, { color: C.textSecondary }]}>{t('duttiServices')}</Text>
+            <View style={st.appsGrid}>
+              {HOME_APPS.map(app => (
+                <AppIcon
+                  key={app.id}
+                  id={app.id}
+                  label={app.label}
+                  color={app.color}
+                  onPress={() => router.push(app.route as any)}
+                />
+              ))}
+            </View>
           </View>
         </View>
 
-        {/* Espacio inferior para que el FAB no tape contenido */}
-        <View style={{ height: 120 }} />
+        <View style={{ height: Platform.OS === 'android' ? 88 : 168 }} />
       </ScrollView>
 
       {/* ════════════════════════════════════════════════════════
@@ -548,113 +572,119 @@ export default function HomeScreen() {
       )}
 
       {/* ════════════════════════════════════════════════════════
-          FAB RADIAL — 1 solo círculo alrededor del botón
+          FAB RADIAL — un solo anillo, distribuido en 360°
+          Efecto bloom: escala + opacidad con spring
+          El + es el centro exacto del anillo
       ════════════════════════════════════════════════════════ */}
       {fabOpen && (() => {
-        const { width: SW } = Dimensions.get('window');
-        const FAB_CX     = SW / 2;
-        const FAB_BOTTOM = 210 + 30;  // centro vertical del FAB
-        const COUNT      = FAB_SERVICES.length; // 13 ítems
-        const R          = 150;       // un solo anillo
-        const ITEM_SIZE  = 52;
-        const ITEM_HALF  = ITEM_SIZE / 2;
+        const { width: SW, height: SH } = Dimensions.get('window');
+        const isSmall = SH < 680;
+        const fabBottomOffset = isSmall ? 165 : (Platform.OS === 'ios' ? 248 : 205);
+        const FAB_CENTER_BOTTOM = fabBottomOffset + 30;
+
+        const ITEM_SIZE = isSmall ? 42 : 48;
+        const ITEM_HALF = ITEM_SIZE / 2;
+        const COUNT = FAB_SERVICES.length;
+        const R = isSmall ? 105 : 125;
 
         return FAB_SERVICES.map((svc, i) => {
-          // 360° uniformes, empezando desde arriba (−90°)
+          // 360° uniformes, empezando desde arriba (-90°)
           const angleDeg = -90 + (360 / COUNT) * i;
           const angleRad = (angleDeg * Math.PI) / 180;
 
-          const finalX = FAB_CX     + Math.cos(angleRad) * R - ITEM_HALF;
-          const finalY = FAB_BOTTOM - Math.sin(angleRad) * R - ITEM_HALF;
+          // Posición en coordenadas X, Y absolutas relativas al centro del botón +
+          const itemLeft = (SW / 2) + Math.cos(angleRad) * R - ITEM_HALF;
+          const itemBottom = FAB_CENTER_BOTTOM - Math.sin(angleRad) * R - ITEM_HALF;
 
-          const animScale = fabItemAnims[i].interpolate({
-            inputRange:  [0, 0.6, 1],
-            outputRange: [0.2, 1.12, 1],
-          });
-          const animLeft = fabItemAnims[i].interpolate({
-            inputRange:  [0, 1],
-            outputRange: [FAB_CX - ITEM_HALF, finalX],
-          });
-          const animBottom = fabItemAnims[i].interpolate({
-            inputRange:  [0, 1],
-            outputRange: [FAB_BOTTOM - ITEM_HALF, finalY],
+          const scale = fabItemAnims[i].interpolate({
+            inputRange: [0, 1],
+            outputRange: [0.2, 1],
           });
 
           return (
             <Animated.View
               key={svc.id}
               style={{
-                position:   'absolute',
-                left:       animLeft,
-                bottom:     animBottom,
-                width:      ITEM_SIZE,
+                position: 'absolute',
+                left: itemLeft,
+                bottom: itemBottom,
+                width: ITEM_SIZE,
+                height: ITEM_SIZE,
                 alignItems: 'center',
-                zIndex:     25,
-                opacity:    fabItemAnims[i],
-                transform:  [{ scale: animScale }],
+                justifyContent: 'center',
+                zIndex: 25,
+                opacity: fabItemAnims[i],
+                transform: [{ scale }],
               }}
-              pointerEvents="box-none"
+              pointerEvents={fabOpen ? 'box-none' : 'none'}
             >
               <TouchableOpacity
-                style={[st.fabRadialBtn, { borderColor: svc.color }]}
+                style={[st.fabRadialBtn, {
+                  width: ITEM_SIZE,
+                  height: ITEM_SIZE,
+                  borderRadius: ITEM_SIZE / 2,
+                }]}
                 onPress={() => navigateFab(svc.route)}
                 activeOpacity={0.75}
               >
-                <View style={[st.fabRadialBg, { backgroundColor: svc.color + '28' }]} />
-                <SvgIcon id={svc.id} color={svc.color} size={24} />
+                <SvgIcon id={svc.id} color={svc.color} size={22} />
               </TouchableOpacity>
-              <Animated.Text
-                style={[st.fabRadialLabel, { opacity: fabItemAnims[i] }]}
-                numberOfLines={1}
+              <Animated.View
+                style={{
+                  position: 'absolute',
+                  top: ITEM_SIZE + 2,
+                  paddingHorizontal: 8,
+                  paddingVertical: 2,
+                  borderRadius: 12,
+                  backgroundColor: 'rgba(255,255,255,0.92)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(255,255,255,0.95)',
+                  opacity: fabItemAnims[i],
+                  alignSelf: 'center',
+                }}
               >
-                {svc.label}
-              </Animated.Text>
+                <Text
+                  style={{
+                    fontSize: 10,
+                    fontWeight: '700',
+                    color: '#1f2937',
+                    textAlign: 'center',
+                  }}
+                  numberOfLines={1}
+                >
+                  {svc.label}
+                </Text>
+              </Animated.View>
             </Animated.View>
           );
         });
       })()}
 
-      {/* ════════════════════════════════════════════════════════
-          LIA-25 — Asistente flotante ARRASTRABLE
-          El usuario puede moverlo a cualquier posición
-      ════════════════════════════════════════════════════════ */}
+      {/* LIA-25 flotante arrastrable */}
       <Animated.View
+        style={[st.liaBtn, { left: liaPan.x, top: liaPan.y }]}
         {...liaPanResponder.panHandlers}
-        style={[
-          st.liaBtn,
-          {
-            transform: [
-              { translateX: liaPan.x },
-              { translateY: liaPan.y },
-              { scale: liaPulse },
-            ],
-          },
-        ]}
       >
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={() => {
-            if (!liaDragging.current) router.push('/(tabs)/lia' as any);
-          }}
+        <LinearGradient
+          colors={['#00C8A0', '#00B4E6']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={st.liaBtnGradient}
         >
-          <LinearGradient
-            colors={['#00C8A0', '#00B4E6']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={st.liaBtnGradient}
-          >
-            <SpinningLogo size={36} glow={false} />
-          </LinearGradient>
-        </TouchableOpacity>
+          <SpinningLogo size={36} glow={false} />
+        </LinearGradient>
       </Animated.View>
 
       {/* ════════════════════════════════════════════════════════
           FAB + — Botón central flotante
       ════════════════════════════════════════════════════════ */}
       <TouchableOpacity
-        style={st.fab}
+        style={[st.fab, { bottom: SH < 680 ? 165 : (Platform.OS === 'ios' ? 248 : 205) }]}
         activeOpacity={0.9}
-        onPress={toggleFab}
+        onPress={() => {
+          if (Platform.OS === 'android') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          toggleFab();
+        }}
       >
         <LinearGradient
           colors={['#1a3a5c', '#0d2d4a']}
@@ -678,10 +708,10 @@ export default function HomeScreen() {
         visible={showNotifications}
         onClose={() => setShowNotifications(false)}
         notifications={notifications}
-        onMarkAllRead={() => setNotifications(prev => prev.map(n => ({ ...n, read: true })))}
-        onClearAll={() => setNotifications([])}
+        onMarkAllRead={() => markAllRead()}
+        onClearAll={() => clearAllNotifications()}
         onNotifPress={(n) => {
-          setNotifications(prev => prev.filter(x => x.id !== n.id));
+          markNotificationRead(n.id);
           setShowNotifications(false);
           if (n.chatId) router.push(`/chat/${n.chatId}` as any);
         }}
@@ -694,9 +724,9 @@ export default function HomeScreen() {
       <WeatherModal
         visible={showWeather}
         onClose={() => setShowWeather(false)}
-        temp={`${temp}°`}
-        city={city}
-        condition={weatherCondition}
+        temp={`${weather.temp}°`}
+        city={weather.city}
+        condition={weather.condition}
       />
 
       <HomeNoticiasModal visible={showNews} onClose={() => setShowNews(false)} />
@@ -727,8 +757,12 @@ const st = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  fixedContent: {
+    paddingBottom: Spacing.sm,
+  },
   scrollContent: {
-    paddingBottom: Spacing.lg,
+    paddingHorizontal: Spacing.md,
+    paddingBottom: Spacing.xl,
   },
 
   // ── Header ──────────────────────────────────────────────────────
@@ -812,10 +846,10 @@ const st = StyleSheet.create({
 
   // ── Banner Saldo ─────────────────────────────────────────────────
   balanceBanner: {
-    marginHorizontal: Spacing.lg,
-    marginTop: Spacing.lg,
+    marginHorizontal: 16,
+    marginTop: 12,
     borderRadius: BorderRadius.xl,
-    padding: Spacing.xl,
+    padding: 16,
     ...Shadow.lg,
   },
   balanceTitle: {
@@ -823,13 +857,13 @@ const st = StyleSheet.create({
     fontWeight: FontWeight.bold,
     color: 'rgba(255,255,255,0.6)',
     letterSpacing: 1.2,
-    marginBottom: Spacing.sm,
+    marginBottom: 6,
   },
   balanceRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.md,
-    marginBottom: Spacing.xl,
+    marginBottom: 16,
   },
   balanceAmount: {
     fontSize: 22,
@@ -865,9 +899,9 @@ const st = StyleSheet.create({
   // ── Cards ID Digital + Noticias ──────────────────────────────────
   cardsRow: {
     flexDirection: 'row',
-    gap: Spacing.md,
-    marginHorizontal: Spacing.lg,
-    marginTop: Spacing.md,
+    gap: 10,
+    marginHorizontal: 16,
+    marginTop: 10,
   },
   infoCard: {
     flex: 1,
@@ -876,7 +910,7 @@ const st = StyleSheet.create({
     gap: Spacing.sm,
     backgroundColor: Colors.bgSecondary,
     borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
+    padding: 12,
     ...Shadow.sm,
   },
   infoCardIcon: {
@@ -939,8 +973,13 @@ const st = StyleSheet.create({
 
   // ── APPS section ─────────────────────────────────────────────────
   appsSection: {
-    marginHorizontal: Spacing.lg,
-    marginTop: Spacing.xl,
+    marginTop: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.06)',
+    ...Shadow.sm,
   },
   sectionLabel: {
     fontSize: FontSize.xs,
@@ -951,35 +990,38 @@ const st = StyleSheet.create({
   },
   appsGrid: {
     flexDirection: 'row',
-    gap: Spacing.md,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 6,
   },
   appItem: {
     flex: 1,
     alignItems: 'center',
-    gap: Spacing.sm,
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 2,
   },
   appIconBox: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: Colors.bgSecondary,
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(0,200,160,0.2)',
-    ...Shadow.md,
+    elevation: 0,
+    shadowOpacity: 0,
   },
   appLabel: {
-    fontSize: FontSize.xs,
-    fontWeight: FontWeight.semibold,
-    color: Colors.textPrimary,
+    fontSize: 11,
+    fontWeight: FontWeight.bold as '700',
+    color: '#1f2937',
     textAlign: 'center',
+    letterSpacing: 0.1,
   },
 
   // ── FAB overlay ──────────────────────────────────────────────────
   fabOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.72)',
+    backgroundColor: 'rgba(0,0,0,0.55)',
     zIndex: 10,
   },
   fabOverlayPress: {
@@ -991,37 +1033,28 @@ const st = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: 'rgba(15,23,42,0.82)',
+    backgroundColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.8,
-    borderColor: 'rgba(0,200,160,0.9)',
+    borderWidth: 1.4,
+    borderColor: 'rgba(0,0,0,0.15)',
     overflow: 'hidden',
-    // sombra suave
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    elevation: 8,
-  },
-  fabRadialBg: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 26,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 5,
   },
   fabRadialEmoji: {
     fontSize: 22,
   },
   fabRadialLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#ffffff',
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: '#111827',
     textAlign: 'center',
-    marginTop: 4,
-    maxWidth: 68,
-    textShadowColor: 'rgba(0,0,0,0.95)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
-    letterSpacing: 0.2,
+    maxWidth: 96,
+    lineHeight: 11,
   },
 
   // ── LIA-25 flotante arrastrable ──────────────────────────────────
@@ -1050,7 +1083,7 @@ const st = StyleSheet.create({
   // ── FAB + central ────────────────────────────────────────────────
   fab: {
     position: 'absolute',
-    bottom: 210,
+    bottom: Platform.OS === 'ios' ? 220 : 210,
     alignSelf: 'center',
     zIndex: 30,
     borderRadius: 30,
@@ -1065,3 +1098,11 @@ const st = StyleSheet.create({
     justifyContent: 'center',
   },
 });
+
+export default function HomeScreen() {
+  return (
+    <TabErrorBoundary tabName="Home">
+      <HomeScreenInner />
+    </TabErrorBoundary>
+  );
+}

@@ -1,0 +1,94 @@
+{
+  "expo": {
+    "name": "EGCHAT",
+    "slug": "egchat-mobile",
+    "version": "1.0.0",
+    "privacy": "public",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "bundleIdentifier": "com.jallzstores.egchat",
+      "appleTeamId": "XU6YD7ZJ2K",
+      "supportsTablet": false,
+      "buildNumber": "143",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "NSCameraUsageDescription": "EGCHAT necesita acceso a la cámara para fotos de perfil y videollamadas.",
+        "NSMicrophoneUsageDescription": "EGCHAT necesita acceso al micrófono para llamadas de voz y video.",
+        "NSLocationWhenInUseUsageDescription": "EGCHAT necesita tu ubicación para servicios de taxi y mapas.",
+        "NSPhotoLibraryUsageDescription": "EGCHAT necesita acceso a tus fotos para compartir imágenes en chats.",
+        "NSPhotoLibraryAddUsageDescription": "EGCHAT necesita permiso para guardar fotos en tu galería."
+      }
+    },
+    "android": {
+      "package": "com.egchat.app",
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "ACCESS_FINE_LOCATION",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "USE_FULL_SCREEN_INTENT",
+        "POST_NOTIFICATIONS",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ],
+      "googleServicesFile": "./google-services.json"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "EGCHAT necesita la camara para fotos de perfil."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "EGCHAT necesita tu ubicacion para servicios de taxi."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#00c8a0",
+          "defaultChannel": "egchat-messages",
+          "sounds": [
+            "./assets/notification.wav"
+          ]
+        }
+      ],
+      "expo-secure-store",
+      "./plugins/withVoIPModules.js",
+      "./plugins/withNotificationServiceExtension.js"
+    ],
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "scheme": "egchat",
+    "extra": {
+      "apiUrl": "https://chat2-0x2c.onrender.com",
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "8fde846d-979b-468a-933d-2768cc5cd39f"
+      }
+    },
+    "owner": "dutti98",
+    "runtimeVersion": "1.0.0"
+  }
+}

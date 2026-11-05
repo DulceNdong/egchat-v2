@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as Location from 'expo-location';
 import { Colors, FontSize, FontWeight, Spacing } from '../src/theme';
@@ -13,21 +13,26 @@ const PLACES = [
   { id: '5', title: 'Puerto de Malabo', emoji: '⚓', lat: 3.7550, lng: 8.7820 },
 ];
 
-// Lazy import de react-native-maps solo en nativo
+// Lazy import de react-native-maps solo en nativo — con protección de errores
 let MapView: any = null;
 let Marker: any = null;
 let PROVIDER_DEFAULT: any = null;
 
 if (Platform.OS !== 'web') {
-  const maps = require('react-native-maps');
-  MapView = maps.default;
-  Marker = maps.Marker;
-  PROVIDER_DEFAULT = maps.PROVIDER_DEFAULT;
+  try {
+    const maps = require('react-native-maps');
+    MapView = maps.default;
+    Marker = maps.Marker;
+    PROVIDER_DEFAULT = maps.PROVIDER_DEFAULT;
+  } catch {
+    // Módulo no disponible — el mapa mostrará fallback
+  }
 }
 
 export default function MapScreen() {
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [loading, setLoading] = useState(true);
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     (async () => {
@@ -55,8 +60,8 @@ export default function MapScreen() {
   } : undefined;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
+    <SafeAreaView style={styles.container} edges={['left', 'right']}>
+      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Text style={styles.backIcon}>‹</Text>
         </TouchableOpacity>
@@ -116,7 +121,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: Colors.bgSecondary,
     borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
-    paddingHorizontal: Spacing.sm, paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.sm, paddingBottom: Spacing.sm,
     gap: Spacing.sm,
   },
   backBtn: { padding: Spacing.sm },

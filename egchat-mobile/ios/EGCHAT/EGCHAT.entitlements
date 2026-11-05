@@ -3,12 +3,6 @@
 <plist version="1.0">
   <dict>
     <key>aps-environment</key>
-    <string>production</string>
-    <key>com.apple.developer.usernotifications.communication</key>
-    <true/>
-    <key>com.apple.security.application-groups</key>
-    <array>
-      <string>group.com.jallzstores.egchat</string>
-    </array>
+    <string>development</string>
   </dict>
 </plist>

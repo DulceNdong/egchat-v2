@@ -3,8 +3,11 @@
 // Usado por todas las pantallas de auth
 
 import { useState, useEffect, useCallback } from 'react';
+import { Platform } from 'react-native';
 import { router } from 'expo-router';
-import { authAPI, clearToken } from '../api';
+import { authAPI, clearToken, setToken, wakeServer } from '../api';
+import SessionManager from '../sessionManager';
+import { registerForPushNotifications } from '../notifications';
 
 interface User {
   id: string;
@@ -46,23 +49,37 @@ export const useAuth = () => {
     const cleanPhone = phone.replace(/[\s\-]/g, '');
     setLoading(true);
     try {
+      await wakeServer();
       const res = await authAPI.login(cleanPhone, password);
       if (!res?.token && !res?.user) {
         setError('Respuesta inesperada del servidor.');
         return false;
       }
       setState({ user: res.user, isAuthenticated: true, isLoading: false, error: '' });
+      if (Platform.OS !== 'web') {
+        void registerForPushNotifications().catch((pushErr) => {
+          console.warn('[Login push bootstrap skipped]', pushErr);
+        });
+      }
       router.replace('/(tabs)');
       return true;
     } catch (e: any) {
       const msg = e.message || '';
       console.log('[Login error]', msg);
-      if (msg.includes('credenciales') || msg.includes('401') || msg.includes('Credenciales') || msg.includes('incorrectos') || msg.includes('invalid')) {
+      if (
+        msg.includes('credenciales') || msg.includes('Credenciales')
+        || msg.includes('incorrectos') || msg.includes('invalid')
+        || msg.includes('No autorizado')
+      ) {
         setError('Teléfono o contraseña incorrectos.');
       } else if (msg.includes('Sesión expirada')) {
         setError('Sesión expirada. Inténtalo de nuevo.');
-      } else if (msg.includes('fetch') || msg.includes('network') || msg.includes('Network') || msg.includes('AbortError')) {
-        setError('Sin conexión. Verifica tu internet e intenta de nuevo.');
+      } else if (
+        msg.includes('No se pudo conectar al servidor')
+        || msg.includes('fetch') || msg.includes('network')
+        || msg.includes('Network') || msg.includes('AbortError')
+      ) {
+        setError('No se pudo conectar al servidor. Verifica tu conexión e intenta de nuevo.');
       } else if (msg.includes('500')) {
         setError('Error del servidor. Intenta en unos minutos.');
       } else {
@@ -81,9 +98,22 @@ export const useAuth = () => {
   }) => {
     setLoading(true);
     try {
+      await wakeServer();
       const res = await authAPI.register(data);
       setState({ user: res.user, isAuthenticated: true, isLoading: false, error: '' });
-      router.replace('/(tabs)'); // → Home Dashboard
+      if (Platform.OS !== 'web') {
+        void registerForPushNotifications().catch((pushErr) => {
+          console.warn('[Register push bootstrap skipped]', pushErr);
+        });
+      }
+      // ── KYC: tras registro siempre mostrar la pantalla de activación del monedero.
+      // El usuario puede ignorarla y entrar a la app normalmente.
+      // En web redirigimos directo a tabs (KYC es solo para la app nativa).
+      if (Platform.OS === 'web') {
+        router.replace('/(tabs)');
+      } else {
+        router.replace('/kyc-wallet-prompt' as any);
+      }
       return true;
     } catch (e: any) {
       const msg = e.message || '';
@@ -171,7 +201,7 @@ export const useSessionCheck = () => {
         const isAuth = await authAPI.isAuthenticated();
         if (isAuth) {
           await authAPI.me();
-          router.replace('/(tabs)'); // → Home Dashboard
+          router.replace('/(tabs)');
         } else {
           router.replace('/(auth)/login');
         }

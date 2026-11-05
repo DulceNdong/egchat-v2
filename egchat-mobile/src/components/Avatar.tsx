@@ -1,9 +1,10 @@
 // Avatar.tsx — Componente de avatar para React Native
-import React from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 
 const PALETTES = [
-  ['#00c8a0', '#00b4e6'],
+  ['#00c8a0', '#00B4E6'],
   ['#6B5BD6', '#8B5CF6'],
   ['#F59E0B', '#EF4444'],
   ['#EC4899', '#F43F5E'],
@@ -25,7 +26,7 @@ export const nameToColor = (name: string): { from: string; to: string } => {
 };
 
 export const getInitials = (name: string): string => {
-  if (!name) return '?';
+  if (!name?.trim()) return 'EG';
   const parts = name.trim().split(/\s+/);
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
@@ -40,9 +41,17 @@ interface AvatarProps {
   style?: object;
 }
 
-export const Avatar: React.FC<AvatarProps> = ({
+// URL válida: no vacía, debe tener protocolo http/https/file
+const isValidAvatarUrl = (url?: string): url is string =>
+  !!url &&
+  url.trim().length > 0 &&
+  (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('file://')) &&
+  !url.includes('egchat-api-xlxj.onrender.com/static/avatars/');
+
+export const Avatar: React.FC<AvatarProps> = React.memo(({
   name, size = 40, photo, status, showStatus = false, style
 }) => {
+  const [imgError, setImgError] = useState(false);
   const { from } = nameToColor(name);
   const initials = getInitials(name);
   const fontSize = Math.max(10, Math.round(size * 0.35));
@@ -51,11 +60,13 @@ export const Avatar: React.FC<AvatarProps> = ({
 
   return (
     <View style={[{ width: size, height: size, position: 'relative' }, style]}>
-      {photo ? (
+      {isValidAvatarUrl(photo) && !imgError ? (
         <Image
           source={{ uri: photo }}
           style={{ width: size, height: size, borderRadius: size / 2 }}
-          resizeMode="cover"
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          onError={() => setImgError(true)}
         />
       ) : (
         <View style={[styles.circle, { width: size, height: size, borderRadius: size / 2, backgroundColor: from }]}>
@@ -78,7 +89,7 @@ export const Avatar: React.FC<AvatarProps> = ({
       )}
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   circle: {

@@ -1,19 +1,42 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { TabErrorBoundary } from '../../src/components/TabErrorBoundary';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
   Alert, ActivityIndicator, Modal, Pressable, RefreshControl,
-  TextInput, Image, Animated,
+  TextInput, Animated, KeyboardAvoidingView, Platform, Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { getKycStatus, KYC_STATUS_LABELS, KYC_STATUS_COLORS, invalidateKycStatusCache } from '../../src/services/kyc';
+import type { KycStatus } from '../../src/api';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Path, Line, Polyline, Rect, Circle, Polygon } from 'react-native-svg';
-import { walletAPI } from '../../src/api';
+import Svg, { Path, Line, Polyline, Rect, Circle } from 'react-native-svg';
+import QRCode from 'react-native-qrcode-svg';
+import { router, useFocusEffect } from 'expo-router';
+import { walletAPI, authAPI } from '../../src/api';
+import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification } from '../../src/components/HeaderPanels';
+import { EGChatHeader } from '../../src/components/EGChatHeader';
+import { markAllRead } from '../../src/store/appStore';
+import { supabase } from '../../src/supabase';
+import { CardsScreen } from '../../src/components/services/CardsScreen';
+import { DraggableHomeButton } from '../../src/components/DraggableHomeButton';
+import { buildReceiveQr, buildPayQr } from '../../src/utils/walletQr';
+import { loadBankAccounts, saveBankAccounts, DEFAULT_BANK_ACCOUNTS } from '../../src/utils/bankAccounts';
+import { checkLimitForTransaction, updateLimitForTransaction } from '../../src/services/limits';
+import { mergePersistentAvatar, onProfileUpdated } from '../../src/utils/profileEvents';
+import {
+  createDepositIntent, confirmDeposit, pollPaymentStatus,
+  createWithdrawIntent, confirmWithdraw,
+  GATEWAY_INFO, formatGatewayFee, getNetAmount,
+  type PaymentGateway,
+} from '../../src/services/paymentGateway';
 import {
   Colors, Typography, Spacing, BorderRadius,
   FontSize, FontWeight, Shadow,
 } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import SessionManager from '../../src/sessionManager';
 
 // ── Helpers ───────────────────────────────────────────────────────
 const fmt = (n: number) => n.toLocaleString('es-ES', { minimumFractionDigits: 0 });
@@ -41,12 +64,6 @@ const getTxDesc = (tx: any) => {
   };
   return map[tx.type] || '';
 };
-
-// ── Cuentas bancarias ─────────────────────────────────────────────
-const INITIAL_BANK_ACCOUNTS = [
-  { id: '1', bank: 'BANGE', type: 'Corriente', balance: 45200 },
-  { id: '2', bank: 'CCEI Bank', type: 'Ahorros', balance: 80000 },
-];
 
 // ── Iconos SVG (idénticos a la web) ──────────────────────────────
 const IcoRecibir = ({ color = '#0E5F8A' }: { color?: string }) => (
@@ -158,6 +175,7 @@ const Sheet = ({
   onClose: () => void; children: React.ReactNode;
 }) => (
   <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
     <Pressable style={s.overlay} onPress={onClose}>
       <Pressable style={s.sheet} onPress={() => {}}>
         <View style={s.handle} />
@@ -168,6 +186,7 @@ const Sheet = ({
         </ScrollView>
       </Pressable>
     </Pressable>
+        </KeyboardAvoidingView>
   </Modal>
 );
 
@@ -228,101 +247,97 @@ const SectionHead = ({
 
 // ── Modal QR (Recibir / Pagar) ────────────────────────────────────
 const QRModal = ({
-  visible, type, balance, onClose,
-}: { visible: boolean; type: 'receive' | 'pay'; balance: number; onClose: () => void }) => {
-  const [amount, setAmount] = useState('');
-  const [concept, setConcept] = useState('');
+  visible, type, balance, userId, userName, userPhone, userAvatar, onClose,
+}: {
+  visible: boolean; type: 'receive' | 'pay'; balance: number;
+  userId: string; userName: string; userPhone: string;
+  userAvatar?: string; onClose: () => void;
+}) => {
   const isReceive = type === 'receive';
-  const gradient: [string, string] = isReceive ? ['#00c8a0', '#059669'] : ['#00b4e6', '#2563eb'];
-  const title = isReceive ? 'Recibir dinero' : 'Realizar pago';
-  const sub = isReceive ? 'Muestra este QR para recibir' : 'Genera tu QR de cobro';
-
-  // QR simulado (cuadrícula 9×9)
-  const QR_CELLS = [
-    [1,1,1,1,1,1,1,0,0,0,1,0,1,1,1,1,1,1,1],
-    [1,0,0,0,0,0,1,0,1,0,0,0,1,0,0,0,0,0,1],
-    [1,0,1,1,1,0,1,0,0,1,0,1,1,0,1,1,1,0,1],
-    [1,0,1,1,1,0,1,0,1,0,1,0,1,0,1,1,1,0,1],
-    [1,0,0,0,0,0,1,0,0,1,0,1,1,0,0,0,0,0,1],
-    [1,1,1,1,1,1,1,0,1,0,1,0,1,1,1,1,1,1,1],
-    [0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0],
-    [1,0,1,1,0,1,0,1,0,1,1,0,1,0,1,1,0,1,0],
-    [0,1,0,0,1,0,1,0,1,0,0,1,0,1,0,0,1,0,1],
-    [1,0,1,0,1,1,0,1,0,1,0,1,1,0,1,0,1,1,0],
-    [0,1,0,1,0,0,1,0,1,0,1,0,0,1,0,1,0,0,1],
-    [1,0,1,0,1,1,0,1,0,1,0,1,1,0,1,0,1,1,0],
-    [0,0,0,0,0,0,0,0,1,0,1,1,0,0,0,0,0,0,0],
-    [1,1,1,1,1,1,1,0,0,1,0,0,1,0,1,0,1,0,1],
-    [1,0,0,0,0,0,1,0,1,0,1,0,0,1,0,1,0,1,0],
-    [1,0,1,1,1,0,1,0,0,1,0,1,1,0,1,0,1,0,1],
-    [1,0,1,1,1,0,1,0,1,0,1,0,0,1,0,1,0,1,0],
-    [1,0,0,0,0,0,1,0,0,1,0,1,1,0,1,0,1,0,1],
-    [1,1,1,1,1,1,1,0,1,0,1,0,0,1,0,1,0,1,0],
-  ];
+  const qrValue = userId ? buildReceiveQr(userId) : 'egchat://pay/pending';
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={s.qrOverlay} onPress={onClose}>
-        <Pressable style={s.qrCard} onPress={() => {}}>
-          <LinearGradient colors={gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.qrHeader}>
-            <View style={{ flex: 1 }}>
-              <Text style={s.qrHeaderTitle}>{title}</Text>
-              <Text style={s.qrHeaderSub}>{sub}</Text>
+      <Pressable style={qrs.overlay} onPress={onClose}>
+        <Pressable style={qrs.card} onPress={() => {}}>
+
+          {/* Header */}
+          <View style={qrs.header}>
+            <View>
+              <Text style={qrs.title}>{isReceive ? 'Recibir dinero' : 'Realizar pago'}</Text>
+              <Text style={qrs.sub}>{isReceive ? 'Muestra este código para recibir' : 'Muestra tu QR o escanea el de otro'}</Text>
             </View>
-            <TouchableOpacity onPress={onClose} style={s.qrCloseBtn}>
-              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>✕</Text>
-            </TouchableOpacity>
-          </LinearGradient>
-
-          <View style={s.qrBody}>
-            {/* QR grid */}
-            <View style={s.qrGrid}>
-              {QR_CELLS.map((row, ri) => (
-                <View key={ri} style={{ flexDirection: 'row' }}>
-                  {row.map((cell, ci) => (
-                    <View key={ci} style={[s.qrCell, { backgroundColor: cell ? '#0d0d0d' : 'transparent' }]} />
-                  ))}
-                </View>
-              ))}
-            </View>
-
-            <Text style={s.qrName}>Mi Monedero EGCHAT</Text>
-            <Text style={s.qrBalance}>{fmt(balance)} XAF disponibles</Text>
-
-            {!isReceive && (
-              <View style={{ width: '100%', gap: 8, marginTop: 8 }}>
-                <TextInput
-                  style={s.qrInput}
-                  value={amount}
-                  onChangeText={setAmount}
-                  placeholder="Monto (XAF)"
-                  placeholderTextColor="#9CA3AF"
-                  keyboardType="numeric"
-                />
-                <TextInput
-                  style={s.qrInput}
-                  value={concept}
-                  onChangeText={setConcept}
-                  placeholder="Concepto (opcional)"
-                  placeholderTextColor="#9CA3AF"
-                />
-              </View>
-            )}
-
-            <TouchableOpacity onPress={onClose} activeOpacity={0.85}>
-              <LinearGradient colors={gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.qrCloseFullBtn}>
-                <Text style={s.qrCloseBtnText}>Cerrar</Text>
-              </LinearGradient>
+            <TouchableOpacity style={qrs.closeBtn} onPress={onClose}>
+              <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth={2.5} strokeLinecap="round">
+                <Line x1="18" y1="6" x2="6" y2="18"/><Line x1="6" y1="6" x2="18" y2="18"/>
+              </Svg>
             </TouchableOpacity>
           </View>
+
+          {/* QR con foto de perfil centrada */}
+          <View style={qrs.qrWrap}>
+            {userId ? (
+              <>
+                <QRCode
+                  value={qrValue}
+                  size={200}
+                  backgroundColor="#fff"
+                  color="#0d0d0d"
+                />
+                <View style={qrs.avatarOverlay}>
+                  {userAvatar ? (
+                    <Image source={{ uri: userAvatar }} style={qrs.avatarImg} />
+                  ) : (
+                    <View style={[qrs.avatarImg, qrs.avatarFallback]}>
+                      <Text style={qrs.avatarInitial}>{(userName || 'U')[0].toUpperCase()}</Text>
+                    </View>
+                  )}
+                </View>
+              </>
+            ) : (
+              <ActivityIndicator color="#00C8A0" size="large" />
+            )}
+          </View>
+
+          {/* Info usuario */}
+          <Text style={qrs.name}>{userName || 'Mi Monedero'}</Text>
+          {!!userPhone && <Text style={qrs.phone}>{userPhone}</Text>}
+          <View style={qrs.balancePill}>
+            <Svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="#00C8A0" strokeWidth={2} strokeLinecap="round">
+              <Path d="M3 7h15a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/>
+              <Path d="M3 10h17"/><Circle cx="17" cy="14" r="1.5" fill="#00C8A0" stroke="none"/>
+            </Svg>
+            <Text style={qrs.balanceTxt}>{fmt(balance)} XAF disponibles</Text>
+          </View>
+
+          {/* Botón escanear QR de otro usuario para pagar */}
+          <TouchableOpacity
+            style={qrs.scanBtn}
+            onPress={() => { onClose(); setTimeout(() => router.push('/_qr-scanner' as any), 100); }}
+            activeOpacity={0.8}
+          >
+            <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#00C8A0" strokeWidth={2} strokeLinecap="round">
+              <Rect x="3" y="3" width="7" height="7"/><Rect x="14" y="3" width="7" height="7"/>
+              <Rect x="14" y="14" width="7" height="7"/><Rect x="3" y="14" width="7" height="7"/>
+            </Svg>
+            <Text style={qrs.scanBtnTxt}>Escanear QR para pagar</Text>
+          </TouchableOpacity>
+
+          {/* Cerrar */}
+          <TouchableOpacity style={qrs.closeFullBtn} onPress={onClose} activeOpacity={0.85}>
+            <Text style={qrs.closeFullTxt}>Cerrar</Text>
+          </TouchableOpacity>
+
         </Pressable>
       </Pressable>
     </Modal>
   );
 };
 
+
 // ── Modal Recarga ─────────────────────────────────────────────────
-type RStep = 'menu' | 'banco' | 'transferencia' | 'codigo' | 'agente' | 'confirm' | 'success';
+type RStep = 'menu' | 'banco' | 'transferencia' | 'codigo' | 'agente' | 'confirm' | 'success'
+           | 'stripe' | 'orange_money' | 'mtn_mobile' | 'polling';
 
 const RecargaModal = ({
   visible, balance, onClose, onSuccess,
@@ -362,16 +377,21 @@ const RecargaModal = ({
   };
 
   const METODOS = [
-    { id: 'banco',         label: 'Desde banco',          sub: 'Transferencia bancaria desde tu cuenta', gradient: ['#1B3A6B', '#2A5298'] as [string,string], icon: <IcoBanco color="#fff" /> },
-    { id: 'transferencia', label: 'Transferencia EGCHAT',  sub: 'Recibe de otro usuario EGCHAT',          gradient: ['#065F46', '#00c8a0'] as [string,string], icon: <IcoTransfer color="#fff" /> },
-    { id: 'codigo',        label: 'Código de recarga',     sub: 'Introduce un código de recarga prepago', gradient: ['#92400E', '#D97706'] as [string,string], icon: <IcoCodigo color="#fff" /> },
-    { id: 'agente',        label: 'Depósito en efectivo',  sub: 'En agentes autorizados EGCHAT',          gradient: ['#4C1D95', '#6B5BD6'] as [string,string], icon: <IcoAgente color="#fff" /> },
+    { id: 'stripe',        label: 'Tarjeta Visa / Mastercard', sub: 'Pago inmediato con tarjeta internacional', gradient: ['#635BFF', '#4F46E5'] as [string,string], icon: <IcoTarjeta color="#fff" /> },
+    { id: 'orange_money',  label: 'Orange Money',              sub: 'Pago USSD — inmediato en GQ',              gradient: ['#FF6600', '#EA580C'] as [string,string], icon: <IcoEfectivo color="#fff" /> },
+    { id: 'mtn_mobile',    label: 'MTN Mobile Money',          sub: 'Pago USSD — inmediato',                    gradient: ['#FFCC00', '#D97706'] as [string,string], icon: <IcoEfectivo color="#fff" /> },
+    { id: 'banco',         label: 'Desde banco',               sub: 'Transferencia bancaria desde tu cuenta',   gradient: ['#1B3A6B', '#2A5298'] as [string,string], icon: <IcoBanco color="#fff" /> },
+    { id: 'transferencia', label: 'Transferencia EGCHAT',       sub: 'Recibe de otro usuario EGCHAT',            gradient: ['#065F46', '#00c8a0'] as [string,string], icon: <IcoTransfer color="#fff" /> },
+    { id: 'codigo',        label: 'Código de recarga',          sub: 'Introduce un código de recarga prepago',   gradient: ['#92400E', '#D97706'] as [string,string], icon: <IcoCodigo color="#fff" /> },
+    { id: 'agente',        label: 'Depósito en efectivo',       sub: 'En agentes autorizados EGCHAT',            gradient: ['#4C1D95', '#6B5BD6'] as [string,string], icon: <IcoAgente color="#fff" /> },
   ];
 
-  const TITLES: Record<RStep, string> = {
+  const TITLES: Record<string, string> = {
     menu: 'Recargar monedero', banco: 'Desde banco', transferencia: 'Transferencia EGCHAT',
     codigo: 'Código de recarga', agente: 'Depósito en efectivo',
     confirm: 'Confirmar recarga', success: '¡Recarga completada!',
+    stripe: 'Pagar con tarjeta', orange_money: 'Orange Money', mtn_mobile: 'MTN Mobile Money',
+    polling: 'Esperando pago…',
   };
 
   return (
@@ -433,7 +453,10 @@ const RecargaModal = ({
               gradient={['#065F46', '#00c8a0']} icon={<IcoTransfer color="#fff" />} />
             <View style={[s.infoBox, { alignItems: 'center', paddingVertical: 20 }]}>
               <View style={s.qrMiniBox}>
-                <Text style={{ fontSize: 40 }}>📲</Text>
+                <Svg width={40} height={40} viewBox="0 0 24 24" fill="none" stroke="#00c8a0" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                  <Rect x="5" y="2" width="14" height="20" rx="2"/>
+                  <Line x1="12" y1="18" x2="12" y2="18"/>
+                </Svg>
               </View>
               <Text style={s.infoValue}>Comparte tu número para recibir</Text>
               <Text style={s.infoLabel}>Sin comisión entre usuarios EGCHAT</Text>
@@ -441,10 +464,19 @@ const RecargaModal = ({
             <QuickAmounts amounts={[1000,5000,10000,25000]} selected={data.amount||''} onSelect={v=>set('amount',v)} />
             <Field label="Importe a solicitar (XAF)" value={data.amount||''} onChangeText={v=>set('amount',v)} placeholder="5000" keyboardType="numeric" />
             <TouchableOpacity
-              style={[s.primaryBtn, { backgroundColor: '#065F46' }]}
-              onPress={() => { doDeposit('Transferencia EGCHAT', `EGCHAT-${Date.now()}`); }}
+              style={[s.primaryBtn, { backgroundColor: '#065F46' }, !isValid && s.primaryBtnDisabled]}
+              onPress={() => {
+                if (!isValid) {
+                  Alert.alert('Monto inválido', 'Introduce al menos 1.000 XAF para generar la solicitud.');
+                  return;
+                }
+                doDeposit('Transferencia EGCHAT', `EGCHAT-${Date.now()}`);
+              }}
+              disabled={!isValid || loading}
               activeOpacity={0.85}>
-              <Text style={s.primaryBtnText}>Generar solicitud de pago</Text>
+              {loading
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={s.primaryBtnText}>Generar solicitud de pago</Text>}
             </TouchableOpacity>
             <TouchableOpacity style={s.backBtn} onPress={goBack}><Text style={s.backBtnText}>← Volver</Text></TouchableOpacity>
           </>
@@ -548,7 +580,7 @@ const RecargaModal = ({
         {/* SUCCESS */}
         {step === 'success' && (
           <View style={s.successWrap}>
-            <LinearGradient colors={['#00c8a0', '#00b4e6']} style={s.successCircle}>
+            <LinearGradient colors={['#00c8a0', '#00B4E6']} style={s.successCircle}>
               <IcoCheck />
             </LinearGradient>
             <Text style={s.successTitle}>{data.codigo ? '¡Código canjeado!' : '¡Recarga completada!'}</Text>
@@ -563,6 +595,193 @@ const RecargaModal = ({
             </View>
             <TouchableOpacity style={[s.primaryBtn, { backgroundColor: '#00c8a0' }]} onPress={close} activeOpacity={0.85}>
               <Text style={s.primaryBtnText}>Cerrar</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* ── STRIPE — tarjeta internacional ── */}
+        {step === 'stripe' && (
+          <>
+            <SectionHead title="Pagar con tarjeta" sub="Visa, Mastercard, Amex — procesado por Stripe"
+              gradient={['#635BFF', '#4F46E5']} icon={<IcoTarjeta color="#fff" />} />
+            <View style={s.infoBox}>
+              <Text style={[s.infoValue, { textAlign: 'center', paddingVertical: 4 }]}>
+                💳  Pago 100% seguro · Cifrado SSL
+              </Text>
+              <View style={s.infoRow}>
+                <Text style={s.infoLabel}>Comisión</Text>
+                <Text style={s.infoValue}>2.9% + 30 XAF</Text>
+              </View>
+              <View style={s.infoRow}>
+                <Text style={s.infoLabel}>Disponibilidad</Text>
+                <Text style={s.infoValue}>Inmediato</Text>
+              </View>
+            </View>
+            <QuickAmounts amounts={[5000,10000,25000,50000]} selected={data.amount||''} onSelect={v=>set('amount',v)} />
+            <Field label="Importe (mín. 500 XAF)" value={data.amount||''} onChangeText={v=>set('amount',v)} placeholder="10000" keyboardType="numeric" />
+            {amountNum >= 500 && (
+              <View style={[s.infoBox, { marginBottom: 8 }]}>
+                <View style={s.infoRow}>
+                  <Text style={s.infoLabel}>Recibirás</Text>
+                  <Text style={[s.infoValue, { color: '#00c8a0', fontWeight: '700' }]}>
+                    {fmt(getNetAmount('stripe', amountNum))} XAF
+                  </Text>
+                </View>
+                <View style={s.infoRow}>
+                  <Text style={s.infoLabel}>Comisión Stripe</Text>
+                  <Text style={s.infoValue}>{formatGatewayFee('stripe', amountNum)}</Text>
+                </View>
+              </View>
+            )}
+            <TouchableOpacity
+              style={[s.primaryBtn, { backgroundColor: '#635BFF' }, (amountNum < 500 || loading) && s.primaryBtnDisabled]}
+              onPress={async () => {
+                if (amountNum < 500 || loading) return;
+                setLoading(true);
+                try {
+                  const intent = await createDepositIntent(amountNum, 'stripe', { description: 'Recarga EGChat' });
+                  if (intent.clientSecret) {
+                    // clientSecret listo — en producción integrar @stripe/stripe-react-native aquí
+                    // Por ahora confirmamos directamente (sandbox/demo)
+                    Alert.alert(
+                      'Pago con Stripe',
+                      `PaymentIntent creado.\n\nEn producción: integra @stripe/stripe-react-native para confirmar con la tarjeta.\n\nClientSecret: ${intent.clientSecret?.slice(0, 30)}...`,
+                      [
+                        { text: 'Cancelar', style: 'cancel', onPress: () => setLoading(false) },
+                        { text: 'Simular pago ✓', onPress: async () => {
+                          const result = await confirmDeposit(intent.id, 'stripe');
+                          onSuccess();
+                          set('ref', intent.id);
+                          setStep('success');
+                          setLoading(false);
+                        }},
+                      ],
+                    );
+                  } else {
+                    Alert.alert('Stripe no configurado', 'Añade STRIPE_SECRET_KEY al servidor para activar pagos reales.');
+                    setLoading(false);
+                  }
+                } catch (e: any) {
+                  Alert.alert('Error', e.message || 'No se pudo crear el pago');
+                  setLoading(false);
+                }
+              }}
+              disabled={amountNum < 500 || loading}
+              activeOpacity={0.85}
+            >
+              {loading
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={s.primaryBtnText}>Pagar {amountNum >= 500 ? fmt(amountNum) : '…'} XAF con tarjeta</Text>
+              }
+            </TouchableOpacity>
+            <TouchableOpacity style={s.backBtn} onPress={goBack}><Text style={s.backBtnText}>← Volver</Text></TouchableOpacity>
+          </>
+        )}
+
+        {/* ── ORANGE MONEY ── */}
+        {(step === 'orange_money' || step === 'mtn_mobile') && (
+          <>
+            <SectionHead
+              title={step === 'orange_money' ? 'Orange Money' : 'MTN Mobile Money'}
+              sub="Pago USSD — confirma en tu teléfono"
+              gradient={step === 'orange_money' ? ['#FF6600', '#EA580C'] : ['#FFCC00', '#D97706']}
+              icon={<IcoEfectivo color="#fff" />}
+            />
+            <View style={s.infoBox}>
+              <View style={s.infoRow}>
+                <Text style={s.infoLabel}>Comisión</Text>
+                <Text style={s.infoValue}>1%</Text>
+              </View>
+              <View style={s.infoRow}>
+                <Text style={s.infoLabel}>Tiempo</Text>
+                <Text style={s.infoValue}>Inmediato tras confirmar USSD</Text>
+              </View>
+            </View>
+            <QuickAmounts amounts={[1000,5000,10000,25000]} selected={data.amount||''} onSelect={v=>set('amount',v)} />
+            <Field label="Importe (XAF)" value={data.amount||''} onChangeText={v=>set('amount',v)} placeholder="5000" keyboardType="numeric" />
+            <Field label="Tu número de teléfono" value={data.phone||''} onChangeText={v=>set('phone',v)} placeholder="+240 222 000 000" keyboardType="phone-pad" />
+            {amountNum >= 1000 && (
+              <View style={[s.infoBox, { marginBottom: 8 }]}>
+                <View style={s.infoRow}>
+                  <Text style={s.infoLabel}>Recibirás</Text>
+                  <Text style={[s.infoValue, { color: '#00c8a0', fontWeight: '700' }]}>
+                    {fmt(getNetAmount(step as PaymentGateway, amountNum))} XAF
+                  </Text>
+                </View>
+              </View>
+            )}
+            <TouchableOpacity
+              style={[s.primaryBtn,
+                { backgroundColor: step === 'orange_money' ? '#FF6600' : '#FFCC00' },
+                (amountNum < 1000 || !data.phone || loading) && s.primaryBtnDisabled,
+              ]}
+              onPress={async () => {
+                if (amountNum < 1000 || !data.phone || loading) return;
+                setLoading(true);
+                try {
+                  const intent = await createDepositIntent(amountNum, step as PaymentGateway, { phone: data.phone });
+                  set('intentId', intent.id);
+                  set('ussdCode', (intent as any).ussdCode || '');
+                  setStep('polling');
+                } catch (e: any) {
+                  Alert.alert('Error', e.message);
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              disabled={amountNum < 1000 || !data.phone || loading}
+              activeOpacity={0.85}
+            >
+              {loading
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={[s.primaryBtnText, { color: step === 'mtn_mobile' ? '#1f2937' : '#fff' }]}>
+                    Iniciar pago USSD — {amountNum >= 1000 ? fmt(amountNum) : '…'} XAF
+                  </Text>
+              }
+            </TouchableOpacity>
+            <TouchableOpacity style={s.backBtn} onPress={goBack}><Text style={s.backBtnText}>← Volver</Text></TouchableOpacity>
+          </>
+        )}
+
+        {/* ── POLLING — esperando confirmación USSD ── */}
+        {step === 'polling' && (
+          <View style={s.successWrap}>
+            <View style={[s.successCircle, { backgroundColor: '#FF6600' }]}>
+              <Text style={{ fontSize: 28 }}>📱</Text>
+            </View>
+            <Text style={s.successTitle}>Confirma en tu teléfono</Text>
+            {data.ussdCode ? (
+              <View style={s.refCard}>
+                <Text style={s.refLabel}>CÓDIGO USSD</Text>
+                <Text style={[s.refCode, { fontSize: 22, letterSpacing: 2 }]}>{data.ussdCode}</Text>
+              </View>
+            ) : null}
+            <Text style={[s.successSub, { marginTop: 8 }]}>
+              Marca el código en tu teléfono {data.phone ? `(${data.phone})` : ''} y confirma con tu PIN.
+            </Text>
+            <ActivityIndicator color="#00c8a0" style={{ marginVertical: 12 }} />
+            <Text style={{ color: '#9ca3af', fontSize: 12, textAlign: 'center' }}>
+              Esperando confirmación del operador…
+            </Text>
+            <TouchableOpacity
+              style={[s.primaryBtn, { backgroundColor: '#00c8a0', marginTop: 16 }]}
+              onPress={async () => {
+                if (!data.intentId) return;
+                setLoading(true);
+                const result = await pollPaymentStatus(data.intentId, 1, 0);
+                // En demo confirmamos manualmente
+                const confirmed = await confirmDeposit(data.intentId, 'orange_money');
+                onSuccess();
+                set('ref', data.intentId);
+                setStep('success');
+                setLoading(false);
+              }}
+              activeOpacity={0.85}
+            >
+              {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryBtnText}>Ya confirmé el pago ✓</Text>}
+            </TouchableOpacity>
+            <TouchableOpacity style={s.backBtn} onPress={() => setStep('menu')}>
+              <Text style={s.backBtnText}>Cancelar</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -592,9 +811,23 @@ const RetiroModal = ({
   const doWithdraw = async (method: string, destination: string) => {
     setLoading(true);
     try {
+      const checkResult = await checkLimitForTransaction('withdrawal', amountNum);
+      if (!checkResult.allowed) {
+        Alert.alert('Límite excedido', checkResult.reason || 'No puedes realizar esta operación.');
+        setLoading(false);
+        return;
+      }
+      if (checkResult.requiresPin && !data.pin) {
+        Alert.alert('PIN requerido', 'Para esta operación necesitas ingresar tu PIN de seguridad.');
+        setLoading(false);
+        return;
+      }
       await walletAPI.withdraw(amountNum, method, destination);
+      await updateLimitForTransaction('withdrawal', amountNum);
       onSuccess();
-    } catch {}
+    } catch (error) {
+      console.warn('withdraw error', error);
+    }
     setStep('success');
     setLoading(false);
   };
@@ -851,7 +1084,9 @@ const HistorialModal = ({
           <View style={s.histHeader}>
             <Text style={s.histTitle}>Historial Completo</Text>
             <TouchableOpacity onPress={onClose} style={s.histCloseBtn}>
-              <Text style={{ fontSize: 18, color: '#374151' }}>✕</Text>
+              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth={2.5} strokeLinecap="round">
+                <Path d="M18 6L6 18"/><Path d="M6 6l12 12"/>
+              </Svg>
             </TouchableOpacity>
           </View>
 
@@ -869,7 +1104,11 @@ const HistorialModal = ({
           <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
             {filtered.length === 0 ? (
               <View style={s.emptyWrap}>
-                <Text style={s.emptyIcon}>📭</Text>
+                <Svg width={48} height={48} viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
+                  <Rect x="2" y="5" width="20" height="14" rx="2"/>
+                  <Line x1="2" y1="10" x2="22" y2="10"/>
+                  <Circle cx="7" cy="15" r="1" fill="#d1d5db"/>
+                </Svg>
                 <Text style={s.emptyText}>Sin transacciones</Text>
                 <Text style={s.emptySub}>No hay movimientos en esta categoría</Text>
               </View>
@@ -901,37 +1140,260 @@ const HistorialModal = ({
 // ══════════════════════════════════════════════════════════════════
 // PANTALLA PRINCIPAL — Mi Cartera
 // ══════════════════════════════════════════════════════════════════
-export default function MonederoScreen() {
+function MonederoScreenInner() {
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState<any[]>([]);
-  const [bankAccounts, setBankAccounts] = useState(INITIAL_BANK_ACCOUNTS);
+  const [bankAccounts, setBankAccounts] = useState(DEFAULT_BANK_ACCOUNTS);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [balanceVisible, setBalanceVisible] = useState(false);
+  const [balanceRevealed, setBalanceRevealed] = useState(false);
+  const [balanceRevealing, setBalanceRevealing] = useState(false);
+  const [userId, setUserId] = useState('');
+  const [userName, setUserName] = useState('');
+  const [userPhone, setUserPhone] = useState('');
+  const [user, setUser] = useState<any>(null);
+  const zipAnim = useRef(new Animated.Value(0)).current;
+  const skipInitialFocusRefresh = useRef(true);
+  const walletCacheKey = 'wallet_overview_v1';
+
+  // ── KYC: estado de verificación del monedero ──────────────────
+  const [kycStatus, setKycStatus] = useState<KycStatus>('none');
+  const [kycLoading, setKycLoading] = useState(true);
+  const kycPulse = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    getKycStatus(false).then(res => {
+      setKycStatus(res.kyc_status);
+      setKycLoading(false);
+    }).catch(() => setKycLoading(false));
+  }, []);
+
+  // ── Refrescar estado KYC cada vez que el usuario vuelve a esta pestaña ──
+  // Movido después de loadData y loadPendingTransfers para evitar uso antes de declaración
+
+  // ── Supabase Realtime: detectar aprobación del monedero en tiempo real ──
+  // Cuando el admin pulsa "Revisado", wallet_kyc_status cambia a 'approved'
+  // en la tabla users. Esta suscripción lo detecta al instante sin esperar
+  // los 5 minutos de caché de AsyncStorage.
+  useEffect(() => {
+    if (!userId) return; // Esperar a tener el userId
+    const channelName = `wallet-status-${userId}-${Date.now()}`;
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event:  'UPDATE',
+          schema: 'public',
+          table:  'users',
+          filter: `id=eq.${userId}`,
+        },
+        (payload) => {
+          const newStatus = payload.new?.wallet_kyc_status as KycStatus | undefined;
+          if (newStatus) {
+            // Invalidar caché para que el próximo fetch sea fresco
+            invalidateKycStatusCache();
+            setKycStatus(newStatus);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel).catch(() => {});
+    };
+  }, [userId]); // userId se establece en el useEffect de authAPI.me()
+
+  // ── Polling de respaldo: si hay KYC pendiente, refrescar cada 10s ─
+  // Garantiza que el monedero se abra aunque Realtime no esté habilitado.
+  useEffect(() => {
+    if (kycStatus === 'approved' || kycLoading) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await getKycStatus(/* forceRefresh */ true);
+        setKycStatus(res.kyc_status);
+      } catch {}
+    }, 10_000);
+    return () => clearInterval(interval);
+  }, [kycStatus, kycLoading]);
+
+  // Pulso en botón CTA de activación
+  useEffect(() => {
+    if (kycStatus !== 'none' && kycStatus !== 'rejected') return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(kycPulse, { toValue: 1.04, duration: 850, useNativeDriver: true }),
+        Animated.timing(kycPulse, { toValue: 1,    duration: 850, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [kycStatus]);
 
   const [showQR, setShowQR] = useState(false);
   const [qrType, setQrType] = useState<'receive'|'pay'>('receive');
   const [showRecarga, setShowRecarga] = useState(false);
   const [showRetiro, setShowRetiro] = useState(false);
   const [showAddBank, setShowAddBank] = useState(false);
-  const [showHistorial, setShowHistorial] = useState(false);
+  const [showCards, setShowCards] = useState(false);
+
+  // ── Transferencias pendientes (del servidor) ──────────────────
+  type PendingTransfer = {
+    id: string; direction: 'incoming' | 'outgoing'; amount: number; concept?: string | null;
+    status: string; expiresAt: string; createdAt: string; isExpired: boolean;
+    senderName: string; senderAvatar?: string | null;
+    recipientName: string; recipientAvatar?: string | null;
+  };
+  const [pendingTransfers, setPendingTransfers] = useState<PendingTransfer[]>([]);
+  const [pendingLoading, setPendingLoading] = useState<string | null>(null); // transferId en proceso
+
+  const loadPendingTransfers = useCallback(async () => {
+    try {
+      const res = await walletAPI.getPendingTransfers();
+      setPendingTransfers(res.transfers || []);
+    } catch {}
+  }, []);
+
+  const handleAcceptTransfer = useCallback(async (transferId: string) => {
+    setPendingLoading(transferId);
+    try {
+      const res = await walletAPI.acceptTransfer(transferId);
+      setBalance(res.balance);
+      setPendingTransfers(prev => prev.filter(t => t.id !== transferId));
+    } catch (e: any) {
+      Alert.alert('Error', e?.message || 'No se pudo aceptar la transferencia');
+    } finally {
+      setPendingLoading(null);
+    }
+  }, []);
+
+  const handleCancelTransfer = useCallback(async (transferId: string) => {
+    Alert.alert(
+      'Cancelar transferencia',
+      'El dinero se devolverá al remitente. ¿Continuar?',
+      [
+        { text: 'No', style: 'cancel' },
+        {
+          text: 'Sí, cancelar', style: 'destructive',
+          onPress: async () => {
+            setPendingLoading(transferId);
+            try {
+              await walletAPI.cancelTransfer(transferId);
+              setPendingTransfers(prev => prev.filter(t => t.id !== transferId));
+            } catch (e: any) {
+              Alert.alert('Error', e?.message || 'No se pudo cancelar');
+            } finally {
+              setPendingLoading(null);
+            }
+          },
+        },
+      ]
+    );
+  }, []);
+
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showWeather, setShowWeather] = useState(false);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
 
   const loadData = useCallback(async () => {
     try {
-      const [bal, txs] = await Promise.all([
-        walletAPI.getBalance(),
-        walletAPI.getTransactions(1),
-      ]);
+      const bal = await walletAPI.getBalance();
       setBalance(bal.balance || 0);
-      setTransactions(txs.transactions || []);
+      void AsyncStorage.mergeItem(walletCacheKey, JSON.stringify({
+        balance: bal.balance || 0,
+        updatedAt: Date.now(),
+      }));
     } catch {}
     finally { setLoading(false); setRefreshing(false); }
+
+    void walletAPI.getTransactions(1).then(txs => {
+      const nextTransactions = txs.transactions || [];
+      setTransactions(nextTransactions);
+      void AsyncStorage.mergeItem(walletCacheKey, JSON.stringify({
+        transactions: nextTransactions,
+        updatedAt: Date.now(),
+      }));
+    }).catch(() => {});
   }, []);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    let active = true;
+    void AsyncStorage.getItem(walletCacheKey).then(value => {
+      if (!value || !active) return;
+      const cached = JSON.parse(value);
+      if (typeof cached.balance === 'number') setBalance(cached.balance);
+      if (Array.isArray(cached.transactions)) setTransactions(cached.transactions);
+      setLoading(false);
+    }).catch(() => {});
+    void loadData();
+    void loadPendingTransfers();
+    void loadBankAccounts().then(setBankAccounts);
+    void SessionManager.getInstance().getUser().then(async cachedUser => {
+      if (!cachedUser || !active) return;
+      const profile = await mergePersistentAvatar(cachedUser);
+      if (!active) return;
+      setUser(profile);
+      setUserId(profile?.id || '');
+      setUserName(profile?.full_name || 'Usuario');
+      setUserPhone(profile?.phone || '');
+    }).catch(() => {});
+    authAPI.me().then(async me => {
+      const profile = await mergePersistentAvatar(me);
+      setUser(profile);
+      setUserId(profile?.id || '');
+      setUserName(profile?.full_name || 'Usuario');
+      setUserPhone(profile?.phone || '');
+    }).catch(() => {});
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    return onProfileUpdated(patch => {
+      setUser((prev: any) => prev ? { ...prev, ...patch } : prev);
+      if (patch.full_name) setUserName(patch.full_name);
+      if (patch.phone) setUserPhone(patch.phone);
+    });
+  }, []);
+
+  // ── Refrescar KYC, balance y transferencias pendientes al volver a la pestaña ──
+  useFocusEffect(
+    useCallback(() => {
+      if (skipInitialFocusRefresh.current) {
+        skipInitialFocusRefresh.current = false;
+        return;
+      }
+      const refreshTimer = setTimeout(() => {
+        void getKycStatus(true).then(res => {
+          setKycStatus(res.kyc_status);
+        }).catch(() => {});
+        void loadData();
+        void loadPendingTransfers();
+      }, 250);
+      return () => clearTimeout(refreshTimer);
+    }, [loadData, loadPendingTransfers])
+  );
+
+  const revealBalance = useCallback(() => {
+    if (balanceRevealed || balanceRevealing) return;
+    setBalanceRevealing(true);
+    Animated.timing(zipAnim, { toValue: 1, duration: 1100, useNativeDriver: true }).start(() => {
+      setBalanceRevealed(true);
+      setBalanceRevealing(false);
+    });
+  }, [balanceRevealed, balanceRevealing, zipAnim]);
+
+  const hideBalance = useCallback(() => {
+    zipAnim.setValue(0);
+    setBalanceRevealed(false);
+    setBalanceRevealing(false);
+  }, [zipAnim]);
+
+  const overlayOpacity = zipAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
+
   const onRefresh = () => { setRefreshing(true); loadData(); };
 
   if (loading) {
@@ -942,138 +1404,537 @@ export default function MonederoScreen() {
     );
   }
 
-  const recentTx = transactions.slice(0, 8);
+  // ── KYC: Pantalla de bloqueo si el monedero no está verificado ─
+  // Muestra overlay distinto según el estado KYC del usuario.
+  // approved → acceso normal; pending/none/rejected/suspended → bloqueo
+  if (!kycLoading && kycStatus !== 'approved') {
+    const isNone     = kycStatus === 'none';
+    const isPending  = kycStatus === 'pending';
+    const isRejected = kycStatus === 'rejected';
+    const isSuspended = kycStatus === 'suspended';
+
+    const statusColor = KYC_STATUS_COLORS[kycStatus] || '#9CA3AF';
+    const statusLabel = KYC_STATUS_LABELS[kycStatus] || 'Sin verificar';
+
+    return (
+      <SafeAreaView style={[s.container, { backgroundColor: '#F5F7FA' }]} edges={['left','right','bottom']}>
+        <EGChatHeader
+          notificationsOpen={false}
+          menuOpen={false}
+          onWeatherPress={() => {}}
+          onNotificationsPress={() => {}}
+          onMenuPress={() => {}}
+        />
+
+        <ScrollView contentContainerStyle={kycS.scrollContent} showsVerticalScrollIndicator={false}>
+
+          {/* ── Hero card ── */}
+          <LinearGradient
+            colors={isPending ? ['#0f2027','#203a43','#2c5364'] : isRejected ? ['#1a0a0a','#3b0c0c','#7f1d1d'] : ['#0a0e1a','#0d1b33','#0f2744']}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            style={kycS.heroCard}
+          >
+            {/* Icono estado — SVG sin fondo de color */}
+            <View style={kycS.heroIconWrap}>
+              {isPending ? (
+                <Svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={1.5} strokeLinecap="round">
+                  <Circle cx="12" cy="12" r="10"/>
+                  <Path d="M12 6v6l4 2"/>
+                </Svg>
+              ) : isRejected ? (
+                <Svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={1.5} strokeLinecap="round">
+                  <Path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <Line x1="12" y1="9" x2="12" y2="13"/>
+                  <Line x1="12" y1="17" x2="12.01" y2="17"/>
+                </Svg>
+              ) : isSuspended ? (
+                <Svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={1.5} strokeLinecap="round">
+                  <Circle cx="12" cy="12" r="10"/>
+                  <Line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+                </Svg>
+              ) : (
+                <Svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={1.5} strokeLinecap="round">
+                  <Rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                  <Line x1="1" y1="10" x2="23" y2="10"/>
+                </Svg>
+              )}
+            </View>
+
+            {/* Badge estado */}
+            <View style={[kycS.statusBadge, { backgroundColor: statusColor + '20', borderColor: statusColor + '50' }]}>
+              <View style={[kycS.statusDot, { backgroundColor: statusColor }]}/>
+              <Text style={[kycS.statusBadgeText, { color: statusColor }]}>{statusLabel}</Text>
+            </View>
+
+            <Text style={kycS.heroTitle}>
+              {isPending   ? 'Verificación en curso' :
+               isRejected  ? 'Verificación rechazada' :
+               isSuspended ? 'Cuenta suspendida' :
+                             'Monedero no activado'}
+            </Text>
+            <Text style={kycS.heroSub}>
+              {isPending
+                ? 'Tu solicitud está siendo revisada. Recibirás una notificación en 24-48 horas hábiles.'
+                : isRejected
+                ? 'Tu solicitud no fue aprobada. Puedes volver a intentarlo con documentos correctos.'
+                : isSuspended
+                ? 'Tu cuenta ha sido suspendida. Contacta con soporte para más información.'
+                : 'Verifica tu identidad para desbloquear todas las funciones del monedero digital.'}
+            </Text>
+
+            {!isSuspended && (
+              <Animated.View style={[kycS.ctaWrapper, { transform: [{ scale: kycPulse }] }]}>
+                <TouchableOpacity
+                  activeOpacity={0.88}
+                  onPress={() => router.push('/kyc' as any)}
+                  style={kycS.ctaBtn}
+                >
+                  <LinearGradient
+                    colors={['#00C8A0', '#00A8D4']}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                    style={kycS.ctaBtnGrad}
+                  >
+                    <Text style={kycS.ctaBtnText}>
+                      {isPending   ? 'Ver estado de verificación' :
+                       isRejected  ? 'Reintentar verificación' :
+                                     'Activar mi monedero'}
+                    </Text>
+                    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
+                      <Path d="M5 12h14M12 5l7 7-7 7"/>
+                    </Svg>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </Animated.View>
+            )}
+          </LinearGradient>
+
+          {/* ── Funciones bloqueadas ── */}
+          <View style={kycS.lockedSection}>
+            <View style={kycS.lockedHeader}>
+              <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth={2} strokeLinecap="round">
+                <Rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <Path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </Svg>
+              <Text style={kycS.lockedTitle}>Funciones disponibles tras verificación</Text>
+            </View>
+            {[
+              {
+                text: 'Ver y gestionar tu saldo XAF',
+                icon: (
+                  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth={1.8} strokeLinecap="round">
+                    <Path d="M3 7h15a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/>
+                    <Path d="M3 10h17"/><Circle cx="17" cy="14" r="1.5" fill="#9CA3AF" stroke="none"/>
+                  </Svg>
+                ),
+              },
+              {
+                text: 'Transferir dinero a contactos',
+                icon: (
+                  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth={1.8} strokeLinecap="round">
+                    <Path d="M17 1l4 4-4 4"/><Path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+                    <Path d="M7 23l-4-4 4-4"/><Path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+                  </Svg>
+                ),
+              },
+              {
+                text: 'Recargar saldo (tarjeta, Orange Money, MTN…)',
+                icon: (
+                  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth={1.8} strokeLinecap="round">
+                    <Polyline points="16 17 12 21 8 17"/>
+                    <Line x1="12" y1="12" x2="12" y2="21"/>
+                    <Path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/>
+                  </Svg>
+                ),
+              },
+              {
+                text: 'Pagar electricidad, agua, DGI y más',
+                icon: (
+                  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth={1.8} strokeLinecap="round">
+                    <Path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                  </Svg>
+                ),
+              },
+              {
+                text: 'Recibir pagos por QR',
+                icon: (
+                  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth={1.8} strokeLinecap="round">
+                    <Rect x="3" y="3" width="7" height="7"/><Rect x="14" y="3" width="7" height="7"/>
+                    <Rect x="14" y="14" width="7" height="7"/><Rect x="3" y="14" width="7" height="7"/>
+                  </Svg>
+                ),
+              },
+              {
+                text: 'Vincular cuenta bancaria BANGE',
+                icon: (
+                  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth={1.8} strokeLinecap="round">
+                    <Rect x="3" y="10" width="18" height="11" rx="2"/>
+                    <Path d="M3 10l9-7 9 7"/>
+                    <Line x1="12" y1="10" x2="12" y2="21"/>
+                    <Line x1="7" y1="14" x2="7" y2="17"/>
+                    <Line x1="17" y1="14" x2="17" y2="17"/>
+                  </Svg>
+                ),
+              },
+            ].map((item, i, arr) => (
+              <View key={i} style={[kycS.lockedRow, i === arr.length - 1 && { borderBottomWidth: 0 }]}>
+                <View style={kycS.lockedIconWrap}>{item.icon}</View>
+                <Text style={kycS.lockedRowText}>{item.text}</Text>
+                <View style={kycS.lockedChip}>
+                  <Text style={kycS.lockedChipText}>Bloqueado</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+
+          {/* ── Por qué verificarse ── */}
+          <View style={kycS.whyBox}>
+            <View style={kycS.whyHeaderRow}>
+              <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#1B3A6B" strokeWidth={2} strokeLinecap="round">
+                <Circle cx="12" cy="12" r="10"/>
+                <Line x1="12" y1="8" x2="12" y2="12"/>
+                <Line x1="12" y1="16" x2="12.01" y2="16"/>
+              </Svg>
+              <Text style={kycS.whyTitle}>¿Por qué necesito verificarme?</Text>
+            </View>
+            <Text style={kycS.whyText}>
+              EGChat opera el monedero digital en alianza con{' '}
+              <Text style={kycS.whyBold}>BANGE (Banco Nacional de Guinea Ecuatorial)</Text>,
+              bajo licencia de Emisor de Dinero Electrónico ante la{' '}
+              <Text style={kycS.whyBold}>BEAC/COBAC</Text>.{'\n\n'}
+              La verificación de identidad es obligatoria según el{' '}
+              <Text style={kycS.whyBold}>Reglamento COBAC R-2023/01</Text>{' '}
+              y la <Text style={kycS.whyBold}>Ley N°2/2008</Text> de Guinea Ecuatorial.
+            </Text>
+          </View>
+
+          {isSuspended && (
+            <View style={kycS.suspendedBox}>
+              <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth={2} strokeLinecap="round">
+                <Path d="M4 4l16 16M4 20L20 4"/>
+              </Svg>
+              <Text style={kycS.suspendedText}>Contacta con soporte: soporte@egchat.gq</Text>
+            </View>
+          )}
+
+        </ScrollView>
+        <DraggableHomeButton />
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <SafeAreaView style={[s.container, { backgroundColor: '#EEF2F7' }]} edges={['top']}>
+    <SafeAreaView style={[s.container, { backgroundColor: '#EEF2F7' }]} edges={['left', 'right', 'bottom']}>
 
       {/* ── Header ── */}
-      <View style={s.pageHeader}>
-        <Text style={s.pageTitle}>Mi Cartera</Text>
-      </View>
+      <EGChatHeader
+        notificationsOpen={showNotifications}
+        menuOpen={showMenu}
+        onWeatherPress={() => setShowWeather(true)}
+        onNotificationsPress={() => {
+          setShowNotifications(true);
+          markAllRead();
+        }}
+        onMenuPress={() => setShowMenu(true)}
+      />
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00c8a0" colors={['#00c8a0']} />}
-        contentContainerStyle={{ paddingBottom: 100 }}
-      >
-        {/* ── Tarjeta de balance ── */}
-        <View style={s.balanceCardWrap}>
-          <LinearGradient
-            colors={['#1A3A6B', '#0E5F8A', '#0A7A8A']}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-            style={s.balanceCard}
-          >
-            <Text style={s.balanceCardLabel}>MONEDERO EGCHAT</Text>
+<View style={s.pageContent}>
+        <View style={s.stickyWalletSection}>
+          {/* ── Tarjeta de balance ── */}
+          <View style={s.balanceCardWrap}>
+            <LinearGradient
+              colors={['#1A3A6B', '#0E5F8A', '#0A7A8A']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={s.balanceCard}
+            >
+              <Text style={s.balanceCardLabel}>MONEDERO EGPAY</Text>
 
-            {/* Saldo con revelar/ocultar */}
-            <TouchableOpacity onPress={() => setBalanceVisible(v => !v)} activeOpacity={0.85} style={s.balanceRevealBtn}>
-              {balanceVisible ? (
-                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
+              {/* Saldo con animación de revelado (paridad web) */}
+              <View style={s.balanceRevealBtn}>
+                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, opacity: balanceRevealed ? 1 : 0.15 }}>
                   <Text style={s.balanceAmount}>{fmt(balance)}</Text>
                   <Text style={s.balanceCurrency}>XAF</Text>
                 </View>
-              ) : (
-                <View style={s.balanceHidden}>
-                  <Text style={s.balanceHiddenText}>🔒  Toca para revelar</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-            <Text style={s.balanceSubLabel}>Saldo disponible</Text>
+                {!balanceRevealed && (
+                  <Animated.View
+                    style={[s.balanceOverlay, { opacity: balanceRevealing ? overlayOpacity : 1 }]}
+                  >
+                    <TouchableOpacity onPress={revealBalance} activeOpacity={0.9} style={s.balanceOverlayTouch}>
+                      <Text style={s.balanceHiddenText}>
+                        {balanceRevealing ? 'Abriendo…' : '🔒  Toca para revelar'}
+                      </Text>
+                    </TouchableOpacity>
+                  </Animated.View>
+                )}
+                {balanceRevealed && (
+                  <TouchableOpacity onPress={hideBalance} style={s.balanceHideBtn} hitSlop={12}>
+                    <Text style={s.balanceHideText}>Ocultar</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              <Text style={s.balanceSubLabel}>Saldo disponible</Text>
 
-            {/* 4 botones de acción */}
-            <View style={s.actionsRow}>
-              {[
-                { label: 'Recibir', icon: <IcoRecibir />, onPress: () => { setQrType('receive'); setShowQR(true); } },
-                { label: 'Pagar',   icon: <IcoPagar />,   onPress: () => { setQrType('pay');     setShowQR(true); } },
-                { label: 'Recarga', icon: <IcoRecarga />, onPress: () => setShowRecarga(true) },
-                { label: 'Retiro',  icon: <IcoRetiro />,  onPress: () => setShowRetiro(true) },
-              ].map(a => (
-                <TouchableOpacity key={a.label} style={s.actionBtn} onPress={a.onPress} activeOpacity={0.75}>
-                  <View style={s.actionIconWrap}>{a.icon}</View>
-                  <Text style={s.actionLabel}>{a.label}</Text>
-                </TouchableOpacity>
+              {/* 4 botones de acción */}
+              <View style={s.actionsRow}>
+                {[
+                  { label: 'Recibir', icon: <IcoRecibir />, onPress: () => { setQrType('receive'); setShowQR(true); } },
+                  { label: 'Pagar',   icon: <IcoPagar />,   onPress: () => { setQrType('pay');     setShowQR(true); } },
+                  { label: 'Recarga', icon: <IcoRecarga />, onPress: () => setShowRecarga(true) },
+                  { label: 'Retiro',  icon: <IcoRetiro />,  onPress: () => setShowRetiro(true) },
+                ].map(a => (
+                  <TouchableOpacity key={a.label} style={s.actionBtn} onPress={a.onPress} activeOpacity={0.75}>
+                    <View style={s.actionIconWrap}>{a.icon}</View>
+                    <Text style={s.actionLabel}>{a.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </LinearGradient>
+          </View>
+        </View>
+
+        <ScrollView
+          style={s.sectionsScroll}
+          contentContainerStyle={s.sectionsContainer}
+          showsVerticalScrollIndicator={false}
+          nestedScrollEnabled
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* ── Mis Cuentas ── */}
+          <View style={s.sectionBlock}>
+            <View style={s.sectionHeader}>
+              <Text style={[s.sectionTitle, { color: C.textPrimary }]}>MIS CUENTAS</Text>
+              <TouchableOpacity style={s.addBtn} onPress={() => setShowAddBank(true)} activeOpacity={0.7}>
+                <Text style={s.addBtnText}>+</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={[s.card, { backgroundColor: C.bgSecondary }]}> 
+              {bankAccounts.map((acc, i) => (
+                <View key={acc.id}>
+                  <View style={s.bankRow}>
+                    <View style={s.bankIconWrap}>
+                      <IcoBanco color="#1B3A6B" />
+                    </View>
+                    <View style={s.bankInfo}>
+                      <Text style={[s.bankName, { color: C.textPrimary }]}>{acc.bank}</Text>
+                      <Text style={[s.bankType, { color: C.textSecondary }]}>{acc.type}</Text>
+                    </View>
+                    <View style={s.bankBalanceWrap}>
+                      <Text style={[s.bankBalance, { color: C.textPrimary }]}>{fmt(acc.balance)}</Text>
+                      <Text style={[s.bankCurrency, { color: C.textSecondary }]}>XAF</Text>
+                    </View>
+                  </View>
+                  {i < bankAccounts.length - 1 && <View style={[s.divider, { backgroundColor: C.borderLight }]} />}
+                </View>
               ))}
             </View>
-          </LinearGradient>
-        </View>
+          </View>
 
-        {/* ── Mis Cuentas ── */}
-        <View style={s.sectionHeader}>
-          <Text style={[s.sectionTitle, { color: C.textPrimary }]}>MIS CUENTAS</Text>
-          <TouchableOpacity style={s.addBtn} onPress={() => setShowAddBank(true)} activeOpacity={0.7}>
-            <Text style={s.addBtnText}>+</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={[s.card, { backgroundColor: C.bgSecondary }]}>
-          {bankAccounts.map((acc, i) => (
-            <View key={acc.id}>
-              <View style={s.bankRow}>
-                <View style={s.bankIconWrap}>
-                  <IcoBanco color="#1B3A6B" />
-                </View>
-                <View style={s.bankInfo}>
-                  <Text style={[s.bankName, { color: C.textPrimary }]}>{acc.bank}</Text>
-                  <Text style={[s.bankType, { color: C.textSecondary }]}>{acc.type}</Text>
-                </View>
-                <View style={s.bankBalanceWrap}>
-                  <Text style={[s.bankBalance, { color: C.textPrimary }]}>{fmt(acc.balance)}</Text>
-                  <Text style={[s.bankCurrency, { color: C.textSecondary }]}>XAF</Text>
-                </View>
+          {/* ── Mis Tarjetas ── */}
+          <View style={s.sectionBlock}>
+            <View style={s.sectionHeader}>
+              <Text style={[s.sectionTitle, { color: C.textPrimary }]}>MIS TARJETAS</Text>
+              <TouchableOpacity style={s.addBtn} onPress={() => setShowCards(true)} activeOpacity={0.7}>
+                <Text style={s.addBtnText}>+</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity
+              style={[s.card, { backgroundColor: C.bgSecondary, flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 }]}
+              onPress={() => setShowCards(true)}
+              activeOpacity={0.75}
+            >
+              <LinearGradient colors={['#1B3A6B', '#2A5298']} style={s.cardPreviewGrad}>
+                <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                  <Rect x="2" y="5" width="20" height="14" rx="2"/>
+                  <Line x1="2" y1="10" x2="22" y2="10"/>
+                  <Line x1="6" y1="15" x2="10" y2="15"/>
+                </Svg>
+              </LinearGradient>
+              <View style={{ flex: 1 }}>
+                <Text style={[s.bankName, { color: C.textPrimary }]}>Tarjetas vinculadas</Text>
+                <Text style={[s.bankType, { color: C.textSecondary }]}>Gestiona tus tarjetas bancarias</Text>
               </View>
-              {i < bankAccounts.length - 1 && <View style={[s.divider, { backgroundColor: C.borderLight }]} />}
-            </View>
-          ))}
-        </View>
+              <Text style={{ color: C.textTertiary, fontSize: 18 }}>›</Text>
+            </TouchableOpacity>
+          </View>
 
-        {/* ── Historial de Transferencias ── */}
-        <View style={s.sectionHeader}>
-          <Text style={[s.sectionTitle, { color: C.textPrimary }]}>HISTORIAL DE TRANSFERENCIAS</Text>
-          <TouchableOpacity onPress={() => setShowHistorial(true)} activeOpacity={0.7}>
-            <Text style={s.verTodo}>Ver todo →</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={[s.card, { backgroundColor: C.bgSecondary }]}>
-          {recentTx.length === 0 ? (
-            <View style={s.emptyWrap}>
-              <Text style={s.emptyIcon}>💳</Text>
-              <Text style={[s.emptyText, { color: C.textSecondary }]}>Sin transacciones aún</Text>
-            </View>
-          ) : recentTx.map((tx, i) => (
-            <View key={tx.id || i}>
-              <View style={s.txCard}>
-                <View style={[s.txIconWrap, { backgroundColor: isCredit(tx.type) ? '#E8F8EE' : '#FEF2F2' }]}>
-                  {isCredit(tx.type) ? <IcoArrowDown /> : <IcoArrowUp />}
-                </View>
-                <View style={s.txInfo}>
-                  <Text style={[s.txLabel, { color: C.textPrimary }]}>{getTxLabel(tx)}</Text>
-                  <Text style={[s.txDesc, { color: C.textSecondary }]}>{getTxDesc(tx)}</Text>
-                  <Text style={[s.txDate, { color: C.textTertiary }]}>
-                    {formatDate(tx.created_at || tx.date || new Date().toISOString())}
-                  </Text>
-                </View>
-                <View style={s.txAmountWrap}>
-                  <Text style={[s.txAmount, { color: isCredit(tx.type) ? '#00c8a0' : '#ef4444' }]}>
-                    {isCredit(tx.type) ? '+' : '-'}{fmt(tx.amount)}
-                  </Text>
-                  <Text style={[s.txCurrency, { color: C.textSecondary }]}>XAF</Text>
-                </View>
+          {/* ── Transferencias pendientes ── */}
+          {pendingTransfers.length > 0 && (
+            <>
+              <View style={s.sectionHeader}>
+                <Text style={[s.sectionTitle, { color: '#b45309' }]}>
+                  TRANSFERENCIAS PENDIENTES ({pendingTransfers.length})
+                </Text>
               </View>
-              {i < recentTx.length - 1 && <View style={[s.divider, { backgroundColor: C.borderLight }]} />}
+              <View style={[s.card, { backgroundColor: C.bgSecondary }]}>
+                {pendingTransfers.map((transfer, i, arr) => {
+                  const isIncoming  = transfer.direction === 'incoming';
+                  const isProcessing = pendingLoading === transfer.id;
+                  const expiresMs   = new Date(transfer.expiresAt).getTime();
+                  const minsLeft    = Math.max(0, Math.ceil((expiresMs - Date.now()) / 60000));
+                  const hoursLeft   = Math.floor(minsLeft / 60);
+                  const timeLabel   = hoursLeft > 0 ? `${hoursLeft}h ${minsLeft % 60}m` : `${minsLeft}m`;
+
+                  return (
+                    <View key={transfer.id}>
+                      <View style={s.pendingRow}>
+                        {/* Icono dirección */}
+                        <View style={[s.pendingIcon, { backgroundColor: isIncoming ? '#dcfce7' : '#fef3c7' }]}>
+                          {isIncoming
+                            ? <Text style={{ fontSize: 18 }}>💸</Text>
+                            : <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth={2} strokeLinecap="round">
+                                <Circle cx="12" cy="12" r="10"/>
+                                <Polyline points="12 6 12 12 16 14"/>
+                              </Svg>
+                          }
+                        </View>
+
+                        {/* Info */}
+                        <View style={{ flex: 1 }}>
+                          <Text style={[s.bankName, { color: C.textPrimary }]} numberOfLines={1}>
+                            {isIncoming
+                              ? `De: ${transfer.senderName}`
+                              : `Para: ${transfer.recipientName}`}
+                          </Text>
+                          {!!transfer.concept && (
+                            <Text style={[s.bankType, { color: C.textSecondary, fontStyle: 'italic' }]} numberOfLines={1}>
+                              "{transfer.concept}"
+                            </Text>
+                          )}
+                          <Text style={[s.bankType, { color: transfer.isExpired ? '#ef4444' : '#b45309' }]}>
+                            {transfer.isExpired ? '⛔ Expirada' : `⏳ Expira en ${timeLabel}`}
+                          </Text>
+                        </View>
+
+                        {/* Monto */}
+                        <Text style={[s.pendingAmount, { color: isIncoming ? '#16a34a' : '#b45309' }]}>
+                          {isIncoming ? '+' : '-'}{fmt(transfer.amount)} XAF
+                        </Text>
+                      </View>
+
+                      {/* Botones aceptar/cancelar solo para incoming no expiradas */}
+                      {isIncoming && !transfer.isExpired && (
+                        <View style={s.pendingActions}>
+                          <TouchableOpacity
+                            style={[s.pendingBtn, s.pendingBtnCancel, isProcessing && s.pendingBtnDisabled]}
+                            onPress={() => handleCancelTransfer(transfer.id)}
+                            disabled={isProcessing}
+                          >
+                            {isProcessing && pendingLoading === transfer.id
+                              ? <ActivityIndicator size="small" color="#dc2626" />
+                              : <Text style={s.pendingBtnCancelText}>❌ Rechazar</Text>
+                            }
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[s.pendingBtn, s.pendingBtnAccept, isProcessing && s.pendingBtnDisabled]}
+                            onPress={() => handleAcceptTransfer(transfer.id)}
+                            disabled={isProcessing}
+                          >
+                            {isProcessing && pendingLoading === transfer.id
+                              ? <ActivityIndicator size="small" color="#fff" />
+                              : <Text style={s.pendingBtnAcceptText}>✅ Recibir</Text>
+                            }
+                          </TouchableOpacity>
+                        </View>
+                      )}
+
+                      {/* Para outgoing: solo cancelar */}
+                      {!isIncoming && !transfer.isExpired && (
+                        <View style={[s.pendingActions, { justifyContent: 'flex-end' }]}>
+                          <TouchableOpacity
+                            style={[s.pendingBtn, s.pendingBtnCancel, isProcessing && s.pendingBtnDisabled]}
+                            onPress={() => handleCancelTransfer(transfer.id)}
+                            disabled={isProcessing}
+                          >
+                            {isProcessing
+                              ? <ActivityIndicator size="small" color="#dc2626" />
+                              : <Text style={s.pendingBtnCancelText}>Cancelar envío</Text>
+                            }
+                          </TouchableOpacity>
+                        </View>
+                      )}
+
+                      {i < arr.length - 1 && <View style={[s.divider, { backgroundColor: C.borderLight }]} />}
+                    </View>
+                  );
+                })}
+              </View>
+            </>
+          )}
+
+          {/* ── Historial de Transferencias ── */}
+          <View style={s.sectionBlock}>
+            <View style={s.sectionHeader}>
+              <Text style={[s.sectionTitle, { color: C.textPrimary }]}>HISTORIAL DE TRANSFERENCIAS</Text>
             </View>
-          ))}
-        </View>
-      </ScrollView>
+            <TouchableOpacity
+              style={[s.card, { backgroundColor: C.bgSecondary, flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 }]}
+              onPress={() => router.push('/historial-completo' as any)}
+              activeOpacity={0.75}
+            >
+              <View style={[s.txIconWrap, { backgroundColor: '#EEF2F7' }]}>
+                <IcoTransfer color="#0E5F8A" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[s.bankName, { color: C.textPrimary }]}>Ver mis transferencias</Text>
+                <Text style={[s.bankType, { color: C.textSecondary }]}>Consulta tu historial completo</Text>
+              </View>
+              <Text style={{ color: C.textTertiary, fontSize: 18 }}>›</Text>
+            </TouchableOpacity>
+          </View>
+
+
+        </ScrollView>
+      </View>
 
       {/* ── Modales ── */}
-      <QRModal visible={showQR} type={qrType} balance={balance} onClose={() => setShowQR(false)} />
+      <NotificationsPanel
+        visible={showNotifications}
+        onClose={() => setShowNotifications(false)}
+        notifications={notifications}
+        onMarkAllRead={() => setNotifications(prev => prev.map(n => ({ ...n, read: true })))}
+        onClearAll={() => setNotifications([])}
+        onNotifPress={(n) => {
+          setNotifications(prev => prev.filter(x => x.id !== n.id));
+          setShowNotifications(false);
+          if (n.chatId) router.push(`/chat/${n.chatId}` as any);
+        }}
+      />
+      <HamburgerMenu visible={showMenu} onClose={() => setShowMenu(false)} user={user} />
+      <WeatherModal visible={showWeather} onClose={() => setShowWeather(false)} temp="27°" city="Malabo" condition="cloudy" />
+
+      <QRModal
+        visible={showQR}
+        type={qrType}
+        balance={balance}
+        userId={userId}
+        userName={userName}
+        userPhone={userPhone}
+        userAvatar={user?.avatar_url || user?.avatarUrl}
+        onClose={() => setShowQR(false)}
+      />
       <RecargaModal visible={showRecarga} balance={balance} onClose={() => setShowRecarga(false)} onSuccess={loadData} />
       <RetiroModal  visible={showRetiro}  balance={balance} onClose={() => setShowRetiro(false)}  onSuccess={loadData} />
       <AddBankModal visible={showAddBank} onClose={() => setShowAddBank(false)}
-        onAdd={acc => setBankAccounts(p => [...p, acc])} />
-      <HistorialModal visible={showHistorial} transactions={transactions} onClose={() => setShowHistorial(false)} />
+        onAdd={acc => {
+          const next = [...bankAccounts, acc];
+          setBankAccounts(next);
+          saveBankAccounts(next);
+        }} />
+      {/* Modal Mis Tarjetas */}
+      <Modal visible={showCards} animationType="slide" onRequestClose={() => setShowCards(false)}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f5' }} edges={['top']}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}>
+            <TouchableOpacity onPress={() => setShowCards(false)} style={{ marginRight: 12 }}>
+              <Text style={{ fontSize: 24, color: '#374151' }}>‹</Text>
+            </TouchableOpacity>
+            <Text style={{ fontSize: 17, fontWeight: '700', color: '#1A2B4A', flex: 1 }}>Mis Tarjetas</Text>
+          </View>
+          <ScrollView contentContainerStyle={{ padding: 16 }}>
+            <CardsScreen bank={{ id: 'egchat', name: 'EGPAY', color: '#1B3A6B', color2: '#2A5298', initials: 'EG', full: 'EGPAY', founded: 2024, desc: '', address: '', phone: '', web: '', swift: '', branches: 0, atms: 0, services: [], accounts: [] }} />
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+      <DraggableHomeButton />
     </SafeAreaView>
   );
 }
@@ -1081,21 +1942,32 @@ export default function MonederoScreen() {
 // ── Estilos ───────────────────────────────────────────────────────
 const s = StyleSheet.create({
   container:   { flex: 1, backgroundColor: '#EEF2F7' },
+  pageContent: { flex: 1 },
+  stickyWalletSection: { flexShrink: 0 },
+  sectionsScroll: { flex: 1 },
+  sectionsContainer: { paddingBottom: 120 },
+  sectionBlock: { marginBottom: 10 },
+  sectionScroll: { maxHeight: 210, marginHorizontal: 12 },
+  historySectionScroll: { maxHeight: 320, marginHorizontal: 12 },
+  sectionScrollContent: { paddingBottom: 2 },
   center:      { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   // Header
-  pageHeader:  { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F0F2F5' },
+  pageHeader:  { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F0F2F5' },
   pageTitle:   { fontSize: 17, fontWeight: '700', color: '#1A2B4A' },
 
   // Balance card
   balanceCardWrap: { padding: 14 },
   balanceCard:     { borderRadius: 20, padding: 20, shadowColor: '#0E5F8A', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.25, shadowRadius: 12, elevation: 8 },
   balanceCardLabel:{ fontSize: 13, color: 'rgba(255,255,255,0.7)', fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 },
-  balanceRevealBtn:{ marginBottom: 4 },
+  balanceRevealBtn:{ marginBottom: 4, minHeight: 42, justifyContent: 'center' },
   balanceAmount:   { fontSize: 30, fontWeight: '800', color: '#fff', letterSpacing: -1 },
   balanceCurrency: { fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.65)' },
-  balanceHidden:   { backgroundColor: 'rgba(8,20,50,0.75)', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8, alignSelf: 'flex-start' },
+  balanceOverlay:  { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(8,20,50,0.82)', borderRadius: 8, justifyContent: 'center' },
+  balanceOverlayTouch: { paddingHorizontal: 14, paddingVertical: 10 },
   balanceHiddenText:{ fontSize: 13, color: 'rgba(255,255,255,0.75)', fontWeight: '600' },
+  balanceHideBtn:  { position: 'absolute', top: 0, right: 0, padding: 4 },
+  balanceHideText: { fontSize: 11, color: 'rgba(255,255,255,0.45)', fontWeight: '600' },
   balanceSubLabel: { fontSize: 13, color: 'rgba(255,255,255,0.55)', fontWeight: '600', marginBottom: 18 },
 
   // Action buttons
@@ -1105,18 +1977,20 @@ const s = StyleSheet.create({
   actionLabel:   { fontSize: 11, fontWeight: '700', color: '#1A2B4A' },
 
   // Sections
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 14, marginBottom: 8, marginTop: 4 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 12, marginBottom: 6, marginTop: 2 },
   sectionTitle:  { fontSize: 13, fontWeight: '800', color: '#0d0d0d', textTransform: 'uppercase', letterSpacing: 0.5 },
   addBtn:        { width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(52,211,153,0.15)', borderWidth: 1, borderColor: 'rgba(52,211,153,0.3)', alignItems: 'center', justifyContent: 'center' },
   addBtnText:    { fontSize: 18, fontWeight: '700', color: '#00c8a0', lineHeight: 22 },
+  cardPreviewGrad: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  cardPreviewIcon: { fontSize: 22 },
   verTodo:       { fontSize: 13, color: '#00c8a0', fontWeight: '600' },
 
   // Card container
-  card:          { marginHorizontal: 14, borderRadius: 14, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2, marginBottom: 12 },
+  card:          { marginHorizontal: 12, borderRadius: 12, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1, marginBottom: 8 },
   divider:       { height: 1, marginHorizontal: 14 },
 
   // Bank accounts
-  bankRow:       { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
+  bankRow:       { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, gap: 10 },
   bankIconWrap:  { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(52,211,153,0.08)', borderWidth: 1, borderColor: 'rgba(52,211,153,0.18)', alignItems: 'center', justifyContent: 'center' },
   bankInfo:      { flex: 1 },
   bankName:      { fontSize: 13, fontWeight: '700', color: '#0d0d0d' },
@@ -1125,8 +1999,42 @@ const s = StyleSheet.create({
   bankBalance:   { fontSize: 13, fontWeight: '800', color: '#0d0d0d' },
   bankCurrency:  { fontSize: 11, color: '#6b7280', fontWeight: '600' },
 
+  pendingRow: {
+    flexDirection: 'row', alignItems: 'center', padding: 12, gap: 10,
+    backgroundColor: 'rgba(180,83,9,0.04)',
+  },
+  pendingIcon: {
+    width: 36, height: 36, borderRadius: 18,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  pendingAmount: { fontSize: 13, fontWeight: '700' },
+  pendingActions: {
+    flexDirection: 'row', gap: 8,
+    paddingHorizontal: 12, paddingBottom: 12, paddingTop: 4,
+  },
+  pendingBtn: {
+    flex: 1, paddingVertical: 9, borderRadius: 8,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  pendingBtnAccept: {
+    backgroundColor: '#16a34a',
+  },
+  pendingBtnAcceptText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  pendingBtnCancel: {
+    backgroundColor: 'transparent',
+    borderWidth: 1.5, borderColor: '#dc2626',
+  },
+  pendingBtnCancelText: { fontSize: 13, fontWeight: '700', color: '#dc2626' },
+  pendingBtnDisabled: { opacity: 0.5 },
+  // estilos legacy (mantenidos por compatibilidad)
+  cancelPendingBtn: {
+    backgroundColor: 'rgba(248,113,113,0.1)', borderWidth: 1, borderColor: 'rgba(248,113,113,0.25)',
+    borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4,
+  },
+  cancelPendingText: { fontSize: 11, fontWeight: '600', color: '#f87171' },
+
   // Transactions
-  txCard:        { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
+  txCard:        { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 12, gap: 10, minHeight: 64 },
   txIconWrap:    { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: 'transparent' },
   txInfo:        { flex: 1 },
   txLabel:       { fontSize: 12, fontWeight: '700', color: '#0d0d0d', marginBottom: 1 },
@@ -1147,102 +2055,36 @@ const s = StyleSheet.create({
   sheet:         { backgroundColor: '#F7F8FA', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '90%', paddingBottom: 40 },
   handle:        { width: 36, height: 4, borderRadius: 2, backgroundColor: '#D1D5DB', alignSelf: 'center', marginTop: 10, marginBottom: 4 },
   sheetTitle:    { fontSize: 17, fontWeight: '700', color: '#111827', textAlign: 'center', paddingHorizontal: 16, paddingTop: 8 },
-  sheetSub:      { fontSize: 11, color: '#9CA3AF', textAlign: 'center', marginBottom: 4 },
-  sheetBody:     { padding: 16, gap: 10 },
-
   // Section head in modals
-  sectionHead:   { borderRadius: 14, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 6 },
-  sectionHeadIcon:{ width: 48, height: 48, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center' },
-  sectionHeadTitle:{ fontSize: 15, fontWeight: '800', color: '#fff' },
-  sectionHeadSub:{ fontSize: 11, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
-
   // Methods label
   methodsLabel:  { fontSize: 11, fontWeight: '700', color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
 
   // Method buttons
-  methodBtn:     { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 14, padding: 14, gap: 12, borderWidth: 1, borderColor: '#F0F2F5', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 },
   methodIconWrap:{ width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  methodText:    { flex: 1 },
-  methodLabel:   { fontSize: 14, fontWeight: '700', color: '#111827' },
-  methodSub:     { fontSize: 11, color: '#9CA3AF', marginTop: 2 },
-  methodArrow:   { fontSize: 20, color: '#D1D5DB' },
-
   // Info box
-  infoBox:       { backgroundColor: '#EFF5FD', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#BFDBFE', gap: 4 },
-  infoRow:       { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: '#DBEAFE' },
-  infoLabel:     { fontSize: 11, color: '#6B7280' },
-  infoValue:     { fontSize: 11, fontWeight: '700', color: '#1B3A6B' },
-
   // Quick amounts
-  quickRow:      { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  quickBtn:      { flex: 1, minWidth: '22%', paddingVertical: 10, borderRadius: 10, backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#F0F2F5', alignItems: 'center' },
-  quickBtnActive:{ backgroundColor: '#FFFBEB', borderColor: '#F59E0B' },
-  quickBtnText:  { fontSize: 12, fontWeight: '700', color: '#374151' },
-  quickBtnTextActive:{ color: '#92400E' },
-
   // Field
-  fieldWrap:     { gap: 4 },
-  fieldLabel:    { fontSize: 12, fontWeight: '600', color: '#374151' },
-  fieldInput:    { backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: '#F0F2F5', paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: '#111827' },
-
   // Code input
-  codeHint:      { fontSize: 11, fontWeight: '700', color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.5 },
-  codeInput:     { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1.5, borderColor: '#F0F2F5', paddingHorizontal: 14, paddingVertical: 14, fontSize: 20, fontWeight: '800', color: '#111827', textAlign: 'center', letterSpacing: 4 },
-
   // Agent card
-  agentCard:     { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, padding: 12, gap: 10, borderWidth: 1, borderColor: '#F0F2F5' },
   agentIconWrap: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#F5F3FF', alignItems: 'center', justifyContent: 'center' },
-  agentName:     { fontSize: 12, fontWeight: '700', color: '#111827' },
-  agentInfo:     { fontSize: 10, color: '#9CA3AF', marginTop: 2 },
-
   // Confirm card
   confirmCard:   { backgroundColor: '#fff', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#F0F2F5' },
-  confirmRow:    { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  confirmLabel:  { fontSize: 12, color: '#6B7280' },
-  confirmValue:  { fontSize: 12, fontWeight: '700', color: '#111827' },
-
   // Alert
   alertBox:      { backgroundColor: '#FEF2F2', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#FECACA' },
   alertText:     { fontSize: 11, color: '#C0392B', fontWeight: '600' },
 
   // Primary button
-  primaryBtn:    { backgroundColor: '#00c8a0', borderRadius: 12, padding: 14, alignItems: 'center' },
-  primaryBtnDisabled:{ backgroundColor: '#E5E7EB' },
-  primaryBtnText:{ fontSize: 14, fontWeight: '700', color: '#fff' },
   withdrawBtn:   { backgroundColor: '#C0392B' },
-  backBtn:       { alignItems: 'center', paddingVertical: 10 },
-  backBtnText:   { fontSize: 13, color: '#9CA3AF', fontWeight: '600' },
-
   // QR mini box
   qrMiniBox:     { width: 80, height: 80, borderRadius: 16, backgroundColor: '#F0FDF9', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
 
   // Success
-  successWrap:   { alignItems: 'center', paddingVertical: 24, gap: 12 },
-  successCircle: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center', shadowColor: '#00c8a0', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 16, elevation: 8 },
-  successTitle:  { fontSize: 20, fontWeight: '900', color: '#111827' },
-  successSub:    { fontSize: 13, color: '#9CA3AF', textAlign: 'center', paddingHorizontal: 16, lineHeight: 20 },
   refCard:       { width: '100%', backgroundColor: '#F0FDF9', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#A7F3D0' },
   refLabel:      { fontSize: 11, fontWeight: '700', color: '#065F46', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 },
   refCode:       { fontSize: 14, fontWeight: '800', color: '#111827', fontVariant: ['tabular-nums'] },
   refBalanceRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#D1FAE5' },
   refBalanceLabel:{ fontSize: 12, color: '#6B7280' },
   refBalanceValue:{ fontSize: 16, fontWeight: '900', color: '#00c8a0' },
-
-  // QR Modal
-  qrOverlay:     { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' },
-  qrCard:        { width: '85%', maxWidth: 320, borderRadius: 24, overflow: 'hidden', backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.25, shadowRadius: 30, elevation: 20 },
-  qrHeader:      { padding: 18, flexDirection: 'row', alignItems: 'flex-start' },
-  qrHeaderTitle: { fontSize: 17, fontWeight: '800', color: '#fff' },
-  qrHeaderSub:   { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
-  qrCloseBtn:    { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
-  qrBody:        { padding: 18, alignItems: 'center', gap: 12 },
-  qrGrid:        { backgroundColor: '#fff', padding: 10, borderRadius: 12, borderWidth: 2, borderColor: 'rgba(0,200,160,0.2)' },
-  qrCell:        { width: 9, height: 9, borderRadius: 1 },
-  qrName:        { fontSize: 13, fontWeight: '700', color: '#0d0d0d' },
-  qrBalance:     { fontSize: 12, color: '#6b7280' },
-  qrInput:       { width: '100%', backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: '#0d0d0d' },
-  qrCloseFullBtn:{ borderRadius: 12, paddingVertical: 12, paddingHorizontal: 40 },
-  qrCloseBtnText:{ fontSize: 14, fontWeight: '700', color: '#fff' },
 
   // Historial modal
   histOverlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
@@ -1327,11 +2169,241 @@ const s = StyleSheet.create({
   qrHeaderSub:   { fontSize: 11, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
   qrCloseBtn:    { width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
   qrBody:        { padding: 20, alignItems: 'center', gap: 12 },
+  qrCodeWrap:    { backgroundColor: '#fff', padding: 12, borderRadius: 12, borderWidth: 2, borderColor: 'rgba(0,200,160,0.2)' },
   qrGrid:        { backgroundColor: '#fff', padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#E5E7EB' },
   qrCell:        { width: 10, height: 10 },
   qrName:        { fontSize: 14, fontWeight: '700', color: '#111827' },
+  qrPhone:       { fontSize: 12, color: '#6b7280', marginTop: 2 },
   qrBalance:     { fontSize: 12, color: '#6B7280' },
+  qrScanBtn:     { width: '100%', paddingVertical: 10, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(0,180,230,0.35)', borderRadius: 10 },
+  qrScanBtnText: { fontSize: 13, fontWeight: '700', color: '#00B4E6' },
   qrInput:       { width: '100%', backgroundColor: '#F7F8FA', borderRadius: 10, padding: 12, fontSize: 14, color: '#111827', borderWidth: 1, borderColor: '#E5E7EB' },
   qrCloseFullBtn:{ borderRadius: 12, paddingVertical: 12, paddingHorizontal: 32, marginTop: 4 },
   qrCloseBtnText:{ fontSize: 14, fontWeight: '700', color: '#fff' },
+});
+
+export default function MonederoScreen() {
+  return (
+    <TabErrorBoundary tabName="Cartera">
+      <MonederoScreenInner />
+    </TabErrorBoundary>
+  );
+}
+
+// ── Estilos QRModal rediseñado ────────────────────────────────────
+const qrs = StyleSheet.create({
+  overlay:        { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', padding: 20 },
+  card:           { width: '100%', maxWidth: 340, backgroundColor: '#fff', borderRadius: 24, overflow: 'hidden' },
+  header:         { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 4 },
+  title:          { fontSize: 17, fontWeight: '800', color: '#111827' },
+  sub:            { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
+  closeBtn:       { width: 30, height: 30, borderRadius: 15, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' },
+  qrWrap:         { alignSelf: 'center', position: 'relative', marginVertical: 16 },
+  avatarOverlay:  { position: 'absolute', top: '50%', left: '50%', transform: [{ translateX: -20 }, { translateY: -20 }], zIndex: 10 },
+  avatarImg:      { width: 40, height: 40, borderRadius: 20, borderWidth: 2.5, borderColor: '#fff' },
+  avatarFallback: { backgroundColor: '#00C8A0', alignItems: 'center', justifyContent: 'center' },
+  avatarInitial:  { color: '#fff', fontSize: 16, fontWeight: '800' },
+  name:           { fontSize: 15, fontWeight: '700', color: '#111827', textAlign: 'center' },
+  phone:          { fontSize: 12, color: '#6B7280', textAlign: 'center', marginTop: 2 },
+  balancePill:    { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#F0FDF4', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, marginTop: 8, marginBottom: 16 },
+  balanceTxt:     { fontSize: 12, fontWeight: '600', color: '#059669' },
+  scanBtn:        { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 20, marginBottom: 10, paddingVertical: 12, borderWidth: 1.5, borderColor: 'rgba(0,200,160,0.3)', borderRadius: 12, justifyContent: 'center' },
+  scanBtnTxt:     { fontSize: 13, fontWeight: '700', color: '#00C8A0' },
+  closeFullBtn:   { marginHorizontal: 20, marginBottom: 20, paddingVertical: 13, backgroundColor: '#F3F4F6', borderRadius: 12, alignItems: 'center' },
+  closeFullTxt:   { fontSize: 14, fontWeight: '600', color: '#6B7280' },
+});
+
+// ── Estilos del bloqueo KYC ───────────────────────────────────────
+const kycS = StyleSheet.create({
+  scrollContent: {
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 100 : 80,
+    gap: 10,
+  },
+
+  // Hero card
+  heroCard: {
+    borderRadius: 16,
+    padding: 14,
+    alignItems: 'center',
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  heroIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 0,
+  },
+  heroIconEmoji: { fontSize: 22 },
+
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  statusDot: { width: 5, height: 5, borderRadius: 3 },
+  statusBadgeText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.4 },
+
+  heroTitle: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '800',
+    textAlign: 'center',
+    letterSpacing: -0.3,
+  },
+  heroSub: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 11,
+    lineHeight: 16,
+    textAlign: 'center',
+  },
+
+  ctaWrapper: {
+    width: '100%',
+    marginTop: 2,
+    borderRadius: 10,
+    overflow: 'hidden',
+    shadowColor: '#00C8A0',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  ctaBtn: { width: '100%' },
+  ctaBtnGrad: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  ctaBtnText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.1,
+  },
+
+  // Funciones bloqueadas
+  lockedSection: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  lockedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+  },
+  lockedTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#6B7280',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
+  },
+  lockedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#F3F4F6',
+    gap: 10,
+  },
+  lockedIconWrap: {
+    width: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lockedEmoji: { fontSize: 16, width: 24, textAlign: 'center' },
+  lockedRowText: { flex: 1, fontSize: 13, color: '#374151', fontWeight: '500' },
+  lockedChip: {
+    backgroundColor: '#FEF2F2',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  lockedChipText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#EF4444',
+    letterSpacing: 0.2,
+  },
+
+  // Por qué
+  whyBox: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+    borderWidth: 1,
+    borderColor: '#EFF6FF',
+  },
+  whyHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  whyTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1B3A6B',
+  },
+  whyText: {
+    fontSize: 12,
+    color: '#6B7280',
+    lineHeight: 19,
+  },
+  whyBold: {
+    fontWeight: '700',
+    color: '#1B3A6B',
+  },
+
+  // Suspendido
+  suspendedBox: {
+    backgroundColor: '#FEF2F2',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    justifyContent: 'center',
+  },
+  suspendedText: {
+    color: '#EF4444',
+    fontSize: 13,
+    fontWeight: '600',
+  },
 });

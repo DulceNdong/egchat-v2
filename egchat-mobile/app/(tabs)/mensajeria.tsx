@@ -7,17 +7,27 @@
 // Lista de chats con avatar, nombre, último msg, hora, badge
 // FAB refresh + LIA-25 flotante
 // ══════════════════════════════════════════════════════════════════
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { TabErrorBoundary } from '../../src/components/TabErrorBoundary';
 import {
   View, Text, TouchableOpacity, StyleSheet,
   TextInput, ActivityIndicator, RefreshControl,
   ScrollView, Image, Platform, Alert, Modal, Pressable,
+  FlatList, KeyboardAvoidingView, Animated, Dimensions, PanResponder,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+
+// En web usamos FlatList estándar — FlashList no soporta web
+const ChatFlatList: React.ComponentType<any> = Platform.OS === 'web' ? FlatList : FlashList;
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Line, Rect, Polyline } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useNavigation } from 'expo-router';
 import { chatAPI, authAPI, contactsAPI } from '../../src/api';
+import { onProfileUpdated } from '../../src/utils/profileEvents';
+import { useChatStream } from '../../src/hooks/useChatStream';
+import { useSharedContent } from '../../src/native/ShareExtension';
+import { HomeWidget } from '../../src/native/HomeWidget';
 import { getFavoriteGroupIds, toggleFavoriteGroup } from '../../src/utils/favorites';
 import {
   loadArchivedChats, saveArchivedChats, getArchivePassword, setArchivePassword,
@@ -26,19 +36,28 @@ import {
 import { SwipeChatItem } from '../../src/components/chat/SwipeChatItem';
 import { toast } from '../../src/components/Toast';
 import type { WeatherCondition } from '../../src/components/EGChatHeader';
+import { useAppStore } from '../../src/store/useAppStore';
+import { markAllRead, clearAllNotifications, removeNotification, markNotificationRead } from '../../src/store/appStore';
 import { haptics } from '../../src/hooks/useHaptics';
 import { useOffline } from '../../src/hooks/useOffline';
-import { useStoryRings } from '../../src/hooks';
-import { EGAvatar, OfflineBanner } from '../../src/components/ui';
+import { EGAvatar } from '../../src/components/ui';
 import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification } from '../../src/components/HeaderPanels';
 import { EGChatHeader } from '../../src/components/EGChatHeader';
 import { SpinningLogo } from '../../src/components/SpinningLogo';
+import { DraggableHomeButton } from '../../src/components/DraggableHomeButton';
+import { useNewContentIndicators, type ContentType } from '../../src/hooks/useNewContentIndicators';
+import { AvatarWithRing } from '../../src/components/AvatarWithRing';
 import {
   Colors, Typography, Spacing, BorderRadius,
   FontSize, FontWeight, Shadow,
 } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
+import { useFont } from '../../src/context/FontContext';
+import { ChatListSkeleton } from '../../src/components/chat/ChatSkeleton';
+import { CreateGroupModal } from '../../src/components/chat/CreateGroupModal';
+import { syncPhoneContacts } from '../../src/services/contactSync';
+import SessionManager from '../../src/sessionManager';
 
 // ── Tipos ─────────────────────────────────────────────────────────
 interface Chat {
@@ -61,6 +80,7 @@ interface Chat {
 
 type FilterType = 'individual' | 'grupos' | 'dinero' | 'archivar';
 type ArchiveSubFilter = 'individual' | 'group';
+type GroupSubFilter = 'all' | 'normal' | 'djangue';
 
 // ── Helpers ───────────────────────────────────────────────────────
 const formatTime = (dateStr: string) => {
@@ -75,24 +95,94 @@ const formatTime = (dateStr: string) => {
   return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 };
 
-const getLastMessageText = (msg?: Chat['last_message']) => {
-  if (!msg) return 'Sin mensajes';
+type LastMsgInfo = { icon: 'phone-missed' | 'money' | 'image' | 'video' | 'audio' | 'file' | 'location' | 'contact' | 'call-out' | 'video-call' | null; label: string };
+
+// Elimina todos los emojis de un string
+const stripEmojis = (s: string) =>
+  s.replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FEFF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FAFF}]/gu, '').trim();
+
+const getLastMessageInfo = (msg?: Chat['last_message']): LastMsgInfo => {
+  if (!msg) return { icon: null, label: 'Sin mensajes' };
   const txt = msg.text || '';
-  if (txt.includes('Llamada perdida')) return 'Llamada perdida';
-  if (txt.includes('Transferencia') || txt.includes('💸')) return txt.split('\n')[0] || '💸 Transferencia';
-  if (msg.type === 'text') return txt;
-  if (msg.type === 'image') return '📷 Foto';
-  if (msg.type === 'video') return '🎥 Video';
-  if (msg.type === 'audio') return '🎵 Audio';
-  if (msg.type === 'file') return '📄 Archivo';
-  return txt || 'Mensaje';
+  if (txt.includes('Llamada perdida')) return { icon: 'phone-missed', label: 'Llamada perdida' };
+  if (txt.includes('VideoLlamada') || txt.includes('Videollamada') || txt.includes('video') && txt.includes('aliente'))
+    return { icon: 'video-call', label: stripEmojis(txt).replace(/videollamada/gi, 'Videollamada') || 'Videollamada saliente' };
+  if (txt.includes('Llamada') || txt.toLowerCase().includes('llamada'))
+    return { icon: 'call-out', label: stripEmojis(txt) || 'Llamada' };
+  if (txt.includes('Transferencia') || txt.includes('💸')) return { icon: 'money', label: 'Transferencia' };
+  if (msg.type === 'image' || txt.startsWith('📷')) return { icon: 'image', label: 'Foto' };
+  if (msg.type === 'video' || txt.startsWith('🎥')) return { icon: 'video', label: 'Video' };
+  if (msg.type === 'audio' || txt.startsWith('🎵')) return { icon: 'audio', label: 'Audio' };
+  if (msg.type === 'file' || txt.startsWith('📄') || txt.startsWith('📁')) return { icon: 'file', label: 'Archivo' };
+  if (msg.type === 'location' || txt.startsWith('📍')) return { icon: 'location', label: 'Ubicación' };
+  if (msg.type === 'contact' || txt.startsWith('👤')) {
+    const name = stripEmojis(txt).split('\n')[0].trim();
+    return { icon: 'contact', label: name || 'Contacto' };
+  }
+  return { icon: null, label: stripEmojis(txt) || txt || 'Mensaje' };
+};
+
+// Icono vectorial limpio para el último mensaje
+const LastMsgIcon = ({ type, color }: { type: LastMsgInfo['icon']; color: string }) => {
+  if (!type) return null;
+  const props = { width: 13, height: 13, viewBox: '0 0 24 24', fill: 'none', stroke: color, strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+  switch (type) {
+    case 'phone-missed':
+      return <Svg {...props}><Path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A2 2 0 0 1 10.68 13.31z"/><Path d="M23 1L17 7"/><Path d="M17 1l6 6"/></Svg>;
+    case 'call-out':
+      return <Svg {...props}><Path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></Svg>;
+    case 'video-call':
+    case 'video':
+      return <Svg {...props}><Rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><Path d="M8 21l8 0"/><Path d="M12 17l0 4"/><Circle cx="12" cy="9" r="1"/></Svg>;
+    case 'image':
+      return <Svg {...props}><Rect x="3" y="3" width="18" height="18" rx="2"/><Circle cx="8.5" cy="8.5" r="1.5"/><Polyline points="21 15 16 10 5 21"/></Svg>;
+    case 'audio':
+      return <Svg {...props}><Path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><Path d="M19 10v2a7 7 0 0 1-14 0v-2"/><Line x1="12" y1="19" x2="12" y2="23"/><Line x1="8" y1="23" x2="16" y2="23"/></Svg>;
+    case 'file':
+      return <Svg {...props}><Path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><Polyline points="14 2 14 8 20 8"/></Svg>;
+    case 'location':
+      return <Svg {...props}><Path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><Circle cx="12" cy="10" r="3"/></Svg>;
+    case 'contact':
+      return <Svg {...props}><Path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><Circle cx="12" cy="7" r="4"/></Svg>;
+    case 'money':
+      return <Svg {...props}><Rect x="2" y="5" width="20" height="14" rx="2"/><Line x1="2" y1="10" x2="22" y2="10"/></Svg>;
+    default:
+      return null;
+  }
 };
 
 const getParticipantName = (participant?: Chat['participants'][number]) =>
   participant?.full_name || participant?.users?.full_name || participant?.user?.full_name || '';
 
-const getParticipantAvatar = (participant?: Chat['participants'][number]) =>
-  participant?.avatar_url || participant?.users?.avatar_url || participant?.user?.avatar_url || '';
+const isValidAvatarUrl = (url?: string | null): url is string =>
+  !!url &&
+  url.trim().length > 0 &&
+  (
+    url.startsWith('http://') ||
+    url.startsWith('https://') ||
+    url.startsWith('file://')
+  ) &&
+  !url.includes('egchat-api-xlxj.onrender.com/static/avatars/');
+
+const getParticipantAvatar = (participant?: Chat['participants'][number]) => {
+  // Buscar en todos los niveles posibles de la respuesta del backend
+  const raw =
+    participant?.avatar_url ||
+    participant?.users?.avatar_url ||
+    participant?.user?.avatar_url ||
+    (participant as any)?.users?.[0]?.avatar_url;
+  return isValidAvatarUrl(raw) ? raw : undefined;
+};
+
+const getParticipantBanner = (participant?: Chat['participants'][number]): string | null => {
+  const raw =
+    (participant as any)?.banner_url ||
+    (participant as any)?.users?.banner_url ||
+    (participant as any)?.user?.banner_url;
+  if (!raw || typeof raw !== 'string') return null;
+  if (!raw.startsWith('https://') && !raw.startsWith('http://')) return null;
+  return raw;
+};
 
 const sortChatsByActivity = (items: Chat[] = []) =>
   [...items].sort((a, b) => {
@@ -117,13 +207,18 @@ const IconMoney = ({ color = '#374151' }: { color?: string }) => (
     <Rect x="2" y="5" width="20" height="14" rx="2" /><Line x1="2" y1="10" x2="22" y2="10" /><Circle cx="12" cy="15" r="2" />
   </Svg>
 );
+const IconCemac = ({ color = '#64748b' }: { color?: string }) => (
+  <Svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <Rect x="2" y="5" width="20" height="14" rx="2.5" />
+    <Path d="M6 10h12M6 14h5" />
+    <Circle cx="17" cy="14" r="1" />
+  </Svg>
+);
 const IconArchive = ({ color = '#374151' }: { color?: string }) => (
   <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round">
     <Polyline points="21 8 21 21 3 21 3 8" /><Rect x="1" y="3" width="22" height="5" /><Line x1="10" y1="12" x2="14" y2="12" />
   </Svg>
 );
-
-// ── Iconos SVG ────────────────────────────────────────────────────
 const IconSearch = ({ color = Colors.textTertiary }: { color?: string }) => (
   <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round">
     <Circle cx="11" cy="11" r="8"/>
@@ -138,35 +233,53 @@ const IconRefresh = () => (
 );
 
 // ── ChatItem ──────────────────────────────────────────────────────
-const ChatItem = React.memo(({ chat, currentUserId, onPress, onLongPress, staticRow, hasStory, storySeen }: {
+const ChatItem = React.memo(({ chat, currentUserId, onPress, onLongPress, staticRow, contentTypes, fontScale }: {
   chat: Chat; currentUserId: string; onPress?: () => void; onLongPress?: () => void; staticRow?: boolean;
-  hasStory?: boolean; storySeen?: boolean;
+  contentTypes?: ContentType[]; fontScale?: number;
 }) => {
-  const other = chat.participants.find(p => p.user_id !== currentUserId);
-  const chatName = chat.type === 'private'
+  const fs = fontScale ?? 1;
+  const other = chat.participants.find(p => String(p.user_id) !== String(currentUserId));
+  const rawChatName = chat.type === 'private'
     ? (getParticipantName(other) || 'Usuario')
     : (chat.name || 'Grupo');
+  const isDjangue = chat.type === 'group' && chat.name?.startsWith('💰');
+  const chatName = isDjangue ? rawChatName.replace(/^💰\s*/, '') : rawChatName;
   const avatarSrc = chat.type === 'private' ? getParticipantAvatar(other) : chat.avatar_url;
-  const lastMsg = getLastMessageText(chat.last_message);
+  const msgInfo = getLastMessageInfo(chat.last_message);
   const time = formatTime(chat.updated_at);
   const hasUnread = chat.unread_count > 0;
+  const msgIconColor = hasUnread ? Colors.accent : Colors.textTertiary;
 
   const body = (
     <>
-      <EGAvatar
-        src={avatarSrc}
-        name={chatName}
-        size={50}
-        hasStory={hasStory}
-        storySeen={storySeen}
-      />
+      {/* Avatar con anillo de contenido nuevo */}
+      <View style={{ position: 'relative' }}>
+        <AvatarWithRing
+          src={avatarSrc}
+          name={chatName}
+          size={Platform.OS === 'ios' ? 50 : 44}
+          contentTypes={contentTypes}
+        />
+        {chat.type === 'group' && (
+          <View style={[st.groupBadge, isDjangue && st.groupBadgeDjangue]}>
+            <Text style={[st.groupBadgeText, isDjangue && st.groupBadgeTextDjangue]}>{isDjangue ? 'XAF' : 'G'}</Text>
+          </View>
+        )}
+      </View>
       <View style={st.chatInfo}>
         <View style={st.chatRow}>
-          <Text style={st.chatName} numberOfLines={1}>{chatName}</Text>
-          {time ? <Text style={[st.chatTime, hasUnread && st.chatTimeUnread]}>{time}</Text> : null}
+          <Text style={[st.chatName, { fontSize: 15 * fs }]} numberOfLines={1}>{chatName}</Text>
+          {time ? <Text style={[st.chatTime, hasUnread && st.chatTimeUnread, { fontSize: 11 * fs }]}>{time}</Text> : null}
         </View>
         <View style={st.chatRow}>
-          <Text style={st.chatMsg} numberOfLines={1}>{lastMsg}</Text>
+          <View style={st.chatMsgRow}>
+            {msgInfo.icon && (
+              <View style={st.chatMsgIcon}>
+                <LastMsgIcon type={msgInfo.icon} color={msgIconColor} />
+              </View>
+            )}
+            <Text style={[st.chatMsg, { fontSize: 13 * fs }]} numberOfLines={1}>{msgInfo.label}</Text>
+          </View>
           {hasUnread && (
             <View style={st.badge}>
               <Text style={st.badgeText}>{chat.unread_count > 99 ? '99+' : chat.unread_count}</Text>
@@ -212,12 +325,9 @@ const FavoriteSection = ({
   );
 };
 
-const FavoriteChip = ({ name, avatar, onPress, hasStory, storySeen }: {
-  name: string; avatar?: string; onPress: () => void;
-  hasStory?: boolean; storySeen?: boolean;
-}) => (
+const FavoriteChip = ({ name, avatar, onPress }: { name: string; avatar?: string; onPress: () => void }) => (
   <TouchableOpacity style={st.favChip} onPress={onPress} activeOpacity={0.8}>
-    <EGAvatar src={avatar} name={name} size={56} hasStory={hasStory} storySeen={storySeen} />
+    <EGAvatar src={avatar} name={name} size={56} />
     <Text style={st.favChipName} numberOfLines={1}>{name}</Text>
   </TouchableOpacity>
 );
@@ -225,87 +335,260 @@ const FavoriteChip = ({ name, avatar, onPress, hasStory, storySeen }: {
 // ══════════════════════════════════════════════════════════════════
 // PANTALLA PRINCIPAL
 // ══════════════════════════════════════════════════════════════════
-export default function MensajeriaScreen() {
+function MensajeriaScreenInner() {
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentUserId, setCurrentUserId] = useState('');
+  const [currentUser, setCurrentUser] = useState<{ full_name?: string; avatar_url?: string; phone?: string } | null>(null);
+  // Debounce ref: evita recargas en cascada cuando llegan múltiples eventos SSE seguidos
+  const loadDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [globalResults, setGlobalResults] = useState<Array<{ chatId: string; chatName: string; messageText: string; messageTime: string }>>([]);
+  const [searchingGlobal, setSearchingGlobal] = useState(false);
   const [filter, setFilter] = useState<FilterType>('individual');
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showWeather, setShowWeather] = useState(false);
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  // Clima y notificaciones desde el store global
+  const { weather, notifications } = useAppStore();
+
+  // ── Indicadores de contenido nuevo (anillo en avatares) ───────
+  const { indicators: newContentMap } = useNewContentIndicators(currentUserId);
   const [favoriteContacts, setFavoriteContacts] = useState<any[]>([]);
   const [favoriteGroupIds, setFavoriteGroupIds] = useState<string[]>([]);
   const [archivedChats, setArchivedChats] = useState<ArchivedChat[]>([]);
   const [archivePassword, setArchivePasswordState] = useState('');
   const [archiveUnlocked, setArchiveUnlocked] = useState(false);
   const [archiveSubFilter, setArchiveSubFilter] = useState<ArchiveSubFilter>('individual');
+  const [groupSubFilter, setGroupSubFilter] = useState<GroupSubFilter>('all');
   const [showArchiveSetup, setShowArchiveSetup] = useState(false);
   const [showArchiveUnlock, setShowArchiveUnlock] = useState(false);
   const [archivePwdInput, setArchivePwdInput] = useState('');
   const [archivePwdError, setArchivePwdError] = useState('');
-  const [temp, setTemp] = useState(27);
-  const [weatherCondition, setWeatherCondition] = useState<WeatherCondition>('cloudy');
+  // Sprint 1.1 — Crear grupo
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const navigation = useNavigation<any>();
   const { isDark } = useThemeContext();
+  const { fontScale } = useFont();
   const { saveCache, readCache } = useOffline();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
-  const { activeUserIds, seenUserIds } = useStoryRings();
+
+  // ── Debounced loadChats — agrupa múltiples eventos SSE/Supabase en una sola llamada ──
+  // Evita que 3 mensajes seguidos disparen 3 recargas HTTP completas.
+  const debouncedLoadChats = useCallback((userId: string) => {
+    if (loadDebounceRef.current) clearTimeout(loadDebounceRef.current);
+    loadDebounceRef.current = setTimeout(() => {
+      void loadChats(userId);
+      loadDebounceRef.current = null;
+    }, Platform.OS === 'android' ? 800 : 400);
+  }, [loadChats]);
+
+  // ── SSE Stream — actualizar lista de chats al instante ────────────
+  // Supabase Realtime ya no se usa para la lista — SSE cubre el mismo caso
+  // y evitar tener dos fuentes duplicadas que disparen loadChats a la vez.
+  useChatStream(currentUserId || undefined, (event) => {
+    if (event.type === 'new_message' || event.type === 'chat_updated') {
+      debouncedLoadChats(currentUserId);
+    }
+  });
+
+  // ── Búsqueda global en mensajes ────────────────────────────────
+  useEffect(() => {
+    if (!searchQuery.trim() || searchQuery.length < 2) {
+      setGlobalResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setSearchingGlobal(true);
+      try {
+        const q = searchQuery.toLowerCase();
+        const results: typeof globalResults = [];
+        for (const chat of chats) {
+          const other = chat.participants.find((p: any) => String(p.user_id) !== String(currentUserId));
+          const chatName = chat.type === 'private'
+            ? (getParticipantName(other) || 'Usuario')
+            : (chat.name || 'Grupo');
+          const lastText = chat.last_message?.text || '';
+          if (chatName.toLowerCase().includes(q) || lastText.toLowerCase().includes(q)) {
+            results.push({ chatId: chat.id, chatName, messageText: lastText, messageTime: '' });
+          }
+        }
+        setGlobalResults(results);
+      } finally { setSearchingGlobal(false); }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery, chats, currentUserId]);
+
+  // ── Recibir contenido compartido desde otras apps ─────────────────
+  useSharedContent((content) => {
+    if (content.uri || content.text) {
+      (global as any).__egchat_shared_content = content;
+      toast.info('📎 Contenido recibido', 'Selecciona el chat donde enviarlo');
+    }
+  });
 
   const getChatMeta = useCallback((chat: Chat) => {
-    const other = chat.participants.find(p => p.user_id !== currentUserId);
+    const other = chat.participants.find(p => String(p.user_id) !== String(currentUserId));
     const name = chat.type === 'private' ? (getParticipantName(other) || 'Usuario') : (chat.name || 'Grupo');
     const avatar = chat.type === 'private' ? getParticipantAvatar(other) : chat.avatar_url;
     return { name, avatar, other };
   }, [currentUserId]);
 
   // ── Carga ───────────────────────────────────────────────────────
-  const loadChats = useCallback(async () => {
+  const loadChats = useCallback(async (userId?: string) => {
+    const uid = userId || currentUserId;
+    const remoteChats = chatAPI.getChats();
+
+    const cached = await readCache<Chat[]>('chat_list');
+    if (cached?.length) {
+      setChats(sortChatsByActivity(cached));
+      setLoading(false);
+    }
+
     try {
-      const [data, favContacts, favGroups] = await Promise.all([
-        chatAPI.getChats(),
+      setLoadError('');
+      const data = await remoteChats;
+      const sortedChats = sortChatsByActivity(Array.isArray(data) ? data : []);
+      setChats(sortedChats);
+      void saveCache('chat_list', sortedChats);
+
+      void Promise.all([
         contactsAPI.getFavorites().catch(() => []),
         getFavoriteGroupIds(),
-      ]);
-      const sortedChats = sortChatsByActivity(data || []);
-      setChats(sortedChats);
-      saveCache('chat_list', sortedChats);
-      setFavoriteContacts(favContacts || []);
-      setFavoriteGroupIds(favGroups);
-    } catch {
+      ]).then(([favContacts, favGroups]) => {
+        setFavoriteContacts(favContacts || []);
+        setFavoriteGroupIds(favGroups);
+      });
+
+      setTimeout(() => {
+        HomeWidget.update(sortedChats.map(c => {
+          const other = c.participants.find((p: any) => String(p.user_id) !== String(uid));
+          const name = c.type === 'private'
+            ? (other?.full_name || other?.users?.full_name || 'Usuario')
+            : (c.name || 'Grupo');
+          const avatar = c.type === 'private'
+            ? (other?.avatar_url || other?.users?.avatar_url || '')
+            : (c.avatar_url || '');
+          return { id: c.id, name, lastMsg: c.last_message?.text || '', unread: c.unread_count || 0, avatar };
+        }));
+      }, 300);
+    } catch (e: any) {
+      const msg = e?.message || '';
+      // Si es sesión expirada, el handler de _layout ya redirige al login
+      if (msg.includes('expirada') || msg.includes('401') || msg.includes('autorizado')) {
+        return; // el setUnauthorizedHandler se encarga
+      }
       const cachedChats = await readCache<Chat[]>('chat_list');
-      if (cachedChats?.length) setChats(sortChatsByActivity(cachedChats));
+      if (cachedChats?.length) {
+        setChats(sortChatsByActivity(cachedChats));
+        setLoadError('');
+      } else if (msg.includes('abort') || msg.includes('timeout') || msg.includes('network')) {
+        setLoadError('No se pudo conectar con el servidor. Desliza para recargar.');
+      } else {
+        setLoadError('No se pudieron cargar los chats. Desliza para reintentar.');
+      }
     }
     finally { setLoading(false); setRefreshing(false); }
-  }, [readCache, saveCache]);
+  }, [readCache, saveCache, currentUserId]);
 
   useEffect(() => {
-    loadChats();
+    const init = async () => {
+      const cachedUser = await SessionManager.getInstance().getUser();
+      const cachedUserId = cachedUser?.id || '';
+      if (cachedUserId) setCurrentUserId(cachedUserId);
+      if (cachedUser) {
+        setCurrentUser({ full_name: cachedUser.full_name, avatar_url: cachedUser.avatar_url, phone: cachedUser.phone });
+      }
+      void loadChats(cachedUserId);
+
+      void authAPI.me().then(me => {
+        if (!me) return;
+        if (me.id) setCurrentUserId(me.id);
+        setCurrentUser({ full_name: me.full_name, avatar_url: me.avatar_url, phone: me.phone });
+      }).catch(() => {});
+      // La lectura de contactos puede bloquear Android durante varios frames.
+      // Nunca debe competir con la primera navegación del usuario.
+      setTimeout(
+        () => { void syncPhoneContacts().catch(() => {}); },
+        Platform.OS === 'android' ? 20000 : 2000,
+      );
+    };
+    init();
+
+    // Keep-alive: ping cada 14 min para que Render no duerma el servidor
+    const keepAlive = setInterval(() => {
+      fetch('https://egchat-api-xlxj.onrender.com/health', { method: 'GET' }).catch(() => {});
+    }, 14 * 60 * 1000);
+
     loadArchivedChats().then(setArchivedChats);
     getArchivePassword().then(setArchivePasswordState);
-    authAPI.me().then(me => setCurrentUserId(me?.id || '')).catch(() => {});
-    fetch('https://api.open-meteo.com/v1/forecast?latitude=3.75&longitude=8.78&current=temperature_2m,weather_code&timezone=auto')
-      .then(r => r.json())
-      .then(d => {
-        const t = Math.round(d?.current?.temperature_2m ?? 27);
-        setTemp(t);
-        const code = d?.current?.weather_code ?? 0;
-        if (code <= 1) setWeatherCondition('sunny');
-        else if (code >= 51) setWeatherCondition('rain');
-        else setWeatherCondition('cloudy');
-      })
-      .catch(() => {});
+
+    return () => {
+      clearInterval(keepAlive);
+      // Limpiar debounce pendiente al desmontar
+      if (loadDebounceRef.current) clearTimeout(loadDebounceRef.current);
+    };
   }, []);
 
   useEffect(() => {
+    // Las pantallas de cartera/servicios montan datos y suscripciones al
+    // precargarse. En Android esto coincidía con los taps del usuario (2–7 s)
+    // y producía el retardo percibido. Las pestañas ya son lazy, por lo que se
+    // cargan solo al abrirlas.
+    if (Platform.OS === 'android') return;
+
+    const preloadWallet = setTimeout(() => navigation.preload?.('monedero'), 2000);
+    const preloadServices = setTimeout(() => navigation.preload?.('servicios'), 4500);
+    const preloadSettings = setTimeout(() => navigation.preload?.('ajustes'), 7000);
+    return () => {
+      clearTimeout(preloadWallet);
+      clearTimeout(preloadServices);
+      clearTimeout(preloadSettings);
+    };
+  }, [navigation]);
+
+  useEffect(() => {
     if (!currentUserId) return;
-    const { subscribeToUserChats } = require('../../src/supabase');
-    const unsub = subscribeToUserChats(currentUserId, loadChats);
-    return unsub;
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
+
+    // SSE (useChatStream) ya cubre actualizaciones en tiempo real.
+    // Supabase Realtime se eliminó para evitar doble disparo de loadChats.
+    // Fallback: polling cada 45s solo si el SSE no ha recibido nada en 45s.
+    let lastSseActivity = Date.now();
+    const sseWatchdog = setInterval(() => {
+      if (Date.now() - lastSseActivity > 45000) {
+        debouncedLoadChats(currentUserId);
+      }
+    }, 45000);
+
+    return () => {
+      clearInterval(sseWatchdog);
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [currentUserId, debouncedLoadChats]);
+
+  // Cuando el usuario actual cambia su avatar/nombre, actualizar su participante en todos los chats
+  useEffect(() => {
+    return onProfileUpdated(patch => {
+      if (!patch.avatar_url && !patch.full_name) return;
+      setChats(prev => prev.map(chat => ({
+        ...chat,
+        participants: chat.participants.map(p =>
+          String(p.user_id) === String(currentUserId)
+            ? {
+                ...p,
+                ...(patch.avatar_url ? { avatar_url: patch.avatar_url } : {}),
+                ...(patch.full_name ? { full_name: patch.full_name } : {}),
+              }
+            : p,
+        ),
+      })));
+    });
   }, [currentUserId]);
 
-  const onRefresh = () => { setRefreshing(true); loadChats(); };
+  const onRefresh = () => { setRefreshing(true); loadChats(currentUserId); };
 
   const openChat = useCallback((chat: Chat | ArchivedChat) => {
     router.push(`/chat/${chat.id}` as any);
@@ -324,6 +607,7 @@ export default function MensajeriaScreen() {
     }
     setArchiveUnlocked(false);
     setFilter(id);
+    if (id !== 'grupos') setGroupSubFilter('all');
   };
 
   const archiveChat = useCallback(async (chat: Chat) => {
@@ -350,22 +634,34 @@ export default function MensajeriaScreen() {
     const nextArchived = archivedChats.filter(c => c.id !== chat.id);
     await saveArchivedChats(nextArchived);
     setArchivedChats(nextArchived);
-    await loadChats();
+    await loadChats(currentUserId);
     toast.info('Chat desarchivado');
   }, [archivedChats, loadChats]);
 
   const deleteChatLocal = useCallback((chatId: string) => {
-    Alert.alert('Eliminar chat', '¿Eliminar este chat de la lista?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Eliminar', style: 'destructive',
-        onPress: () => {
-          setChats(prev => prev.filter(c => c.id !== chatId));
-          toast.success('Chat eliminado');
+    Alert.alert(
+      'Eliminar chat',
+      'Se eliminará el chat, todos los mensajes y el contacto asociado. Esta acción no se puede deshacer.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar', style: 'destructive',
+          onPress: async () => {
+            // Quitar de la lista inmediatamente (optimista)
+            setChats(prev => prev.filter(c => c.id !== chatId));
+            try {
+              await chatAPI.deleteChat(chatId);
+              toast.success('Chat eliminado');
+            } catch {
+              // Si falla el servidor, recargar la lista real
+              loadChats();
+              toast.error('No se pudo eliminar el chat');
+            }
+          },
         },
-      },
-    ]);
-  }, []);
+      ]
+    );
+  }, [loadChats]);
 
   const openFavoriteContact = useCallback(async (contact: any) => {
     try {
@@ -406,7 +702,7 @@ export default function MensajeriaScreen() {
       ]);
       return;
     }
-    const other = chat.participants.find(p => p.user_id !== currentUserId);
+    const other = chat.participants.find(p => String(p.user_id) !== String(currentUserId));
     const contact = favoriteContacts.find(
       (c: any) => c.contact_user_id === other?.user_id || c.user?.id === other?.user_id,
     );
@@ -434,56 +730,67 @@ export default function MensajeriaScreen() {
     ]);
   }, [favoriteContacts, favoriteGroupIds, getChatMeta, currentUserId]);
 
-  const favoriteGroupChats = chats.filter(c => c.type === 'group' && favoriteGroupIds.includes(c.id));
-  const archivedIds = new Set(archivedChats.map(c => c.id));
+  const favoriteGroupChats = useMemo(
+    () => chats.filter(c => c.type === 'group' && favoriteGroupIds.includes(c.id)),
+    [chats, favoriteGroupIds],
+  );
+  const archivedIds = useMemo(() => new Set(archivedChats.map(c => c.id)), [archivedChats]);
 
-  const matchesSearch = (name: string, last?: string) => {
+  const matchesSearch = useCallback((name: string, last?: string) => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return name.toLowerCase().includes(q) || (last || '').toLowerCase().includes(q);
-  };
+  }, [searchQuery]);
 
   // ── Filtrado ────────────────────────────────────────────────────
-  const filtered = chats.filter(c => {
+  const isGenericName = (name: string) => {
+    const n = name.trim();
+    return !n || n === 'Usuario' || n.startsWith('Usuario ') || n === 'Usuario EGCHAT';
+  };
+
+  const filtered = useMemo(() => chats.filter(c => {
     if (archivedIds.has(c.id)) return false;
-    const other = c.participants.find(p => p.user_id !== currentUserId);
+    const other = c.participants.find(p => String(p.user_id) !== String(currentUserId));
     const name = c.type === 'private' ? getParticipantName(other) : (c.name || 'Grupo');
+    // Ocultar chats privados cuyo contacto tiene nombre genérico (datos incompletos)
+    if (c.type === 'private' && isGenericName(name)) return false;
     const last = c.last_message?.text || '';
     if (!matchesSearch(name, last)) return false;
     if (filter === 'individual') return c.type === 'private';
-    if (filter === 'grupos') return c.type === 'group';
+    if (filter === 'grupos') {
+      if (c.type !== 'group') return false;
+      const isDjangue = c.name?.startsWith('💰');
+      if (groupSubFilter === 'djangue') return !!isDjangue;
+      if (groupSubFilter === 'normal') return !isDjangue;
+      return true; // 'all'
+    }
     if (filter === 'dinero') {
       return last.includes('XAF') || last.includes('💸') || last.includes('Transferencia') || last.includes('📌');
     }
     if (filter === 'archivar') return false;
     return true;
-  });
+  }), [chats, archivedIds, currentUserId, filter, groupSubFilter, matchesSearch]);
 
-  const filteredArchived = archivedChats.filter(c => {
+  const filteredArchived = useMemo(() => archivedChats.filter(c => {
     const isGrp = c.isGroup || c.type === 'group';
     if (archiveSubFilter === 'group' ? !isGrp : isGrp) return false;
     const name = c.name || c.title || 'Chat';
     return matchesSearch(name, c.last_message?.text);
-  });
+  }), [archivedChats, archiveSubFilter, matchesSearch]);
 
   return (
-    <SafeAreaView style={[st.container, { backgroundColor: C.bgPrimary }]} edges={['bottom', 'left', 'right']}>
-      <OfflineBanner />
+    <SafeAreaView style={[st.container, { backgroundColor: C.bgPrimary }]} edges={['left', 'right']}>
 
       {/* ══════════════════════════════════════════════════════════
           HEADER — Logo + Temp + Bell + Menu (igual que Home)
       ══════════════════════════════════════════════════════════ */}
       <EGChatHeader
-        temp={temp}
-        city="Malabo"
-        weatherCondition={weatherCondition}
-        unreadCount={notifications.filter(n => !n.read).length}
         notificationsOpen={showNotifications}
         menuOpen={showMenu}
         onWeatherPress={() => setShowWeather(true)}
         onNotificationsPress={() => {
           setShowNotifications(true);
-          setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+          markAllRead();
         }}
         onMenuPress={() => setShowMenu(true)}
       />
@@ -508,10 +815,29 @@ export default function MensajeriaScreen() {
             </TouchableOpacity>
           )}
         </View>
+        {/* 4c — Búsqueda global */}
+        <TouchableOpacity
+          style={[st.globalSearchBtn, { backgroundColor: C.bgTertiary, borderColor: C.border }]}
+          onPress={() => router.push('/global-search' as any)}
+          activeOpacity={0.7}
+          hitSlop={8}
+        >
+          <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={C.textSecondary} strokeWidth={2} strokeLinecap="round">
+            <Circle cx="11" cy="11" r="8"/>
+            <Line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </Svg>
+          <Text style={{ fontSize: 10, color: C.textTertiary, marginTop: 1 }}>Global</Text>
+        </TouchableOpacity>
         {/* Botón + nuevo chat */}
         <TouchableOpacity
           style={st.newChatBtn}
-          onPress={() => router.push('/new-chat' as any)}
+          onPress={() => {
+            Alert.alert('Nueva conversación', '¿Qué quieres crear?', [
+              { text: 'Chat privado', onPress: () => router.push('/new-chat' as any) },
+              { text: 'Grupo', onPress: () => setShowCreateGroup(true) },
+              { text: 'Cancelar', style: 'cancel' },
+            ]);
+          }}
           activeOpacity={0.85}
         >
           <LinearGradient
@@ -525,131 +851,183 @@ export default function MensajeriaScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.brand} colors={[Colors.brand]} />
-        }
-        stickyHeaderIndices={[2]} // los filtros se quedan fijos al hacer scroll
-      >
-        {/* ══════════════════════════════════════════════════════
-            CONTACTOS FAVORITOS
-        ══════════════════════════════════════════════════════ */}
-        <FavoriteSection title="Contactos Favoritos" empty="No tienes contactos favoritos aún" C={C}>
-          {favoriteContacts.map((contact: any) => {
-            const name = contact.name || contact.user?.full_name || contact.user?.name || 'Usuario';
-            const avatar = contact.avatar_url || contact.user?.avatar_url;
-            const contactUserId = contact.contact_user_id || contact.user_id || contact.id;
-            return (
-              <FavoriteChip
-                key={contact.id || contact.contact_user_id}
-                name={name}
-                avatar={avatar}
-                onPress={() => openFavoriteContact(contact)}
-                hasStory={contactUserId ? activeUserIds.has(contactUserId) : false}
-                storySeen={contactUserId ? seenUserIds.has(contactUserId) : false}
-              />
-            );
-          })}
-        </FavoriteSection>
+<View style={st.contentArea}>
+        <View style={st.fixedContent}>
 
-        <FavoriteSection title="Grupos Favoritos" empty="No tienes grupos favoritos aún" C={C}>
-          {favoriteGroupChats.map(chat => {
-            const { name, avatar } = getChatMeta(chat);
-            return <FavoriteChip key={chat.id} name={name} avatar={avatar} onPress={() => openChat(chat)} />;
-          })}
-        </FavoriteSection>
 
-        {/* ══════════════════════════════════════════════════════
-            FILTROS — Individual | Grupos | Dinero (sticky)
-        ══════════════════════════════════════════════════════ */}
-        <View style={[st.filtersWrap, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.filtersRow}>
-            {([
-              { id: 'individual' as FilterType, label: 'Individual', Icon: IconUser },
-              { id: 'grupos' as FilterType, label: 'Grupos', Icon: IconUsers },
-              { id: 'dinero' as FilterType, label: 'Dinero', Icon: IconMoney },
-              { id: 'archivar' as FilterType, label: 'Archivar', Icon: IconArchive },
-            ]).map(f => {
-              const active = filter === f.id;
-              const iconColor = active ? '#fff' : '#374151';
-              const isArchive = f.id === 'archivar';
+          {/* ══════════════════════════════════════════════════════
+              CONTACTOS FAVORITOS
+          ══════════════════════════════════════════════════════ */}
+          <FavoriteSection title="Contactos Favoritos" empty="No tienes contactos favoritos aún" C={C}>
+            {favoriteContacts.map((contact: any) => {
+              const name = contact.name || contact.user?.full_name || contact.user?.name || 'Usuario';
+              const avatar = contact.avatar_url || contact.user?.avatar_url;
               return (
-                <TouchableOpacity
-                  key={f.id}
-                  style={[
-                    st.filterChip,
-                    active && (isArchive ? st.filterChipArchive : st.filterChipActive),
-                  ]}
-                  onPress={() => handleFilterPress(f.id)}
-                  activeOpacity={0.75}
-                >
-                  <f.Icon color={iconColor} />
-                  <Text style={[st.filterText, active && st.filterTextActive]}>{f.label}</Text>
-                </TouchableOpacity>
+                <FavoriteChip
+                  key={contact.id || contact.contact_user_id}
+                  name={name}
+                  avatar={avatar}
+                  onPress={() => openFavoriteContact(contact)}
+                />
               );
             })}
-          </ScrollView>
+          </FavoriteSection>
+
+          <FavoriteSection title="Grupos Favoritos" empty="No tienes grupos favoritos aún" C={C}>
+            {favoriteGroupChats.map(chat => {
+              const { name, avatar } = getChatMeta(chat);
+              return <FavoriteChip key={chat.id} name={name} avatar={avatar} onPress={() => openChat(chat)} />;
+            })}
+          </FavoriteSection>
+
+          {/* ══════════════════════════════════════════════════════
+              FILTROS — Individual | Grupos | Dinero | Archivar
+          ══════════════════════════════════════════════════════ */}
+          <View style={[st.filtersWrap, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}>
+            <View style={st.filtersRow}>
+              {([
+                { id: 'individual' as FilterType, label: 'Individual', Icon: IconUser },
+                { id: 'grupos' as FilterType, label: 'Grupos', Icon: IconUsers },
+                { id: 'dinero' as FilterType, label: 'Dinero', Icon: IconMoney },
+                { id: 'archivar' as FilterType, label: 'Archivar', Icon: IconArchive },
+              ]).map(f => {
+                const active = filter === f.id;
+                const iconColor = active ? '#fff' : '#374151';
+                const isArchive = f.id === 'archivar';
+                return (
+                  <TouchableOpacity
+                    key={f.id}
+                    style={[
+                      st.filterChip,
+                      active && (isArchive ? st.filterChipArchive : st.filterChipActive),
+                    ]}
+                    onPress={() => handleFilterPress(f.id)}
+                    activeOpacity={0.75}
+                  >
+                    <f.Icon color={iconColor} />
+                    <Text numberOfLines={1} style={[st.filterText, active && st.filterTextActive]}>{f.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* Subtabs Djangue / Normal — solo visible en filtro Grupos */}
+          {filter === 'grupos' && (
+            <View style={[st.groupSubTabsWrap, { backgroundColor: C.bgPrimary, borderBottomColor: C.borderLight }]}>
+              {([
+                {
+                  id: 'all' as GroupSubFilter,
+                  label: 'Todos',
+                  Icon: ({ active }: { active: boolean }) => (
+                    <Svg width={15} height={15} viewBox="0 0 24 24" fill="none"
+                      stroke={active ? '#fff' : '#64748b'} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                      <Path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                      <Circle cx="9" cy="7" r="4"/>
+                      <Path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                      <Path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </Svg>
+                  ),
+                },
+                {
+                  id: 'normal' as GroupSubFilter,
+                  label: 'Mis grupos',
+                  Icon: ({ active }: { active: boolean }) => (
+                    <Svg width={15} height={15} viewBox="0 0 24 24" fill="none"
+                      stroke={active ? '#fff' : '#64748b'} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                      <Path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </Svg>
+                  ),
+                },
+                {
+                  id: 'djangue' as GroupSubFilter,
+                  label: 'Djangues',
+                  Icon: ({ active }: { active: boolean }) => (
+                    <IconCemac color={active ? '#fff' : '#64748b'} />
+                  ),
+                },
+              ]).map(sub => {
+                const active = groupSubFilter === sub.id;
+                return (
+                  <TouchableOpacity
+                    key={sub.id}
+                    style={[st.groupSubTab, active && st.groupSubTabActive]}
+                    onPress={() => setGroupSubFilter(sub.id)}
+                    activeOpacity={0.75}
+                  >
+                    <sub.Icon active={active} />
+                    <Text style={[st.groupSubTabText, active && st.groupSubTabTextActive]}>{sub.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
         </View>
 
+
         {/* ══════════════════════════════════════════════════════
-            LISTA DE CHATS
+            LISTA DE CHATS — FlashList para rendimiento óptimo
         ══════════════════════════════════════════════════════ */}
         {loading ? (
-          <View style={st.center}>
-            <ActivityIndicator size="large" color={Colors.brand} />
+          <View style={st.listScroll}>
+            <ChatListSkeleton count={8} />
           </View>
         ) : filter === 'archivar' && !archiveUnlocked ? (
-          <View style={st.center}>
-            <Text style={{ fontSize: 40, marginBottom: 12 }}>🔒</Text>
-            <Text style={[st.emptyTitle, { color: C.textPrimary }]}>Archivo protegido</Text>
-            <Text style={[st.emptySub, { color: C.textSecondary, marginBottom: 20 }]}>
-              Introduce tu contraseña para ver chats archivados
-            </Text>
-            <TouchableOpacity
-              style={st.archiveUnlockBtn}
-              onPress={() => (archivePassword ? setShowArchiveUnlock(true) : setShowArchiveSetup(true))}
-            >
-              <Text style={st.archiveUnlockBtnText}>
-                {archivePassword ? 'Desbloquear' : 'Crear contraseña'}
-              </Text>
-            </TouchableOpacity>
+          <View style={[st.listScroll, st.center]}>
+              <Text style={{ fontSize: 40, marginBottom: 12 }}>🔒</Text>
+              <Text style={[st.emptyTitle, { color: C.textPrimary }]}>Archivo protegido</Text>
+              <Text style={[st.emptySub, { color: C.textSecondary, marginBottom: 20 }]}>{'Introduce tu contraseña para ver chats archivados'}</Text>
+              <TouchableOpacity
+                style={st.archiveUnlockBtn}
+                onPress={() => (archivePassword ? setShowArchiveUnlock(true) : setShowArchiveSetup(true))}
+              >
+                <Text style={st.archiveUnlockBtnText}>
+                  {archivePassword ? 'Desbloquear' : 'Crear contraseña'}
+                </Text>
+              </TouchableOpacity>
           </View>
         ) : filter === 'archivar' && archiveUnlocked ? (
-          <View style={{ paddingHorizontal: 8 }}>
-            <View style={st.archiveSubTabs}>
-              {(['individual', 'group'] as ArchiveSubFilter[]).map(sub => (
-                <TouchableOpacity
-                  key={sub}
-                  style={[st.archiveSubTab, archiveSubFilter === sub && st.archiveSubTabActive]}
-                  onPress={() => setArchiveSubFilter(sub)}
-                >
-                  <Text style={[st.archiveSubTabText, archiveSubFilter === sub && st.archiveSubTabTextActive]}>
-                    {sub === 'individual' ? 'Individuales' : 'Grupos'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            {filteredArchived.length === 0 ? (
+          <ChatFlatList
+            data={filteredArchived as any[]}
+            keyExtractor={(item: any) => item.id}
+            estimatedItemSize={72}
+            ListHeaderComponent={
+              <View style={{ paddingHorizontal: 8 }}>
+                <View style={st.archiveSubTabs}>
+                  {(['individual', 'group'] as ArchiveSubFilter[]).map(sub => (
+                    <TouchableOpacity
+                      key={sub}
+                      style={[st.archiveSubTab, archiveSubFilter === sub && st.archiveSubTabActive]}
+                      onPress={() => setArchiveSubFilter(sub)}
+                    >
+                      <Text style={[st.archiveSubTabText, archiveSubFilter === sub && st.archiveSubTabTextActive]}>
+                        {sub === 'individual' ? 'Individuales' : 'Grupos'}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            }
+            ListEmptyComponent={
               <View style={st.center}>
                 <Text style={{ fontSize: 32 }}>📦</Text>
-                <Text style={[st.emptyTitle, { color: C.textPrimary }]}>
-                  Sin {archiveSubFilter === 'group' ? 'grupos' : 'chats'} archivados
-                </Text>
-                <Text style={[st.emptySub, { color: C.textSecondary }]}>
-                  Desliza un chat a la izquierda para archivarlo
-                </Text>
+                <Text style={[st.emptyTitle, { color: C.textPrimary }]}>{`Sin ${archiveSubFilter === 'group' ? 'grupos' : 'chats'} archivados`}</Text>
+                <Text style={[st.emptySub, { color: C.textSecondary }]}>{'Desliza un chat a la izquierda para archivarlo'}</Text>
               </View>
-            ) : filteredArchived.map(chat => {
-              const name = chat.name || chat.title || 'Chat';
+            }
+            ListFooterComponent={<View style={{ height: Platform.OS === 'android' ? 80 : 100 }} />}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.brand} colors={[Colors.brand]} />
+            }
+            renderItem={({ item: chat }: { item: Chat }) => {
+              const name = (chat as any).name || (chat as any).title || 'Chat';
               return (
                 <TouchableOpacity
-                  key={chat.id}
                   style={st.archivedRow}
                   onPress={() => openChat(chat)}
                   activeOpacity={0.7}
                 >
-                  <EGAvatar src={chat.avatar_url || chat.avatarUrl} name={name} size={46} />
+                  <EGAvatar src={(chat as any).avatar_url || (chat as any).avatarUrl} name={name} size={46} />
                   <View style={{ flex: 1 }}>
                     <Text style={st.archivedName} numberOfLines={1}>{name}</Text>
                     <Text style={st.archivedSub}>Archivado</Text>
@@ -659,22 +1037,42 @@ export default function MensajeriaScreen() {
                   </TouchableOpacity>
                 </TouchableOpacity>
               );
-            })}
-            <View style={{ height: 100 }} />
-          </View>
+            }}
+          />
         ) : filtered.length === 0 ? (
-          <View style={st.center}>
-            <Text style={st.emptyIcon}>{filter === 'dinero' ? '💸' : '💬'}</Text>
+          <ScrollView
+            style={st.listScroll}
+            contentContainerStyle={[st.listScrollContent, st.center]}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.brand} colors={[Colors.brand]} />
+            }
+          >
+            {filter === 'dinero' ? (
+              <View style={st.cemacEmptyMark}><Text style={st.cemacEmptyText}>XAF</Text></View>
+            ) : (
+              <Text style={st.emptyIcon}>💬</Text>
+            )}
             <Text style={[st.emptyTitle, { color: C.textPrimary }]}>
               {filter === 'dinero'
                 ? 'Sin transferencias recientes'
                 : searchQuery ? 'Sin resultados' : 'No tienes chats aún'}
             </Text>
             <Text style={[st.emptySub, { color: C.textSecondary }]}>
-              {filter === 'dinero'
+              {loadError && !searchQuery && filter !== 'dinero'
+                ? loadError
+                : filter === 'dinero'
                 ? 'Los chats con movimientos XAF aparecerán aquí'
                 : searchQuery ? 'Prueba con otro nombre' : 'Toca + para empezar una conversación'}
             </Text>
+            {loadError && !searchQuery && filter !== 'dinero' && (
+              <TouchableOpacity
+                style={st.retryBtn}
+                onPress={() => { setRefreshing(true); loadChats(currentUserId); }}
+                activeOpacity={0.85}
+              >
+                <Text style={st.retryBtnText}>Recargar chats</Text>
+              </TouchableOpacity>
+            )}
             {filter === 'dinero' && (
               <TouchableOpacity
                 style={st.dineroCta}
@@ -686,41 +1084,52 @@ export default function MensajeriaScreen() {
                 </LinearGradient>
               </TouchableOpacity>
             )}
-          </View>
+          </ScrollView>
         ) : (
-          <View>
-            {filtered.map((item, i) => {
-              const other = item.participants.find(p => p.user_id !== currentUserId);
-              const otherUserId = other?.user_id;
-              const hasStory = otherUserId ? activeUserIds.has(otherUserId) : false;
-              const storySeen = otherUserId ? seenUserIds.has(otherUserId) : false;
-              return (
-                <View key={item.id}>
-                  <SwipeChatItem
-                    onOpen={() => openChat(item)}
-                    onArchive={() => archiveChat(item)}
-                    onDelete={() => deleteChatLocal(item.id)}
-                    onMarkUnread={() => toast.info('Marcado como no leído')}
-                  >
-                    <ChatItem
-                      chat={item}
-                      currentUserId={currentUserId}
-                      staticRow
-                      onLongPress={() => handleChatLongPress(item)}
-                      hasStory={hasStory}
-                      storySeen={storySeen}
-                    />
-                  </SwipeChatItem>
-                  {i < filtered.length - 1 && (
-                    <View style={[st.separator, { backgroundColor: C.borderLight }]} />
-                  )}
-                </View>
-              );
-            })}
-            <View style={{ height: 100 }} />
-          </View>
+          <ChatFlatList
+            data={filtered as any[]}
+            keyExtractor={(item: any) => item.id}
+            showsVerticalScrollIndicator={false}
+            estimatedItemSize={68}
+            initialNumToRender={12}
+            maxToRenderPerBatch={10}
+            windowSize={7}
+            removeClippedSubviews={Platform.OS === 'android'}
+            ListFooterComponent={<View style={{ height: Platform.OS === 'android' ? 80 : 100 }} />}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.brand} colors={[Colors.brand]} />
+            }
+            ItemSeparatorComponent={() => (
+              <View style={[st.separator, { backgroundColor: C.borderLight }]} />
+            )}
+            renderItem={({ item }: { item: ArchivedChat }) => (
+              <SwipeChatItem
+                onOpen={() => openChat(item)}
+                onArchive={() => archiveChat(item)}
+                onDelete={() => deleteChatLocal(item.id)}
+                onMarkUnread={() => toast.info('Marcado como no leído')}
+              >
+                <ChatItem
+                  chat={item}
+                  currentUserId={currentUserId}
+                  staticRow
+                  fontScale={fontScale}
+                  onLongPress={() => handleChatLongPress(item)}
+                  contentTypes={(() => {
+                    // Obtener userId del contacto (solo chats privados)
+                    if (item.type !== 'private') return undefined;
+                    const other = item.participants.find(
+                      (p: any) => String(p.user_id) !== String(currentUserId)
+                    );
+                    if (!other) return undefined;
+                    return newContentMap[other.user_id];
+                  })()}
+                />
+              </SwipeChatItem>
+            )}
+          />
         )}
-      </ScrollView>
+      </View>
 
       {/* ══════════════════════════════════════════════════════════
           FAB REFRESH — botón circular verde abajo derecha
@@ -741,34 +1150,19 @@ export default function MensajeriaScreen() {
       </TouchableOpacity>
 
       {/* ══════════════════════════════════════════════════════════
-          LIA-25 — asistente flotante (igual que Home)
-      ══════════════════════════════════════════════════════════ */}
-      <TouchableOpacity
-        style={st.liaBtn}
-        onPress={() => router.push('/(tabs)/lia' as any)}
-        activeOpacity={0.85}
-      >
-        <LinearGradient
-          colors={['#00C8A0', '#00B4E6']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={st.liaBtnGrad}
-        >
-          <SpinningLogo size={36} glow={false} />
-        </LinearGradient>
-      </TouchableOpacity>
-
-      {/* ══════════════════════════════════════════════════════════
           PANELES DEL HEADER
       ══════════════════════════════════════════════════════════ */}
+      {/* Botón HOME flotante arrastrable */}
+      <DraggableHomeButton />
+
       <NotificationsPanel
         visible={showNotifications}
         onClose={() => setShowNotifications(false)}
         notifications={notifications}
-        onMarkAllRead={() => setNotifications(prev => prev.map(n => ({ ...n, read: true })))}
-        onClearAll={() => setNotifications([])}
+        onMarkAllRead={() => markAllRead()}
+        onClearAll={() => clearAllNotifications()}
         onNotifPress={(n) => {
-          setNotifications(prev => prev.filter(x => x.id !== n.id));
+          markNotificationRead(n.id);
           setShowNotifications(false);
           if (n.chatId) router.push(`/chat/${n.chatId}` as any);
         }}
@@ -776,13 +1170,25 @@ export default function MensajeriaScreen() {
       <HamburgerMenu
         visible={showMenu}
         onClose={() => setShowMenu(false)}
+        user={currentUser}
       />
       <WeatherModal
         visible={showWeather}
         onClose={() => setShowWeather(false)}
-        temp={`${temp}°`}
-        city="Malabo"
-        condition={weatherCondition}
+        temp={`${weather.temp}°`}
+        city={weather.city}
+        condition={weather.condition}
+      />
+
+      {/* Sprint 1.1 — Modal crear grupo */}
+      <CreateGroupModal
+        visible={showCreateGroup}
+        onClose={() => setShowCreateGroup(false)}
+        onGroupCreated={(newChat) => {
+          setShowCreateGroup(false);
+          loadChats(currentUserId);
+          router.push(`/chat/${newChat.id}` as any);
+        }}
       />
 
       {/* Modal contraseña archivo */}
@@ -792,6 +1198,7 @@ export default function MensajeriaScreen() {
         animationType="fade"
         onRequestClose={() => { setShowArchiveSetup(false); setShowArchiveUnlock(false); setArchivePwdInput(''); setArchivePwdError(''); }}
       >
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <Pressable style={st.modalOverlay} onPress={() => { setShowArchiveSetup(false); setShowArchiveUnlock(false); }}>
           <Pressable style={st.modalSheet} onPress={() => {}}>
             <Text style={st.modalTitle}>
@@ -845,6 +1252,7 @@ export default function MensajeriaScreen() {
             </View>
           </Pressable>
         </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
     </SafeAreaView>
@@ -856,6 +1264,10 @@ export default function MensajeriaScreen() {
 // ══════════════════════════════════════════════════════════════════
 const st = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
+  contentArea: { flex: 1 },
+  fixedContent: { flexShrink: 0 },
+  listScroll: { flex: 1 },
+  listScrollContent: { paddingBottom: Platform.OS === 'android' ? 80 : 100 },
 
   // ── Header ──────────────────────────────────────────────────────
   header: {
@@ -923,6 +1335,10 @@ const st = StyleSheet.create({
     padding: 0,
   },
   searchClear: { padding: 2 },
+  globalSearchBtn: {
+    width: 40, height: 44, borderRadius: 10, borderWidth: 1,
+    alignItems: 'center', justifyContent: 'center', marginLeft: 4,
+  },
   newChatBtn: {
     width: 44, height: 44, borderRadius: 10,
     ...Shadow.sm,
@@ -974,23 +1390,28 @@ const st = StyleSheet.create({
     backgroundColor: Colors.bgSecondary,
     borderBottomWidth: 1,
     borderBottomColor: Colors.borderLight,
-    paddingVertical: Spacing.sm,
+    paddingVertical: 6,
   },
   filtersRow: {
-    paddingHorizontal: Spacing.md,
-    gap: Spacing.sm,
+    paddingHorizontal: Platform.OS === 'ios' ? 4 : 8,
+    gap: Platform.OS === 'ios' ? 2 : 4,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
   filterChip: {
+    flex: 1,
+    minWidth: 0,
+    flexShrink: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 14,
+    justifyContent: 'center',
+    gap: Platform.OS === 'ios' ? 2 : 3,
+    paddingHorizontal: Platform.OS === 'ios' ? 1 : 2,
     paddingVertical: 6,
-    borderRadius: 20,
+    borderRadius: 16,
     backgroundColor: '#ffffff',
-    borderWidth: 1.5,
+    borderWidth: 1.2,
     borderColor: '#d1d5db',
   },
   filterChipActive: {
@@ -1010,8 +1431,8 @@ const st = StyleSheet.create({
     elevation: 3,
   },
   filterText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: Platform.OS === 'ios' ? 10 : 11,
+    fontWeight: '700',
     color: '#374151',
   },
   filterTextActive: {
@@ -1022,33 +1443,88 @@ const st = StyleSheet.create({
   chatItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: Spacing.listItemPaddingV,
-    paddingHorizontal: Spacing.listItemPaddingH,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     backgroundColor: Colors.bgSecondary,
-    gap: Spacing.listItemGap,
+    gap: 10,
   },
-  chatInfo: { flex: 1, gap: 3 },
+  chatInfo: { flex: 1, gap: 2 },
   chatRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  chatName: { ...Typography.chatName, flex: 1, marginRight: Spacing.sm },
-  chatTime: { ...Typography.timestamp, color: Colors.textTertiary },
+  chatName: { ...Typography.chatName, fontSize: 15, flex: 1, marginRight: Spacing.sm },
+  chatTime: { ...Typography.timestamp, fontSize: 11, color: Colors.textTertiary },
   chatTimeUnread: { color: Colors.accent, fontWeight: FontWeight.semibold },
-  chatMsg: { ...Typography.subtitle, color: Colors.textSecondary, flex: 1, marginRight: Spacing.sm },
+  chatMsg: { ...Typography.subtitle, fontSize: 13, color: Colors.textSecondary, flex: 1 },
+  chatMsgRow: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: Spacing.sm },
+  chatMsgIcon: { marginRight: 4, opacity: 0.7 },
   badge: {
     backgroundColor: Colors.accent, borderRadius: BorderRadius.badge,
-    minWidth: 20, height: 20, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5,
+    minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4,
   },
-  badgeText: { ...Typography.badge, color: Colors.white },
+  badgeText: { ...Typography.badge, fontSize: 10, color: Colors.white },
   separator: {
     height: 1,
     backgroundColor: Colors.borderLight,
-    marginLeft: Spacing.listItemPaddingH + 50 + Spacing.listItemGap,
+    marginLeft: 66,
   },
 
   // ── Empty state ──────────────────────────────────────────────────
   center: { alignItems: 'center', justifyContent: 'center', padding: Spacing.screenPadding, paddingTop: 60 },
   emptyIcon: { fontSize: 48, marginBottom: Spacing.md },
   emptyTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.textPrimary, marginBottom: Spacing.sm, textAlign: 'center' },
+
+  // ── Group badge ──────────────────────────────────────────────────
+  groupBadge: {
+    position: 'absolute', bottom: -2, right: -2,
+    width: 18, height: 18, borderRadius: 9,
+    backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.15, shadowRadius: 2, elevation: 2,
+  },
+  groupBadgeDjangue: { backgroundColor: '#0f766e', width: 27, borderRadius: 9 },
+  groupBadgeText: { fontSize: 9, fontWeight: '800', color: '#475569' },
+  groupBadgeTextDjangue: { fontSize: 7, color: '#fff', letterSpacing: 0.2 },
+
+  cemacEmptyMark: {
+    width: 64, height: 44, borderRadius: 12, marginBottom: Spacing.md,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#e6fffa', borderWidth: 1, borderColor: '#99f6e4',
+  },
+  cemacEmptyText: { fontSize: 16, fontWeight: '800', color: '#0f766e', letterSpacing: 1 },
+
+  // ── Group subtabs ────────────────────────────────────────────────
+  groupSubTabsWrap: {
+    flexDirection: 'row',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 6,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  groupSubTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: '#d1d5db',
+    backgroundColor: 'transparent',
+  },
+  groupSubTabActive: {
+    backgroundColor: '#6366f1',
+    borderColor: '#6366f1',
+  },
+  groupSubTabText: { fontSize: 12, fontWeight: '600', color: '#64748b' },
+  groupSubTabTextActive: { color: '#fff' },
   emptySub: { fontSize: FontSize.sm, color: Colors.textSecondary, textAlign: 'center' },
+  retryBtn: {
+    marginTop: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: Colors.accent,
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+  },
+  retryBtnText: { color: '#fff', fontWeight: FontWeight.bold, fontSize: FontSize.sm },
   dineroCta: { marginTop: Spacing.lg, borderRadius: BorderRadius.lg, overflow: 'hidden' },
   dineroCtaGrad: { paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md },
   dineroCtaText: { color: '#fff', fontSize: FontSize.md, fontWeight: '700' },
@@ -1125,3 +1601,11 @@ const st = StyleSheet.create({
   },
   liaLogo: { width: 36, height: 36, borderRadius: 18 },
 });
+
+export default function MensajeriaScreen() {
+  return (
+    <TabErrorBoundary tabName="Mensajería">
+      <MensajeriaScreenInner />
+    </TabErrorBoundary>
+  );
+}

@@ -1,340 +1,481 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Linking, TextInput, ActivityIndicator, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-import { Colors, Typography, Spacing, BorderRadius, FontSize, FontWeight, Shadow } from '../src/theme';
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  View, Text, TouchableOpacity, StyleSheet, ScrollView,
+  TextInput, Modal, Pressable, ActivityIndicator, Linking,
+  KeyboardAvoidingView, Platform,
+} from 'react-native';
 import { useThemeContext } from '../src/theme/ThemeContext';
+import { Colors } from '../src/theme';
 import { DarkColors } from '../src/theme/darkMode';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
 import { cemacAPI, walletAPI } from '../src/api';
-
-const COUNTRIES = [
-  { flag: '🇬🇶', name: 'Guinea Ecuatorial', capital: 'Malabo', currency: 'XAF', phone: '+240' },
-  { flag: '🇨🇲', name: 'Camerún', capital: 'Yaundé', currency: 'XAF', phone: '+237' },
-  { flag: '🇨🇬', name: 'Congo', capital: 'Brazzaville', currency: 'XAF', phone: '+242' },
-  { flag: '🇬🇦', name: 'Gabón', capital: 'Libreville', currency: 'XAF', phone: '+241' },
-  { flag: '🇨🇫', name: 'Rep. Centroafricana', capital: 'Bangui', currency: 'XAF', phone: '+236' },
-  { flag: '🇹🇩', name: 'Chad', capital: 'N\'Djamena', currency: 'XAF', phone: '+235' },
-];
-
-const CODIGOS: Record<string, string> = {
-  'Guinea Ecuatorial': 'GQ', 'Camerún': 'CM', 'Congo': 'CG', 'Gabón': 'GA',
-  'Rep. Centroafricana': 'CF', 'Chad': 'TD',
-};
-
-// La cartera de la app solo abre en Guinea Ecuatorial, así que el origen fijo.
-const ORIGEN = 'GQ';
-
-const SERVICIOS = [
-  { icon: '💸', title: 'Transferencias CEMAC', desc: 'Envía dinero al resto de países de la zona', disponible: true },
-  { icon: '🏦', title: 'Banca regional', desc: 'Servicios bancarios en toda la zona CEMAC', disponible: false },
-  { icon: '✈️', title: 'Vuelos regionales', desc: 'Reserva vuelos entre los países de la CEMAC', disponible: false },
-  { icon: '📋', title: 'Trámites consulares', desc: 'Información sobre visados y trámites', disponible: false },
-  { icon: '🌐', title: 'Roaming CEMAC', desc: 'Usa tu número en toda la zona', disponible: false },
-];
-
-const fmt = (n: number) => Math.round(n || 0).toLocaleString('es-ES');
-
-// La referencia es la clave de idempotencia del asiento: cambiar un campo
-// descarta la referencia anterior para que el nuevo intento sea otro envío.
-const nuevaReferencia = () => `APP-${Date.now().toString(36).toUpperCase()}-${Math.floor(Math.random() * 1e4)}`;
+import { toast } from '../src/components/Toast';
+import { CemacLogo } from '../src/components/CemacLogo';
+import {
+  LANGS, COUNTRIES, T, SERVICES, LEISURE, CAT_ICON, ATMS, NEWS, RATES, HISTORY, NEWS_COLOR,
+  type Lang, type CountryCode, type CemacTab,
+} from '../src/data/cemacData';
 
 export default function CemacScreen() {
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
+  const insets = useSafeAreaInsets();
+  const [lang, setLang] = useState<Lang | null>(null);
+  const [country, setCountry] = useState<CountryCode | null>(null);
+  const [tab, setTab] = useState<CemacTab>('servicios');
+  const [query, setQuery] = useState('');
+  const [balance, setBalance] = useState(0);
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [xfer, setXfer] = useState({ from: 'GQ', to: 'CM', name: '', account: '', amount: '' });
+  const [xferLoading, setXferLoading] = useState(false);
+  const [fromCur, setFromCur] = useState('XAF');
+  const [toCur, setToCur] = useState('EUR');
+  const [amt, setAmt] = useState('');
 
-  const [comision, setComision] = useState<number | null>(null);
-  const [minimo, setMinimo] = useState(1000);
-  const [maximo, setMaximo] = useState(1000000);
-  const [saldo, setSaldo] = useState<number | null>(null);
-  const [destino, setDestino] = useState('CM');
-  const [nombre, setNombre] = useState('');
-  const [cuenta, setCuenta] = useState('');
-  const [importe, setImporte] = useState('');
-  const [referencia, setReferencia] = useState(nuevaReferencia);
-  const [enviando, setEnviando] = useState(false);
-  const [historial, setHistorial] = useState<any[]>([]);
+  const t = T[lang || 'ES'];
 
-  const cargar = useCallback(async () => {
-    try {
-      const [r, b, h] = await Promise.all([cemacAPI.rates(), walletAPI.getBalance(), cemacAPI.list()]);
-      setComision(typeof r?.transfer_fee_flat === 'number' ? r.transfer_fee_flat : null);
-      if (typeof r?.min_amount === 'number') setMinimo(r.min_amount);
-      if (typeof r?.max_amount === 'number') setMaximo(r.max_amount);
-      setSaldo(Number(b?.balance ?? 0));
-      setHistorial(Array.isArray(h) ? h : []);
-    } catch {
-      // Sin respuesta el formulario sigue usable; el envío avisará del error.
-    }
+  useEffect(() => {
+    walletAPI.getBalance().then(r => setBalance(r.balance || 0)).catch(() => {});
   }, []);
 
-  useEffect(() => { cargar(); }, [cargar]);
+  const enterCountry = (code: CountryCode) => {
+    setLang(prev => prev || 'ES');
+    setCountry(code);
+  };
 
-  const monto = useMemo(() => Number(importe) || 0, [importe]);
-  const total = comision === null ? monto : monto + comision;
+  const filtered = useMemo(() => {
+    const q = query.toLowerCase();
+    if (!q) return SERVICES;
+    return SERVICES.filter(s => s.nameES.toLowerCase().includes(q) || s.desc.toLowerCase().includes(q));
+  }, [query]);
 
-  const enviar = async () => {
-    if (!nombre.trim() || !cuenta.trim()) {
-      Alert.alert('Faltan datos', 'Escribe el nombre y la cuenta del beneficiario.');
+  const convertResult = useMemo(() => {
+    const n = parseFloat(amt);
+    if (!n || fromCur === toCur) return null;
+    if (fromCur === 'XAF') return (n * (RATES[toCur] || 0)).toFixed(4);
+    if (toCur === 'XAF') return (n / (RATES[fromCur] || 1)).toFixed(0);
+    return (n * (RATES[toCur] || 0) / (RATES[fromCur] || 1)).toFixed(4);
+  }, [amt, fromCur, toCur]);
+
+  const sendTransfer = async () => {
+    const amount = parseInt(xfer.amount, 10);
+    if (!xfer.name.trim() || !xfer.account.trim() || !amount || amount > balance) {
+      toast.error('Datos incompletos o saldo insuficiente');
       return;
     }
-    if (monto < minimo || monto > maximo) {
-      Alert.alert('Importe fuera de rango', `Debe estar entre ${fmt(minimo)} y ${fmt(maximo)} XAF.`);
-      return;
-    }
-    if (saldo !== null && total > saldo) {
-      Alert.alert('Saldo insuficiente', `Necesitas ${fmt(total)} XAF y tu saldo es ${fmt(saldo)} XAF.`);
-      return;
-    }
-    setEnviando(true);
+    setXferLoading(true);
     try {
-      const r = await cemacAPI.create({
-        from_country: ORIGEN,
-        to_country: destino,
-        beneficiary_name: nombre.trim(),
-        beneficiary_account: cuenta.trim(),
-        amount: monto,
-        external_id: referencia,
+      await cemacAPI.createTransfer({
+        from_country: xfer.from,
+        to_country: xfer.to,
+        beneficiary_name: xfer.name.trim(),
+        beneficiary_account: xfer.account.trim(),
+        amount,
       });
-      Alert.alert(
-        'Transferencia enviada',
-        `${fmt(monto)} XAF a ${nombre.trim()} (${destino})\nComisión ${fmt(comision ?? 0)} XAF · Saldo ${fmt(Number(r?.balance ?? 0))} XAF`,
-      );
-      setNombre(''); setCuenta(''); setImporte('');
-      await cargar();
-    } catch (e: any) {
-      Alert.alert('No se pudo enviar', String(e?.message || 'Revisa el importe e inténtalo de nuevo.'));
+      toast.success('Transferencia enviada');
+      setTransferOpen(false);
+      setXfer({ from: 'GQ', to: 'CM', name: '', account: '', amount: '' });
+      const r = await walletAPI.getBalance();
+      setBalance(r.balance || 0);
+    } catch {
+      toast.error('No se pudo enviar la transferencia');
     } finally {
-      setEnviando(false);
+      setXferLoading(false);
     }
   };
 
-  return (
-    <SafeAreaView style={[styles.container, { backgroundColor: C.bgPrimary }]} edges={['top']}>
-      <View style={[styles.header, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={[styles.backIcon, { color: C.textPrimary }]}>‹</Text>
+  const ctry = COUNTRIES.find(c => c.code === country);
+
+  if (!country) {
+    return (
+      <LinearGradient
+        colors={['#003d22', '#006b3c', '#00a86b', '#00c8a0', '#00B4E6']}
+        locations={[0, 0.35, 0.65, 0.85, 1]}
+        style={{ flex: 1 }}
+      >
+        <SafeAreaView style={{ flex: 1 }} edges={['left', 'right', 'bottom']}>
+        <TouchableOpacity onPress={() => router.back()} style={[s.welcomeBack, { paddingTop: insets.top + 12 }]}>
+          <Text style={{ color: '#fff', fontSize: 28, lineHeight: 32 }}>‹</Text>
+          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>Volver</Text>
         </TouchableOpacity>
-        <Text style={[styles.title, { color: C.textPrimary }]}>🌍 Zona CEMAC</Text>
-      </View>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <View style={styles.banner}>
-          <Text style={styles.bannerTitle}>Comunidad Económica y Monetaria de África Central</Text>
-          <Text style={styles.bannerSub}>6 países · 1 moneda (XAF) · 55 millones de habitantes</Text>
-        </View>
-
-        <Text style={[styles.sectionLabel, { color: C.textTertiary }]}>TRANSFERENCIA CEMAC</Text>
-        <View style={[styles.formCard, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
-          <View style={styles.rowBetween}>
-            <Text style={[styles.fieldLabel, { color: C.textTertiary }]}>DESDE</Text>
-            <Text style={[styles.originPill, { color: C.textPrimary }]}>🇬🇶 Guinea Ecuatorial</Text>
-          </View>
-
-          <Text style={[styles.fieldLabel, { color: C.textTertiary }]}>PAÍS DESTINO</Text>
-          <View style={styles.chips}>
-            {COUNTRIES.filter(c => c.name !== 'Guinea Ecuatorial').map(c => {
-              const code = CODIGOS[c.name];
-              const activo = code === destino;
-              return (
-                <TouchableOpacity
-                  key={code}
-                  onPress={() => { setDestino(code); setReferencia(nuevaReferencia()); }}
-                  style={[styles.chip, {
-                    backgroundColor: activo ? C.accent : C.bgTertiary,
-                    borderColor: activo ? C.accent : C.borderLight,
-                  }]}
-                >
-                  <Text style={[styles.chipText, { color: activo ? C.white : C.textPrimary }]}>{c.flag} {code}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          <TextInput
-            value={nombre}
-            onChangeText={v => { setNombre(v); setReferencia(nuevaReferencia()); }}
-            placeholder="Nombre del beneficiario"
-            placeholderTextColor={C.textTertiary}
-            style={[styles.input, { color: C.textPrimary, backgroundColor: C.bgTertiary, borderColor: C.borderLight }]}
-          />
-          <TextInput
-            value={cuenta}
-            onChangeText={v => { setCuenta(v); setReferencia(nuevaReferencia()); }}
-            placeholder="Cuenta o teléfono de destino"
-            placeholderTextColor={C.textTertiary}
-            autoCapitalize="none"
-            style={[styles.input, { color: C.textPrimary, backgroundColor: C.bgTertiary, borderColor: C.borderLight }]}
-          />
-          <TextInput
-            value={importe}
-            onChangeText={v => { setImporte(v.replace(/[^\d]/g, '')); setReferencia(nuevaReferencia()); }}
-            placeholder={`Importe en XAF (mín. ${fmt(minimo)})`}
-            placeholderTextColor={C.textTertiary}
-            keyboardType="number-pad"
-            style={[styles.input, { color: C.textPrimary, backgroundColor: C.bgTertiary, borderColor: C.borderLight }]}
-          />
-
-          <View style={styles.summary}>
-            <View style={styles.rowBetween}>
-              <Text style={[styles.summaryKey, { color: C.textSecondary }]}>Importe</Text>
-              <Text style={[styles.summaryVal, { color: C.textPrimary }]}>{fmt(monto)} XAF</Text>
-            </View>
-            <View style={styles.rowBetween}>
-              <Text style={[styles.summaryKey, { color: C.textSecondary }]}>Comisión</Text>
-              <Text style={[styles.summaryVal, { color: C.textPrimary }]}>
-                {comision === null ? 'consultando…' : `${fmt(comision)} XAF`}
-              </Text>
-            </View>
-            <View style={styles.rowBetween}>
-              <Text style={[styles.summaryKey, { color: C.textSecondary }]}>Total a descontar</Text>
-              <Text style={[styles.summaryVal, { color: C.accent }]}>{fmt(total)} XAF</Text>
-            </View>
-            {saldo !== null && (
-              <View style={styles.rowBetween}>
-                <Text style={[styles.summaryKey, { color: C.textSecondary }]}>Tu saldo</Text>
-                <Text style={[styles.summaryVal, { color: total > saldo ? '#D9534F' : C.textPrimary }]}>{fmt(saldo)} XAF</Text>
+        <ScrollView contentContainerStyle={s.welcomeScroll} showsVerticalScrollIndicator={false}>
+            <View style={s.welcomeHero}>
+              <CemacLogo size={80} />
+              <Text style={s.welcomeTitle}>Bienvenido a la CEMAC</Text>
+              <Text style={s.welcomeSub}>Comunidad Económica y Monetaria de África Central</Text>
+              <View style={s.statsRow}>
+                {[{ v: '6', l: 'Países' }, { v: 'XAF', l: 'Moneda' }, { v: '60M+', l: 'Personas' }].map(st => (
+                  <View key={st.l} style={s.statItem}>
+                    <Text style={s.statVal}>{st.v}</Text>
+                    <Text style={s.statLabel}>{st.l}</Text>
+                  </View>
+                ))}
               </View>
-            )}
-          </View>
+            </View>
 
-          <TouchableOpacity
-            style={[styles.sendBtn, { backgroundColor: C.accent, opacity: enviando ? 0.6 : 1 }]}
-            onPress={enviar}
-            disabled={enviando}
-            activeOpacity={0.85}
-          >
-            {enviando
-              ? <ActivityIndicator color="#FFFFFF" />
-              : <Text style={styles.sendBtnText}>Enviar transferencia</Text>}
-          </TouchableOpacity>
+            <View style={s.glassCard}>
+              <Text style={s.glassLabel}>TOCA UN PAÍS PARA ENTRAR</Text>
+              <View style={s.countryGrid}>
+                {COUNTRIES.map(c => (
+                  <TouchableOpacity key={c.code} style={s.countryCell} onPress={() => enterCountry(c.code)} activeOpacity={0.85}>
+                    <LinearGradient colors={[c.g1, c.g2]} style={s.countryIcon}>
+                      <Text style={s.countryFlag}>{c.flag}</Text>
+                    </LinearGradient>
+                    <Text style={s.countryShort}>{c.shortES}</Text>
+                    <Text style={s.countryCap}>{c.capital}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <View style={[s.glassCard, { marginBottom: 24 }]}>
+              <Text style={s.glassLabel}>ELIGE TU IDIOMA</Text>
+              <View style={s.langGrid}>
+                {LANGS.map(l => (
+                  <TouchableOpacity
+                    key={l.code}
+                    style={[s.langCell, lang === l.code && s.langCellActive]}
+                    onPress={() => setLang(l.code)}
+                    activeOpacity={0.85}
+                  >
+                    <View style={s.langCodeBox}>
+                      <Text style={s.langCode}>{l.code}</Text>
+                    </View>
+                    <Text style={[s.langName, lang === l.code && { fontWeight: '800' }]}>{l.native}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+        </LinearGradient>
+    );
+  }
+
+  const TABS: { id: CemacTab; label: string }[] = [
+    { id: 'servicios', label: t.services },
+    { id: 'ocio', label: t.leisure },
+    { id: 'cajeros', label: t.atms },
+    { id: 'cuenta', label: t.account },
+    { id: 'noticias', label: t.news },
+    { id: 'cambio', label: t.exchange },
+  ];
+
+  return (
+    <SafeAreaView style={[s.container, { backgroundColor: C.bgPrimary }]} edges={['left', 'right']}>
+      <LinearGradient colors={[ctry?.g1 || '#00b96b', ctry?.g2 || '#00e5a0']} style={[s.header, { paddingTop: insets.top + 10 }]}>
+        <TouchableOpacity onPress={() => router.back()} style={s.backBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <Text style={s.backIcon}>‹</Text>
+        </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <Text style={s.headerTitle}>CEMAC</Text>
+          <Text style={s.headerSub}>{ctry?.nameES || 'Zona CEMAC'} · {lang}</Text>
         </View>
+        <TouchableOpacity onPress={() => setTransferOpen(true)} style={s.sendBtn}>
+          <Text style={s.sendBtnText}>💸</Text>
+        </TouchableOpacity>
+      </LinearGradient>
 
-        {historial.length > 0 && (
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.tabBar} contentContainerStyle={{ paddingHorizontal: 8 }}>
+        {TABS.map(tb => (
+          <TouchableOpacity key={tb.id} style={[s.tab, tab === tb.id && s.tabActive]} onPress={() => setTab(tb.id)}>
+            <Text style={[s.tabText, tab === tb.id && s.tabTextActive]}>{tb.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      <ScrollView style={{ backgroundColor: '#f0f2f5' }} contentContainerStyle={{ padding: 14, paddingBottom: 40 }}>
+        {tab === 'servicios' && (
           <>
-            <Text style={[styles.sectionLabel, { color: C.textTertiary }]}>TUS TRANSFERENCIAS</Text>
-            {historial.slice(0, 8).map(t => (
-              <View key={String(t.id ?? t.transfer_ref)} style={[styles.serviceCard, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
-                <Text style={styles.serviceIcon}>{t.status === 'failed' ? '⚠️' : '💸'}</Text>
-                <View style={styles.serviceInfo}>
-                  <Text style={[styles.serviceTitle, { color: C.textPrimary }]}>
-                    {fmt(Number(t.amount))} XAF · {t.from_country} → {t.to_country}
-                  </Text>
-                  <Text style={[styles.serviceDesc, { color: C.textSecondary }]}>
-                    {t.beneficiary_name} · {t.status} · comisión {fmt(Number(t.fee))} XAF
-                  </Text>
+            <TextInput style={s.search} value={query} onChangeText={setQuery} placeholder={t.search} placeholderTextColor="#888" />
+            {filtered.length === 0 && <Text style={s.empty}>{t.noResults}</Text>}
+            <View style={s.grid}>
+              {filtered.map(sv => (
+                <TouchableOpacity key={sv.id} style={s.svcCard} onPress={() => {
+                  if (sv.id === 's1') { setTransferOpen(true); return; }
+                  if (sv.id === 's2') { router.push('/_qr-scanner' as any); return; }
+                  // Servicios s3-s8: navegar a servicios de la app principal
+                  const routeMap: Record<string, string> = {
+                    's3': '/(tabs)/servicios?service=supermercado',
+                    's4': '/(tabs)/servicios?service=recarga',
+                    's5': '/(tabs)/servicios?service=electricidad',
+                    's6': '/(tabs)/servicios?service=agua',
+                    's7': '/(tabs)/servicios?service=seguros',
+                    's8': '/(tabs)/servicios?service=impuestos',
+                  };
+                  if (routeMap[sv.id]) router.push(routeMap[sv.id] as any);
+                }}>
+                  <View style={[s.svcIcon, { backgroundColor: sv.bg }]}>
+                    <Text style={{ fontSize: 22 }}>{sv.icon}</Text>
+                  </View>
+                  <Text style={s.svcName}>{sv.nameES}</Text>
+                  <Text style={s.svcDesc}>{sv.desc}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        )}
+
+        {tab === 'ocio' && LEISURE.map(l => (
+          <View key={l.id} style={s.card}>
+            <Text style={{ fontSize: 28 }}>{CAT_ICON[l.cat] || '📍'}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={s.cardTitle}>{l.nameES}</Text>
+              <Text style={s.cardSub}>⭐ {l.rating} · {l.price}</Text>
+              <Text style={s.cardSub}>{l.addr}</Text>
+            </View>
+          </View>
+        ))}
+
+        {tab === 'cajeros' && ATMS.map(a => (
+          <View key={a.id} style={s.card}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.cardTitle}>{a.bank}</Text>
+              <Text style={s.cardSub}>{a.addr}</Text>
+              <Text style={s.cardSub}>{t.fee}: {a.fee} · Límite: {a.limit}</Text>
+            </View>
+            <Text style={{ color: a.ok ? '#22c55e' : '#ef4444', fontWeight: '700', fontSize: 11 }}>
+              {a.ok ? '● Abierto' : '● Cerrado'}
+            </Text>
+          </View>
+        ))}
+
+        {tab === 'cuenta' && (
+          <>
+            <View style={s.balanceCard}>
+              <Text style={s.balanceLabel}>{t.balance}</Text>
+              <Text style={s.balanceVal}>{balance.toLocaleString()} XAF</Text>
+              <TouchableOpacity style={s.primaryBtn} onPress={() => setTransferOpen(true)}>
+                <Text style={s.primaryBtnText}>{t.sendMoney}</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={s.sectionLabel}>HISTORIAL</Text>
+            {HISTORY.map(h => (
+              <View key={h.id} style={s.histRow}>
+                <Text style={{ fontSize: 18 }}>{h.type === 'in' ? '📥' : '📤'}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.cardTitle}>{h.desc}</Text>
+                  <Text style={s.cardSub}>{h.date}</Text>
                 </View>
+                <Text style={{ color: h.type === 'in' ? '#22c55e' : '#ef4444', fontWeight: '800' }}>
+                  {h.type === 'in' ? '+' : '-'}{h.amount.toLocaleString()}
+                </Text>
               </View>
             ))}
           </>
         )}
 
-        <Text style={[styles.sectionLabel, { color: C.textTertiary }]}>PAÍSES MIEMBROS</Text>
-        <View style={styles.countriesGrid}>
-          {COUNTRIES.map(c => (
-            <View key={c.name} style={[styles.countryCard, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
-              <Text style={styles.countryFlag}>{c.flag}</Text>
-              <Text style={[styles.countryName, { color: C.textPrimary }]}>{c.name}</Text>
-              <Text style={[styles.countrySub, { color: C.textTertiary }]}>{c.capital}</Text>
-              <Text style={styles.countryPhone}>{c.phone}</Text>
+        {tab === 'noticias' && NEWS.map(n => (
+          <View key={n.id} style={s.newsCard}>
+            <View style={[s.newsCat, { backgroundColor: (NEWS_COLOR[n.cat] || '#666') + '22' }]}>
+              <Text style={{ fontSize: 10, color: NEWS_COLOR[n.cat], fontWeight: '700' }}>{n.cat.toUpperCase()}</Text>
             </View>
-          ))}
-        </View>
-
-        <Text style={[styles.sectionLabel, { color: C.textTertiary }]}>SERVICIOS DE LA ZONA</Text>
-        {SERVICIOS.map(s => (
-          <View key={s.title} style={[styles.serviceCard, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
-            <Text style={styles.serviceIcon}>{s.icon}</Text>
-            <View style={styles.serviceInfo}>
-              <View style={styles.titleRow}>
-                <Text style={[styles.serviceTitle, { color: C.textPrimary }]}>{s.title}</Text>
-                <View style={[styles.statusChip, { backgroundColor: s.disponible ? C.accentLight : C.bgTertiary }]}>
-                  <Text style={[styles.statusChipText, { color: s.disponible ? C.accent : C.textTertiary }]}>
-                    {s.disponible ? 'Disponible' : 'Próximamente'}
-                  </Text>
-                </View>
-              </View>
-              <Text style={[styles.serviceDesc, { color: C.textSecondary }]}>{s.desc}</Text>
-            </View>
+            <Text style={s.cardTitle}>{n.title}</Text>
+            <Text style={s.cardSub}>{n.source} · {n.time}</Text>
           </View>
         ))}
 
-        <TouchableOpacity style={styles.webBtn} onPress={() => Linking.openURL('https://www.cemac.int')}>
-          <Text style={styles.webBtnText}>🌐 Sitio oficial CEMAC</Text>
+        {tab === 'cambio' && (
+          <>
+            <Text style={s.sectionLabel}>{t.rates}</Text>
+            {Object.entries(RATES).filter(([k]) => k !== 'XOF').map(([cur, rate]) => (
+              <View key={cur} style={s.rateRow}>
+                <Text style={s.cardTitle}>1 XAF → {cur}</Text>
+                <Text style={s.rateVal}>{rate}</Text>
+              </View>
+            ))}
+            <Text style={[s.sectionLabel, { marginTop: 16 }]}>{t.convert}</Text>
+            <TextInput style={s.search} value={amt} onChangeText={setAmt} placeholder="Cantidad" keyboardType="numeric" placeholderTextColor="#888" />
+            <View style={s.curRow}>
+              {['XAF', 'EUR', 'USD'].map(c => (
+                <TouchableOpacity key={`f-${c}`} style={[s.chip, fromCur === c && s.chipActive]} onPress={() => setFromCur(c)}>
+                  <Text style={[s.chipText, fromCur === c && s.chipTextActive]}>{t.from} {c}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={s.curRow}>
+              {['EUR', 'USD', 'GBP'].map(c => (
+                <TouchableOpacity key={`t-${c}`} style={[s.chip, toCur === c && s.chipActive]} onPress={() => setToCur(c)}>
+                  <Text style={[s.chipText, toCur === c && s.chipTextActive]}>{t.to} {c}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {convertResult && (
+              <Text style={s.resultText}>{t.result}: {convertResult} {toCur}</Text>
+            )}
+          </>
+        )}
+
+        <TouchableOpacity style={s.webLink} onPress={() => Linking.openURL('https://www.cemac.int')}>
+          <Text style={s.webLinkText}>🌐 Sitio oficial CEMAC</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      <Modal visible={transferOpen} transparent animationType="slide" onRequestClose={() => setTransferOpen(false)}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <Pressable style={s.modalOverlay} onPress={() => setTransferOpen(false)}>
+          <Pressable style={s.modalSheet} onPress={() => {}}>
+            <Text style={s.modalTitle}>{t.sendMoney}</Text>
+            <Text style={s.fieldLabel}>{t.from}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
+              {COUNTRIES.map(c => (
+                <TouchableOpacity key={`f-${c.code}`} style={[s.chip, xfer.from === c.code && s.chipActive]} onPress={() => setXfer(p => ({ ...p, from: c.code }))}>
+                  <Text style={[s.chipText, xfer.from === c.code && s.chipTextActive]}>{c.code}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <Text style={s.fieldLabel}>{t.to}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
+              {COUNTRIES.map(c => (
+                <TouchableOpacity key={`t-${c.code}`} style={[s.chip, xfer.to === c.code && s.chipActive]} onPress={() => setXfer(p => ({ ...p, to: c.code }))}>
+                  <Text style={[s.chipText, xfer.to === c.code && s.chipTextActive]}>{c.code}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <TextInput style={s.search} value={xfer.name} onChangeText={v => setXfer(p => ({ ...p, name: v }))} placeholder={t.recipient} placeholderTextColor="#888" />
+            <TextInput style={s.search} value={xfer.account} onChangeText={v => setXfer(p => ({ ...p, account: v }))} placeholder="Cuenta / IBAN" placeholderTextColor="#888" />
+            <TextInput style={s.search} value={xfer.amount} onChangeText={v => setXfer(p => ({ ...p, amount: v }))} placeholder={t.amount} keyboardType="numeric" placeholderTextColor="#888" />
+            <View style={s.modalBtns}>
+              <TouchableOpacity style={s.cancelBtn} onPress={() => setTransferOpen(false)}>
+                <Text style={s.cancelBtnText}>{t.cancel}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.primaryBtn} onPress={sendTransfer} disabled={xferLoading}>
+                {xferLoading ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryBtnText}>{t.send}</Text>}
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgPrimary },
-  header: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: Colors.bgSecondary,
-    borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
-    paddingHorizontal: Spacing.sm, paddingVertical: Spacing.sm, gap: Spacing.sm,
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#0f0f13' },
+  welcomeBack: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  welcomeScroll: { paddingHorizontal: 12, paddingBottom: 20 },
+  welcomeHero: { alignItems: 'center', paddingTop: 8, paddingBottom: 10, paddingHorizontal: 20 },
+  welcomeTitle: { color: '#fff', fontSize: 20, fontWeight: '900', marginTop: 8, marginBottom: 2 },
+  welcomeSub: { color: 'rgba(255,255,255,0.75)', fontSize: 11, textAlign: 'center', marginBottom: 8 },
+  statsRow: { flexDirection: 'row', justifyContent: 'center', gap: 28, marginTop: 4 },
+  statItem: { alignItems: 'center' },
+  statVal: { color: '#fff', fontSize: 14, fontWeight: '800' },
+  statLabel: { color: 'rgba(255,255,255,0.6)', fontSize: 10, marginTop: 2 },
+  glassCard: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
   },
-  backBtn: { padding: Spacing.sm },
-  backIcon: { fontSize: 28, color: Colors.textPrimary, lineHeight: 32 },
-  title: { ...Typography.headerTitle, color: Colors.textPrimary },
-  content: { padding: Spacing.md, gap: Spacing.md },
-  banner: {
-    backgroundColor: '#00b96b', borderRadius: BorderRadius.xl,
-    padding: Spacing.xl, alignItems: 'center',
+  glassLabel: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1,
+    textAlign: 'center',
+    marginBottom: 10,
+    textTransform: 'uppercase',
   },
-  bannerTitle: { fontSize: FontSize.md, fontWeight: FontWeight.bold, color: Colors.white, textAlign: 'center' },
-  bannerSub: { fontSize: FontSize.sm, color: 'rgba(255,255,255,0.8)', marginTop: Spacing.sm, textAlign: 'center' },
-  sectionLabel: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, color: Colors.textTertiary, letterSpacing: 0.5 },
-  formCard: {
-    borderRadius: BorderRadius.lg, padding: Spacing.md, gap: Spacing.sm,
-    borderWidth: 1, borderColor: Colors.borderLight, ...Shadow.sm,
+  countryGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 8 },
+  countryCell: { width: '31%', alignItems: 'center', gap: 5, paddingVertical: 4 },
+  countryIcon: {
+    width: 58,
+    height: 58,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.4)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 4,
   },
-  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.sm },
-  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.sm },
-  fieldLabel: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, letterSpacing: 0.5, marginTop: Spacing.xs },
-  originPill: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
-  chip: {
-    paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full, borderWidth: 1,
+  countryCode: { color: '#fff', fontSize: 13, fontWeight: '900', letterSpacing: 0.5 },
+  countryFlag: { fontSize: 28 },
+  countryShort: { color: '#fff', fontSize: 11, fontWeight: '700', textAlign: 'center' },
+  countryCap: { color: 'rgba(255,255,255,0.6)', fontSize: 9, textAlign: 'center' },
+  langGrid: { flexDirection: 'row', gap: 6 },
+  langCell: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    gap: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
-  chipText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold },
-  input: {
-    borderWidth: 1, borderRadius: BorderRadius.md,
-    paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm,
-    fontSize: FontSize.base,
+  langCellActive: {
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.85)',
   },
-  summary: { gap: 4, paddingTop: Spacing.sm, borderTopWidth: 1, borderTopColor: Colors.borderLight },
-  summaryKey: { fontSize: FontSize.sm },
-  summaryVal: { fontSize: FontSize.sm, fontWeight: FontWeight.bold },
-  sendBtn: { marginTop: Spacing.sm, borderRadius: BorderRadius.md, padding: Spacing.md, alignItems: 'center' },
-  sendBtnText: { fontSize: FontSize.base, fontWeight: FontWeight.bold, color: Colors.white },
-  countriesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
-  countryCard: {
-    width: '30%', backgroundColor: Colors.bgSecondary,
-    borderRadius: BorderRadius.lg, padding: Spacing.md,
-    alignItems: 'center', borderWidth: 1, borderColor: Colors.borderLight,
-    ...Shadow.sm,
+  langCodeBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  countryFlag: { fontSize: 32, marginBottom: Spacing.xs },
-  countryName: { fontSize: FontSize.xs, fontWeight: FontWeight.bold, color: Colors.textPrimary, textAlign: 'center' },
-  countrySub: { fontSize: FontSize.xs, color: Colors.textTertiary, textAlign: 'center' },
-  countryPhone: { fontSize: FontSize.xs, color: Colors.accent, marginTop: 2 },
-  serviceCard: {
-    flexDirection: 'row', alignItems: 'flex-start',
-    backgroundColor: Colors.bgSecondary, borderRadius: BorderRadius.lg,
-    padding: Spacing.md, gap: Spacing.md,
-    borderWidth: 1, borderColor: Colors.borderLight, ...Shadow.sm,
-  },
-  serviceIcon: { fontSize: 26, width: 36, textAlign: 'center' },
-  serviceInfo: { flex: 1 },
-  serviceTitle: { fontSize: FontSize.base, fontWeight: FontWeight.semibold, color: Colors.textPrimary },
-  serviceDesc: { fontSize: FontSize.sm, color: Colors.textSecondary, marginTop: 2 },
-  statusChip: { paddingHorizontal: Spacing.sm, paddingVertical: 2, borderRadius: BorderRadius.full },
-  statusChipText: { fontSize: FontSize.xs, fontWeight: FontWeight.bold },
-  webBtn: {
-    backgroundColor: Colors.accentLight, borderRadius: BorderRadius.lg,
-    padding: Spacing.md, alignItems: 'center',
-    borderWidth: 1, borderColor: Colors.accent,
-  },
-  webBtnText: { fontSize: FontSize.base, color: Colors.accent, fontWeight: FontWeight.semibold },
+  langCode: { color: '#fff', fontWeight: '900', fontSize: 11 },
+  langName: { color: '#fff', fontSize: 11, fontWeight: '600', textAlign: 'center' },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
+  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#1a1a24', borderWidth: 1, borderColor: '#333' },
+  chipActive: { backgroundColor: '#00c8a0', borderColor: '#00c8a0' },
+  chipText: { color: '#aaa', fontSize: 13, fontWeight: '600' },
+  chipTextActive: { color: '#fff' },
+  primaryBtn: { backgroundColor: '#00c8a0', borderRadius: 12, padding: 14, alignItems: 'center', marginTop: 16 },
+  primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  header: { flexDirection: 'row', alignItems: 'center', padding: 16, paddingTop: 18, gap: 10 },
+  backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
+  backIcon: { fontSize: 28, color: '#fff', lineHeight: 32 },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: '#fff' },
+  headerSub: { fontSize: 11, color: 'rgba(255,255,255,0.8)' },
+  sendBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
+  sendBtnText: { fontSize: 20 },
+  tabBar: { backgroundColor: '#fff', maxHeight: 48, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
+  tab: { paddingHorizontal: 14, paddingVertical: 12 },
+  tabActive: { borderBottomWidth: 2, borderBottomColor: '#00c8a0' },
+  tabText: { fontSize: 12, fontWeight: '600', color: '#888' },
+  tabTextActive: { color: '#00c8a0' },
+  search: { backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 12, fontSize: 14, color: '#111' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  svcCard: { width: '47%', backgroundColor: '#fff', borderRadius: 16, padding: 14 },
+  svcIcon: { width: 46, height: 46, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  svcName: { fontSize: 13, fontWeight: '700', color: '#111' },
+  svcDesc: { fontSize: 11, color: '#888', marginTop: 4 },
+  card: { flexDirection: 'row', gap: 12, backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 10, alignItems: 'center' },
+  cardTitle: { fontSize: 14, fontWeight: '700', color: '#111' },
+  cardSub: { fontSize: 11, color: '#888', marginTop: 2 },
+  balanceCard: { backgroundColor: '#fff', borderRadius: 16, padding: 20, marginBottom: 16, alignItems: 'center' },
+  balanceLabel: { fontSize: 12, color: '#888' },
+  balanceVal: { fontSize: 28, fontWeight: '900', color: '#111', marginVertical: 8 },
+  sectionLabel: { fontSize: 11, fontWeight: '800', color: '#888', letterSpacing: 0.8, marginBottom: 10 },
+  histRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 8 },
+  newsCard: { backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 10 },
+  newsCat: { alignSelf: 'flex-start', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, marginBottom: 6 },
+  rateRow: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: '#fff', borderRadius: 10, padding: 12, marginBottom: 6 },
+  rateVal: { fontWeight: '800', color: '#00c8a0' },
+  curRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
+  resultText: { fontSize: 16, fontWeight: '800', color: '#00c8a0', textAlign: 'center', marginTop: 8 },
+  empty: { textAlign: 'center', color: '#aaa', padding: 20 },
+  webLink: { alignItems: 'center', marginTop: 20, padding: 12 },
+  webLinkText: { color: '#00c8a0', fontWeight: '700' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalSheet: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 32 },
+  modalTitle: { fontSize: 18, fontWeight: '800', color: '#111', marginBottom: 16 },
+  fieldLabel: { fontSize: 11, fontWeight: '700', color: '#888', marginBottom: 6 },
+  modalBtns: { flexDirection: 'row', gap: 10, marginTop: 8 },
+  cancelBtn: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#f3f4f6', alignItems: 'center' },
+  cancelBtnText: { color: '#666', fontWeight: '700' },
 });

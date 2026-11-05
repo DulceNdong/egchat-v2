@@ -1,0 +1,175 @@
+/**
+ * useChatStream — Conecta al SSE stream del backend Render
+ * para recibir mensajes en tiempo real sin depender de Supabase Realtime.
+ * El backend emite: { type: 'new_message', chatId, message }
+ * Latencia: < 300ms (mismo servidor que envía el mensaje)
+ */
+import { useEffect, useRef, useCallback } from 'react';
+import { getToken, getApiBase } from '../api';
+
+type StreamEvent = {
+  type: 'new_message' | 'chat_updated' | 'connected' | 'heartbeat' | 'typing' | 'read'
+       | 'sync_message' | 'session_revoked' | 'wallet_updated' | 'presence'
+       | 'transfer_received' | 'transfer_pending' | 'transfer_accepted' | 'transfer_cancelled'
+       | 'message_deleted'
+       | 'group_call_participant_joined' | 'group_call_participant_left'
+       | 'group_call_offer' | 'group_call_answer' | 'group_call_ice';
+  chatId?: string;
+  message?: any;
+  online?: boolean;
+  userId?: string;
+  messageId?: string;
+  messageIds?: string[];
+  isTyping?: boolean;
+  ts?: number;
+  // transfer_received
+  amount?: number;
+  senderName?: string;
+  newBalance?: number;
+  // transfer_pending (incoming, needs accept/cancel)
+  transferId?: string;
+  concept?: string;
+  expiresAt?: string;
+  // sync_message
+  senderDeviceId?: string;
+  // session_revoked
+  deviceId?: string;
+  sessionId?: string;
+  all?: boolean;
+  exceptDeviceId?: string;
+  // wallet_updated
+  balance?: number;
+  // group_call
+  roomId?: string;
+  fromUserId?: string;
+  name?: string;
+  avatar?: string;
+  sdp?: any;
+  candidate?: any;
+};
+
+type StreamHandler = (event: StreamEvent) => void;
+
+export function useChatStream(
+  userId: string | undefined,
+  onEvent: StreamHandler,
+) {
+  const xhrRef = useRef<XMLHttpRequest | null>(null);
+  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bufferRef = useRef('');
+  const mountedRef = useRef(true);
+  const reconnectDelayRef = useRef(1000);
+  const seenEventsRef = useRef<Set<string>>(new Set());
+  // Ref estable para onEvent — evita que cambios de referencia del callback
+  // provoquen reconexiones innecesarias o cierren el closure sobre datos viejos.
+  const onEventRef = useRef<StreamHandler>(onEvent);
+  useEffect(() => { onEventRef.current = onEvent; }, [onEvent]);
+
+  const scheduleReconnect = useCallback(() => {
+    if (!mountedRef.current) return;
+    if (reconnectTimer.current) {
+      clearTimeout(reconnectTimer.current);
+    }
+    // Máx 30s de delay para no consumir memoria en loop cuando el servidor está caído
+    const delay = Math.min(reconnectDelayRef.current * 2, 30000);
+    reconnectDelayRef.current = delay;
+    reconnectTimer.current = setTimeout(() => {
+      connect();
+    }, delay);
+  }, []);
+
+  const connect = useCallback(async () => {
+    if (!userId || !mountedRef.current) return;
+
+    // Limpiar conexión anterior y buffer — evita parsear datos de conexiones previas
+    if (xhrRef.current) {
+      xhrRef.current.abort();
+      xhrRef.current = null;
+    }
+    bufferRef.current = '';
+
+    const token = await getToken();
+    if (!token) return;
+
+    const BASE = getApiBase();
+    const url = `${BASE}/api/chat/stream?_t=${encodeURIComponent(token)}`;
+
+    // Usar XHR con streaming — sin header cache-control (causa CORS)
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.timeout = 60000;
+    // NO añadir Cache-Control — causa error CORS en preflight
+
+    let lastIndex = 0;
+
+    xhr.onprogress = () => {
+      const chunk = xhr.responseText.slice(lastIndex);
+      lastIndex = xhr.responseText.length;
+      bufferRef.current += chunk;
+
+      // Parsear líneas SSE completas (terminan en \n\n)
+      const parts = bufferRef.current.split('\n\n');
+      bufferRef.current = parts.pop() || '';
+
+      for (const part of parts) {
+        const line = part.trim();
+        if (!line.startsWith('data:')) continue;
+        try {
+          const json = JSON.parse(line.replace(/^data:\s*/, '')) as StreamEvent;
+          if (json?.type === 'connected') {
+            reconnectDelayRef.current = 1000;
+            // Limpiar seen events al reconectar — sesión nueva, no hay duplicados pendientes
+            seenEventsRef.current.clear();
+          }
+          const eventKey = [
+            json.type,
+            json.chatId || '',
+            json.message?.id || json.messageId || '',
+            json.userId || '',
+            String(json.ts || ''),
+          ].join(':');
+          if (seenEventsRef.current.has(eventKey)) continue;
+          seenEventsRef.current.add(eventKey);
+          // Mantener el Set acotado — usar sliding window en lugar de clear total
+          // para no perder contexto de deduplicación reciente
+          if (seenEventsRef.current.size > 150) {
+            const iter = seenEventsRef.current.values();
+            // Eliminar los 50 más viejos
+            for (let i = 0; i < 50; i++) {
+              const val = iter.next().value;
+              if (val !== undefined) seenEventsRef.current.delete(val);
+            }
+          }
+          // Usar ref estable — no cierra sobre versión vieja del callback
+          if (mountedRef.current) onEventRef.current(json);
+        } catch {}
+      }
+    };
+
+    xhr.onerror = () => {
+      if (!mountedRef.current) return;
+      scheduleReconnect();
+    };
+
+    xhr.onloadend = () => {
+      if (!mountedRef.current) return;
+      scheduleReconnect();
+    };
+
+    xhr.send();
+    xhrRef.current = xhr;
+  }, [userId, scheduleReconnect]); // onEvent eliminado — usamos onEventRef para evitar reconexiones por cambio de referencia
+
+  useEffect(() => {
+    mountedRef.current = true;
+    if (userId) connect();
+
+    return () => {
+      mountedRef.current = false;
+      if (xhrRef.current) { xhrRef.current.abort(); xhrRef.current = null; }
+      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+      bufferRef.current = '';
+      seenEventsRef.current.clear();
+    };
+  }, [userId, connect]);
+}

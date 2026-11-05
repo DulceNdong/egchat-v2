@@ -1,107 +1,286 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '../../src/theme';
+import React, { useEffect, useState, useCallback } from 'react';
+import { Alert, ActivityIndicator, View, Text, StyleSheet } from 'react-native';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import {
+  SettingsLayout, SettingsSection, SettingsCard, SettingsDivider, SettingsRow, VisibilityRow,
+} from '../../src/components/settings/SettingsUI';
+import { CFG, getCfgString, setCfg } from '../../src/services/settingsPrefs';
+import { getToken, getApiBase } from '../../src/api';
+import { toast } from '../../src/components/Toast';
+import { Colors } from '../../src/theme';
 
-const KEY = 'egchat_privacy_settings';
-const DEFAULT = {
-  ultimaConexion: true,
-  fotoPerfil: true,
-  estadoEnLinea: true,
-  confirmacionLectura: true,
-  biometria: false,
-};
+// ── Sincroniza configuración de privacidad con el backend ─────────
+async function syncPrivacyToBackend(settings: {
+  lastSeen?: string;
+  photoVis?: string;
+  statusVis?: string;
+}): Promise<void> {
+  try {
+    const token = await getToken();
+    const base = getApiBase();
+    await fetch(`${base}/api/auth/privacy`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        last_seen_visibility: settings.lastSeen,
+        photo_visibility: settings.photoVis,
+        status_visibility: settings.statusVis,
+      }),
+    });
+  } catch {
+    // Silencioso — la preferencia local ya se guardó
+  }
+}
+
+const VIS_OPTS = [
+  { id: 'todos', label: 'Todos' },
+  { id: 'contactos', label: 'Contactos' },
+  { id: 'nadie', label: 'Nadie' },
+];
+
+interface BlockedContact {
+  id: string;
+  contact_user_id: string;
+  full_name?: string;
+  phone?: string;
+}
 
 export default function PrivacidadScreen() {
-  const [settings, setSettings] = useState(DEFAULT);
+  const [lastSeen, setLastSeen] = useState('todos');
+  const [photoVis, setPhotoVis] = useState('todos');
+  const [statusVis, setStatusVis] = useState('todos');
+  const [blocked, setBlocked] = useState<BlockedContact[]>([]);
+  const [loadingBlocked, setLoadingBlocked] = useState(true);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.getItem(KEY).then(v => {
-      if (v) setSettings({ ...DEFAULT, ...JSON.parse(v) });
-    });
+    getCfgString(CFG.lastSeen, 'todos').then(setLastSeen);
+    getCfgString(CFG.photoVis, 'todos').then(setPhotoVis);
+    getCfgString(CFG.statusVis, 'todos').then(setStatusVis);
+    loadBlocked();
   }, []);
 
-  const toggle = async (key: keyof typeof DEFAULT) => {
-    const next = { ...settings, [key]: !settings[key] };
-    setSettings(next);
-    await AsyncStorage.setItem(KEY, JSON.stringify(next));
+  // Actualiza una opción localmente Y sincroniza con backend
+  const updatePrivacy = useCallback(async (
+    field: 'lastSeen' | 'photoVis' | 'statusVis',
+    value: string,
+    cfgKey: string,
+    setter: (v: string) => void,
+  ) => {
+    setter(value);
+    setCfg(cfgKey, value);
+    setSyncing(true);
+    const payload: Record<string, string> = {};
+    if (field === 'lastSeen') payload.lastSeen = value;
+    if (field === 'photoVis') payload.photoVis = value;
+    if (field === 'statusVis') payload.statusVis = value;
+    await syncPrivacyToBackend(payload);
+    setSyncing(false);
+  }, []);
+
+  const loadBlocked = async () => {
+    setLoadingBlocked(true);
+    try {
+      const token = await getToken();
+      const base = getApiBase();
+      const res = await fetch(`${base}/api/contacts/blocked`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setBlocked(Array.isArray(data) ? data : []);
+      }
+    } catch { /* silencioso */ }
+    setLoadingBlocked(false);
   };
 
-  const Row = ({ label, sub, k }: { label: string; sub?: string; k: keyof typeof DEFAULT }) => (
-    <View style={styles.row}>
-      <View style={styles.rowInfo}>
-        <Text style={styles.rowLabel}>{label}</Text>
-        {sub && <Text style={styles.rowSub}>{sub}</Text>}
-      </View>
-      <Switch
-        value={settings[k]}
-        onValueChange={() => toggle(k)}
-        trackColor={{ false: Colors.border, true: Colors.accent }}
-        thumbColor={Colors.white}
-      />
-    </View>
-  );
+  const unblockContact = (contact: BlockedContact) => {
+    const name = contact.full_name || contact.phone || 'este contacto';
+    Alert.alert(
+      'Desbloquear',
+      `¿Desbloquear a ${name}?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Desbloquear',
+          onPress: async () => {
+            try {
+              const token = await getToken();
+              const base = getApiBase();
+              await fetch(`${base}/api/contacts/${contact.id}/unblock`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              setBlocked(prev => prev.filter(c => c.id !== contact.id));
+              // Usuario desbloqueado silenciosamente
+            } catch {
+              toast.error('No se pudo desbloquear. Verifica tu conexión.');
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const requestDataDownload = async () => {
+    try {
+      const token = await getToken();
+      const base = getApiBase();
+      const res = await fetch(`${base}/api/auth/request-data-export`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        Alert.alert('Solicitud enviada', 'Recibirás un email con tus datos en las próximas 24 horas.');
+      } else {
+        await createLocalDataExport();
+      }
+    } catch {
+      await createLocalDataExport();
+    }
+  };
+
+  const createLocalDataExport = async () => {
+    try {
+      const fileName = `egchat-datos-${new Date().toISOString().slice(0, 10)}.json`;
+      const path = `${FileSystem.cacheDirectory}${fileName}`;
+      const payload = {
+        app: 'EGCHAT',
+        exportedAt: new Date().toISOString(),
+        privacy: {
+          lastSeen,
+          photoVisibility: photoVis,
+          statusVisibility: statusVis,
+        },
+        blockedContacts: blocked.map(contact => ({
+          id: contact.id,
+          contactUserId: contact.contact_user_id,
+          fullName: contact.full_name,
+          phone: contact.phone,
+        })),
+      };
+      await FileSystem.writeAsStringAsync(path, JSON.stringify(payload, null, 2), {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(path, {
+          mimeType: 'application/json',
+          dialogTitle: 'Exportar datos de EGCHAT',
+        });
+        return;
+      }
+      Alert.alert('Exportación creada', `Archivo guardado: ${fileName}`);
+    } catch {
+      Alert.alert('Error', 'No se pudo crear la exportación de datos.');
+    }
+  };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backIcon}>‹</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Privacidad y Seguridad</Text>
-      </View>
-      <ScrollView>
-        <Text style={styles.section}>VISIBILIDAD</Text>
-        <View style={styles.card}>
-          <Row label="Última conexión" sub="Mostrar cuándo estuviste activo" k="ultimaConexion" />
-          <View style={styles.divider} />
-          <Row label="Foto de perfil" sub="Visible para todos los contactos" k="fotoPerfil" />
-          <View style={styles.divider} />
-          <Row label="Estado en línea" sub="Mostrar cuando estás conectado" k="estadoEnLinea" />
-        </View>
+    <SettingsLayout title="Mi información">
+      <SettingsSection label="Visibilidad" />
+      <SettingsCard>
+        <VisibilityRow
+          label="Última vez"
+          value={lastSeen}
+          options={VIS_OPTS}
+          onChange={v => updatePrivacy('lastSeen', v, CFG.lastSeen, setLastSeen)}
+        />
+        <SettingsDivider />
+        <VisibilityRow
+          label="Foto de perfil"
+          value={photoVis}
+          options={VIS_OPTS}
+          onChange={v => updatePrivacy('photoVis', v, CFG.photoVis, setPhotoVis)}
+        />
+        <SettingsDivider />
+        <VisibilityRow
+          label="Estado / Historia"
+          value={statusVis}
+          options={VIS_OPTS}
+          onChange={v => updatePrivacy('statusVis', v, CFG.statusVis, setStatusVis)}
+        />
+        {syncing && (
+          <View style={{ paddingHorizontal: 16, paddingBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <ActivityIndicator size="small" color={Colors.accent} />
+            <Text style={{ fontSize: 12, color: Colors.accent }}>Guardando…</Text>
+          </View>
+        )}
+      </SettingsCard>
 
-        <Text style={styles.section}>MENSAJES</Text>
-        <View style={styles.card}>
-          <Row label="Confirmación de lectura" sub="Mostrar doble check azul" k="confirmacionLectura" />
-        </View>
+      <SettingsSection label={`Contactos bloqueados${blocked.length > 0 ? ` (${blocked.length})` : ''}`} />
+      <SettingsCard>
+        {loadingBlocked ? (
+          <ActivityIndicator color={Colors.accent} style={{ padding: 16 }} />
+        ) : blocked.length === 0 ? (
+          <SettingsRow label="Sin contactos bloqueados" />
+        ) : (
+          blocked.map((contact, i) => (
+            <React.Fragment key={contact.id}>
+              <View style={st.blockedRow}>
+                <View style={st.blockedAvatar}>
+                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>
+                    {(contact.full_name || contact.phone || '?').charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={st.blockedName}>{contact.full_name || 'Usuario'}</Text>
+                  {contact.phone && <Text style={st.blockedPhone}>{contact.phone}</Text>}
+                </View>
+                <Text
+                  style={st.unblockBtn}
+                  onPress={() => unblockContact(contact)}
+                >
+                  Desbloquear
+                </Text>
+              </View>
+              {i < blocked.length - 1 && <SettingsDivider />}
+            </React.Fragment>
+          ))
+        )}
+      </SettingsCard>
 
-        <Text style={styles.section}>SEGURIDAD</Text>
-        <View style={styles.card}>
-          <Row label="Bloqueo biométrico" sub="Usar huella o Face ID para abrir la app" k="biometria" />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+      <SettingsSection label="Datos personales" />
+      <SettingsCard>
+        <SettingsRow label="Descargar mis datos" onPress={requestDataDownload} />
+        <SettingsDivider />
+        <SettingsRow
+          label="Eliminar mi cuenta"
+          danger
+          onPress={() =>
+            Alert.alert(
+              'Eliminar cuenta',
+              'Esta acción eliminará permanentemente tu cuenta, mensajes y datos. Para proceder, contacta al soporte en support@egchat.gq',
+              [{ text: 'Entendido', style: 'cancel' }],
+            )
+          }
+        />
+      </SettingsCard>
+    </SettingsLayout>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgPrimary },
-  header: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: Colors.bgSecondary,
-    borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
-    paddingHorizontal: Spacing.sm, paddingVertical: Spacing.sm, gap: Spacing.sm,
+const st = StyleSheet.create({
+  blockedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
-  backBtn: { padding: Spacing.sm },
-  backIcon: { fontSize: 28, color: Colors.textPrimary, lineHeight: 32 },
-  title: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.textPrimary },
-  section: {
-    fontSize: FontSize.xs, fontWeight: FontWeight.semibold,
-    color: Colors.textTertiary, marginTop: Spacing.lg,
-    marginBottom: Spacing.sm, marginHorizontal: Spacing.screenPadding,
+  blockedAvatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#9ca3af',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  card: {
-    backgroundColor: Colors.bgSecondary, borderRadius: BorderRadius.lg,
-    marginHorizontal: Spacing.screenPadding, overflow: 'hidden',
-  },
-  row: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingVertical: Spacing.md, paddingHorizontal: Spacing.md,
-  },
-  rowInfo: { flex: 1 },
-  rowLabel: { fontSize: FontSize.base, fontWeight: FontWeight.semibold, color: Colors.textPrimary },
-  rowSub: { fontSize: FontSize.sm, color: Colors.textTertiary, marginTop: 2 },
-  divider: { height: 1, backgroundColor: Colors.borderLight, marginLeft: Spacing.md },
+  blockedName: { fontSize: 15, fontWeight: '500', color: '#111827' },
+  blockedPhone: { fontSize: 12, color: '#6b7280', marginTop: 1 },
+  unblockBtn: { fontSize: 13, fontWeight: '600', color: Colors.accent },
 });

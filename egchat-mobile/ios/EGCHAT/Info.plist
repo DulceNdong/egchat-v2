@@ -2,13 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
   <dict>
-    <key>BGTaskSchedulerPermittedIdentifiers</key>
-    <array>
-      <string>com.jallzstores.egchat.refresh</string>
-      <string>com.jallzstores.egchat.refresh</string>
-      <string>com.jallzstores.egchat.refresh</string>
-      <string>com.jallzstores.egchat.refresh</string>
-    </array>
     <key>CADisableMinimumFrameDurationOnPhone</key>
     <true/>
     <key>CFBundleDevelopmentRegion</key>
@@ -41,20 +34,12 @@
       <dict>
         <key>CFBundleURLSchemes</key>
         <array>
-          <string>exp+egchat-frontend</string>
+          <string>exp+egchat-mobile</string>
         </array>
-      </dict>
-      <dict>
-        <key>CFBundleURLSchemes</key>
-        <array>
-          <string>egchat-share</string>
-        </array>
-        <key>CFBundleURLName</key>
-        <string>com.jallzstores.egchat.share</string>
       </dict>
     </array>
     <key>CFBundleVersion</key>
-    <string>124</string>
+    <string>140</string>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
     <key>LSMinimumSystemVersion</key>
@@ -68,39 +53,22 @@
       <key>NSAllowsLocalNetworking</key>
       <true/>
     </dict>
-    <key>NSBonjourServices</key>
-    <array>
-      <string>_expo._tcp</string>
-      <string>_expo._tcp</string>
-      <string>_expo._tcp</string>
-      <string>_expo._tcp</string>
-    </array>
     <key>NSCameraUsageDescription</key>
-    <string>EGCHAT necesita la cámara para fotos, videollamadas y escanear QR.</string>
-    <key>NSContactsUsageDescription</key>
-    <string>EGCHAT necesita acceso a tus contactos para compartirlos y encontrar amigos.</string>
-    <key>NSDocumentsFolderUsageDescription</key>
-    <string>EGCHAT necesita acceso a documentos para enviarlos en el chat.</string>
+    <string>EGCHAT necesita la camara para fotos de perfil.</string>
     <key>NSFaceIDUsageDescription</key>
-    <string>EGCHAT usa Face ID para verificar tu identidad al acceder a datos protegidos.</string>
-    <key>NSLocalNetworkUsageDescription</key>
-    <string>EGCHAT necesita acceder a la red local para conectar con el servidor de desarrollo en tu Mac.</string>
+    <string>Allow $(PRODUCT_NAME) to use Face ID</string>
     <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-    <string>EGCHAT necesita tu ubicación para compartirla en chats y usar servicios como MiTaxi.</string>
+    <string>EGCHAT necesita tu ubicacion para servicios de taxi.</string>
     <key>NSLocationAlwaysUsageDescription</key>
     <string>Allow $(PRODUCT_NAME) to access your location</string>
     <key>NSLocationWhenInUseUsageDescription</key>
-    <string>EGCHAT necesita tu ubicación para compartirla en chats y usar servicios cercanos.</string>
+    <string>EGCHAT necesita tu ubicación para servicios de taxi y mapas.</string>
     <key>NSMicrophoneUsageDescription</key>
-    <string>EGCHAT necesita el micrófono para llamadas de voz y video.</string>
+    <string>EGCHAT necesita acceso al micrófono para llamadas de voz y video.</string>
     <key>NSPhotoLibraryAddUsageDescription</key>
-    <string>EGCHAT necesita permiso para guardar fotos y videos en tu galería.</string>
+    <string>EGCHAT necesita permiso para guardar fotos en tu galería.</string>
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>EGCHAT necesita acceso a tus fotos y videos para enviarlos en el chat.</string>
-    <key>NSSupportsLiveActivities</key>
-    <true/>
-    <key>NSSupportsLiveActivitiesFrequentUpdates</key>
-    <true/>
+    <string>EGCHAT necesita acceso a tus fotos para compartir imágenes en chats.</string>
     <key>NSUserActivityTypes</key>
     <array>
       <string>$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route</string>
@@ -109,27 +77,7 @@
     <true/>
     <key>UIBackgroundModes</key>
     <array>
-      <string>audio</string>
       <string>fetch</string>
-      <string>remote-notification</string>
-      <string>voip</string>
-      <string>processing</string>
-      <string>audio</string>
-      <string>fetch</string>
-      <string>remote-notification</string>
-      <string>voip</string>
-      <string>processing</string>
-      <string>audio</string>
-      <string>fetch</string>
-      <string>remote-notification</string>
-      <string>voip</string>
-      <string>processing</string>
-      <string>audio</string>
-      <string>fetch</string>
-      <string>remote-notification</string>
-      <string>voip</string>
-      <string>processing</string>
-      <string>location</string>
     </array>
     <key>UILaunchStoryboardName</key>
     <string>SplashScreen</string>

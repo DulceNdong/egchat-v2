@@ -1,44 +1,104 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import {
-  View, Text, FlatList, TouchableOpacity,
-  StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator,
-  Animated, Modal, Pressable, Alert, Image, Share, Linking,
+  View, Text, FlatList, TouchableOpacity, TextInput,
+  StyleSheet, Platform, ActivityIndicator, Dimensions,
+  Animated, Modal, Pressable, Alert, Image, Share, Keyboard, PanResponder, LayoutAnimation,
+  KeyboardAvoidingView,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
-import { chatAPI, authAPI, contactsAPI, getToken } from '../../src/api';
-import { useStoryRings } from '../../src/hooks';
+import { chatAPI, authAPI, getToken, contactsAPI } from '../../src/api';
+import { walletAPI } from '../../src/api';
+import { IncomingTransferModal } from '../../src/components/wallet/IncomingTransferModal';
 import { ChatAttachPanel, AttachAction } from '../../src/components/chat/ChatAttachPanel';
 import { ChatContactPickerModal } from '../../src/components/chat/ChatContactPickerModal';
 import { ChatEmojiPanel } from '../../src/components/chat/ChatEmojiPanel';
+import { StickerPanel } from '../../src/components/chat/StickerPanel';
 import { QuickTransferModal } from '../../src/components/chat/QuickTransferModal';
+import { PinInputModal } from '../../src/components/ui/PinInputModal';
+import { SetupPinModal } from '../../src/components/ui/SetupPinModal';
+import { TransferDetailsModal } from '../../src/components/chat/TransferDetailsModal';
 import { ChatMenuPanel, ChatMenuItem } from '../../src/components/chat/ChatMenuPanel';
 import { ChatMessageBubble } from '../../src/components/chat/ChatMessageBubble';
 import { ChatHeader } from '../../src/components/chat/ChatHeader';
 import { ChatInputBar } from '../../src/components/chat/ChatInputBar';
+import { ScheduledMessageModal } from '../../src/components/chat/ScheduledMessageModal';
+import { processScheduledMessages } from '../../src/services/scheduledMessages';
+import { EditHistoryModal } from '../../src/components/chat/EditHistoryModal';
 import { ChatWallpaperBackground } from '../../src/components/chat/ChatWallpaperBackground';
 import { ChatWallpaperModal } from '../../src/components/chat/ChatWallpaperModal';
 import { ChatSearchBar } from '../../src/components/chat/ChatSearchBar';
 import { ChatStarredModal } from '../../src/components/chat/ChatStarredModal';
+import { ChatMediaGallery } from '../../src/components/chat/ChatMediaGallery';
+import { ForwardWithCommentModal } from '../../src/components/chat/ForwardWithCommentModal';
 import { ChatContextMenu } from '../../src/components/chat/ChatContextMenu';
-import { scheduleReadReceipt, clearAllMessageStatusTimers } from '../../src/features/chat/messageStatus';
+import { GroupInfoModal } from '../../src/components/chat/GroupInfoModal';
+import { EphemeralSettingsModal } from '../../src/components/chat/EphemeralSettingsModal';
+import { EditMessageBar } from '../../src/components/chat/EditMessageBar';
+import { LiveLocationBar } from '../../src/components/chat/LiveLocationBar';
+import {
+  getEphemeralDuration, setEphemeralDuration, filterExpiredMessages,
+  type EphemeralDuration,
+} from '../../src/services/ephemeralMessages';
+import { editMessage, applyEditLocally } from '../../src/services/editMessage';
+import { startLiveLocation, stopLiveLocation, isLiveLocationActive } from '../../src/services/liveLocation';
+import { MentionSuggestions, detectMentionQuery, applyMention, type MentionUser } from '../../src/components/chat/MentionSuggestions';
+import { GroupPaymentModal } from '../../src/components/chat/GroupPaymentModal';
+import { ChatToneModal } from '../../src/components/chat/ChatToneModal';
+import { ChatLabelsModal } from '../../src/components/chat/ChatLabelsModal';
+import { getChatTone, setChatTone } from '../../src/services/chatTones';
+import { CreatePollModal } from '../../src/components/chat/CreatePollModal';
+import { MessageReadReceiptsModal } from '../../src/components/chat/MessageReadReceiptsModal';
+import { MediaPreviewModal, type MediaPreviewItem } from '../../src/components/chat/MediaPreviewModal';
+import { QuickReplyPanel } from '../../src/components/chat/QuickReplyPanel';
+import { PushToTalkButton } from '../../src/components/chat/PushToTalkButton';
+import { toggleReaction, applyReactionOptimistic, type ReactionsMap } from '../../src/services/messageReactions';
+import { getAllQuickReplies, searchQuickReplies, type QuickReply } from '../../src/services/quickReplies';
+import {
+  scheduleReadReceipt,
+  clearAllMessageStatusTimers,
+  markChatAsRead,
+  markMessageRead,
+} from '../../src/features/chat/messageStatus';
 import { CFG, getCfgBool } from '../../src/services/settingsPrefs';
 import { getChatWallpaperId, setChatWallpaperId } from '../../src/utils/chatWallpaper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ContactProfileModal } from '../../src/components/ContactProfileModal';
+import { onProfileUpdated } from '../../src/utils/profileEvents';
 import { AvatarCropModal } from '../../src/components/AvatarCropModal';
+import { PhotoEditorModal } from '../../src/components/PhotoEditorModal';
 import {
-  pickImageFromLibrary, pickImageFromCamera, pickVideo, pickFile,
-  pickMusic, getCurrentLocationLabel, uploadAndSend,
+  pickImageFromLibrary, pickImageFromCamera, pickVideo, pickVideoFromCamera,
+  pickDocument, pickContact, pickFile, pickAudio,
+  getCurrentLocationLabel, uploadAndSend, pickMultipleImages,
 } from '../../src/utils/chatMedia';
 import { haptics } from '../../src/hooks/useHaptics';
 import { useAudioRecorder } from '../../src/hooks/useAudioRecorder';
 import { useOffline } from '../../src/hooks/useOffline';
+import { useNetworkStatus } from '../../src/store/offlineStore';
+import { useOfflineQueue, enqueueMessage } from '../../src/hooks/useOfflineQueue';
+import SessionManager from '../../src/sessionManager';
 import { toast } from '../../src/components/Toast';
-import { createChatTypingChannel, subscribeToChat, subscribeToOnlineUsers } from '../../src/supabase';
+import {
+  createChatTypingChannel,
+  subscribeToChat,
+  subscribeToOnlineUsers,
+  subscribeToReadBroadcast,
+  broadcastReadReceipt,
+} from '../../src/supabase';
+import { useChatStream } from '../../src/hooks/useChatStream';
+import { playMessageReceived } from '../../src/hooks/useSounds';
+import { notifyReaction } from '../../src/notifications';
+import { isIncognitoChat, setIncognitoMode } from '../../src/services/incognitoMode';
+import { useScreenSecurity, useIOSPrivacyBlur } from '../../src/services/screenSecurity';
+import { PrivacyBlurOverlay } from '../../src/components/PrivacyBlurOverlay';
+import { pinMessage, getPinnedMessages, type PinnedMessage } from '../../src/services/pinnedMessages';
+import { translateText } from '../../src/services/translator';
+import { ReactionDetailModal } from '../../src/components/chat/ReactionDetailModal';
 import {
   Colors, Typography, Spacing, BorderRadius,
   FontSize, FontWeight, Shadow,
@@ -57,6 +117,8 @@ import {
   replaceTempMessage,
 } from '../../src/features/chat/messageUtils';
 import Svg, { Path, Circle, Line, Polyline, Polygon, Rect } from 'react-native-svg';
+
+const KEYBOARD_INPUT_GAP = 0;
 
 // ── Tipos ─────────────────────────────────────────────────────────
 // ── Helpers ───────────────────────────────────────────────────────
@@ -78,8 +140,17 @@ const getDateLabel = (dateStr: string) => {
 const getParticipantName = (participant?: any) =>
   participant?.full_name || participant?.users?.full_name || participant?.user?.full_name || '';
 
-const getParticipantAvatar = (participant?: any) =>
-  participant?.avatar_url || participant?.users?.avatar_url || participant?.user?.avatar_url || '';
+const isValidAvatarUrl = (url?: string | null): url is string =>
+  !!url &&
+  url.trim().length > 0 &&
+  (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('file://')) &&
+  !url.includes('egchat-api-xlxj.onrender.com/static/avatars/');
+
+const getParticipantAvatar = (participant?: any) => {
+  const raw =
+    participant?.avatar_url || participant?.users?.avatar_url || participant?.user?.avatar_url;
+  return isValidAvatarUrl(raw) ? raw : undefined;
+};
 
 const getParticipantPhone = (participant?: any) =>
   participant?.phone || participant?.users?.phone || participant?.user?.phone || '';
@@ -157,13 +228,41 @@ export default function ChatScreen() {
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [showAttach, setShowAttach] = useState(false);
   const [showEmojis, setShowEmojis] = useState(false);
+  const [showStickers, setShowStickers] = useState(false);
+  const [inputBarHeight, setInputBarHeight] = useState(0);
+  const [bottomDockHeight, setBottomDockHeight] = useState(0);
+  const [keyboardBottomOffset, setKeyboardBottomOffset] = useState(0);
   const [showQuickTransfer, setShowQuickTransfer] = useState(false);
+  // PIN modals para QuickTransferModal (no pueden estar anidados dentro de otro Modal en iOS)
+  const [showTransferPin, setShowTransferPin] = useState(false);
+  const [showTransferSetupPin, setShowTransferSetupPin] = useState(false);
+  const [transferPinLoading, setTransferPinLoading] = useState(false);
+  const [transferPinError, setTransferPinError] = useState('');
+  const [transferPinSubtitle, setTransferPinSubtitle] = useState('');
+  const transferExecutorRef = React.useRef<((pin: string) => Promise<void>) | null>(null);
+  const pinSetupDoneRef = React.useRef<(() => void) | null>(null);
+  const handleTransferPinSuccess = useCallback(async (pin: string) => {
+    if (!transferExecutorRef.current) return;
+    setTransferPinLoading(true);
+    setTransferPinError('');
+    try {
+      await transferExecutorRef.current(pin);
+      setShowTransferPin(false);
+      setTransferPinLoading(false);
+      transferExecutorRef.current = null;
+    } catch (e: any) {
+      setTransferPinLoading(false);
+      setTransferPinError(e?.message || 'PIN incorrecto o error en la transferencia');
+    }
+  }, []);
   const [myProfile, setMyProfile] = useState<{ full_name?: string; avatar_url?: string; phone?: string }>({});
   const [showContactPicker, setShowContactPicker] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  // Contacto de tarjeta compartida — para abrir su perfil al tocar nombre/foto
+  const [cardContact, setCardContact] = useState<{ phone: string; name: string; avatarUrl?: string } | null>(null);
   const [cropUri, setCropUri] = useState<string | null>(null);
   const [previewImageUri, setPreviewImageUri] = useState<string | null>(null);
-  const [otherUserProfile, setOtherUserProfile] = useState<{ avatar_url?: string; phone?: string } | null>(null);
+  const [photoEditUri, setPhotoEditUri] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [showReadReceipts, setShowReadReceipts] = useState(true);
   const [wallpaperId, setWallpaperId] = useState('default');
@@ -174,24 +273,287 @@ export default function ChatScreen() {
   const [showStarredModal, setShowStarredModal] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [isIncognito, setIsIncognito] = useState(false);
+  const [pinnedMessages, setPinnedMessages] = useState<PinnedMessage[]>([]);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
+  const [mediaPickerMode, setMediaPickerMode] = useState<'photo' | 'video' | null>(null);
+  // ── Sprint 1.1 Grupos ──────────────────────────────────────────
+  const [showGroupInfo, setShowGroupInfo] = useState(false);
+  // ── Sprint 1.2 Mensajes temporales ────────────────────────────
+  const [ephemeralDuration, setEphemeralDurationState] = useState<EphemeralDuration>(0);
+  const [showEphemeralModal, setShowEphemeralModal] = useState(false);
+  // ── Sprint 1.3 Editar mensajes ────────────────────────────────
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
+  const [editText, setEditText] = useState('');
+  // ── Sprint 1.4 Ubicación en vivo ──────────────────────────────
+  const [liveLocationActive, setLiveLocationActive] = useState(false);
+  // ── Sprint 2.2 Menciones ──────────────────────────────────────
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  // ── Sprint 2.4 Pago grupal ─────────────────────────────────────
+  const [showGroupPayment, setShowGroupPayment] = useState(false);
+  // ── Transfer Details Modal ─────────────────────────────────────
+  const [showTransferDetails, setShowTransferDetails] = useState(false);
+  const [transferDetailsData, setTransferDetailsData] = useState<any>(null);
+  // ── Incoming Transfer Modal (para receptor de transferencias pendientes) ─
+  const [chatIncomingTransfer, setChatIncomingTransfer] = useState<{
+    transferId: string; amount: number; senderName: string; concept?: string | null; expiresAt?: string;
+  } | null>(null);
+  // ── Sprint 3.1 Tono personalizado ─────────────────────────────
+  const [chatTone, setChatToneState] = useState('default');
+  const [showToneModal, setShowToneModal] = useState(false);
+  // ── Sprint 3.5 Etiquetas ──────────────────────────────────────
+  const [showLabelsModal, setShowLabelsModal] = useState(false);
+  // ── C3 Encuestas ───────────────────────────────────────────────
+  const [showCreatePoll, setShowCreatePoll] = useState(false);
+  // ── F4 Media preview ──────────────────────────────────────────
+  const [mediaPreviewItem, setMediaPreviewItem] = useState<MediaPreviewItem | null>(null);
+  const [mediaSending, setMediaSending] = useState(false);
+  // ── PTT Walkie-talkie ─────────────────────────────────────────
+  const [showPTT, setShowPTT] = useState(false);
+  // ── C4 Reacciones reales ───────────────────────────────────────
+  const [reactionsMap, setReactionsMap] = useState<Record<string, ReactionsMap>>({});
+  // ── C9 Receipts de lectura ─────────────────────────────────────
+  const [receiptsMsgId, setReceiptsMsgId] = useState<string | null>(null);
+  // ── #9 Contador de no leídos al scrollear ─────────────────────
+  const [unreadScrollCount, setUnreadScrollCount] = useState(0);
+  // ── #8 ID del primer mensaje no leído al abrir ─────────────────
+  const [firstUnreadId, setFirstUnreadId] = useState<string | null>(null);
+  // ── #7 Modal de quién reaccionó ────────────────────────────────
+  const [reactionDetailMsgId, setReactionDetailMsgId] = useState<string | null>(null);
+  const [reactionDetailCounts, setReactionDetailCounts] = useState<Record<string, number>>({});
+  // ── #12 Selección múltiple de mensajes ─────────────────────────
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // ── A2 Mensajes programados ────────────────────────────────────
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  // ── A3 Historial de ediciones ──────────────────────────────────
+  const [editHistoryMsg, setEditHistoryMsg] = useState<Message | null>(null);
+  // ── C5 Galería multimedia ──────────────────────────────────────
+  const [showMediaGallery, setShowMediaGallery] = useState(false);
+  // ── C7 Reenvío con comentario ──────────────────────────────────
+  const [showForwardModal, setShowForwardModal] = useState(false);
+  const [forwardMsg, setForwardMsg] = useState<Message | null>(null);
+  // ── F1 Respuestas rápidas ──────────────────────────────────────
+  const [quickReplies, setQuickReplies] = useState<QuickReply[]>([]);
+  const [quickReplySuggestions, setQuickReplySuggestions] = useState<QuickReply[]>([]);
+  const groupMembers: MentionUser[] = (chat?.type === 'group' && chat?.participants)
+    ? (chat.participants as any[])
+        .filter((p: any) => String(p.user_id) !== String(currentUserId))
+        .map((p: any) => ({
+          user_id: p.user_id,
+          full_name: p.full_name || p.users?.full_name || p.user?.full_name || 'Usuario',
+          avatar_url: p.avatar_url || p.users?.avatar_url,
+        }))
+    : [];
   const flatListRef = useRef<FlatList>(null);
+  const inputRef = useRef<TextInput>(null);
   const sendScale = useRef(new Animated.Value(1)).current;
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const remoteTypingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const typingChannelRef = useRef<ReturnType<typeof createChatTypingChannel> | null>(null);
   const retryingMessagesRef = useRef<Set<string>>(new Set());
   const { isDark } = useThemeContext();
+
+  // ── FLAG_SECURE: bloquea capturas de pantalla en modo incógnito ──
+  useScreenSecurity(`chat_${chatId}`, isIncognito);
+
+  // ── iOS Privacy Blur: oculta el chat en el app switcher ───────────
+  const { showBlur } = useIOSPrivacyBlur(isIncognito);
+
+  // ── Botones flotantes arrastrables ────────────────────────
+  const { width: SW, height: SH } = Dimensions.get('window');
+  const BTN_SIZE = 44;
+
+  function makeDraggable(
+    pos: Animated.ValueXY,
+    dragging: React.MutableRefObject<boolean>,
+    onTap: () => void,
+  ) {
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 4 || Math.abs(g.dy) > 4,
+      onPanResponderGrant: () => {
+        dragging.current = false;
+        pos.setOffset({ x: (pos.x as any)._value, y: (pos.y as any)._value });
+        pos.setValue({ x: 0, y: 0 });
+      },
+      onPanResponderMove: (_, g) => {
+        if (Math.abs(g.dx) > 4 || Math.abs(g.dy) > 4) dragging.current = true;
+        Animated.event([null, { dx: pos.x, dy: pos.y }], { useNativeDriver: false })(_, g);
+      },
+      onPanResponderRelease: () => {
+        pos.flattenOffset();
+        if (!dragging.current) { onTap(); return; }
+        const curX = (pos.x as any)._value;
+        const snapX = curX < SW / 2 ? 12 : SW - BTN_SIZE - 12;
+        const rawY = (pos.y as any)._value;
+        const snapY = Math.max(60, Math.min(rawY, SH - BTN_SIZE - 80));
+        Animated.spring(pos, { toValue: { x: snapX, y: snapY }, useNativeDriver: false, damping: 18, stiffness: 200 }).start();
+        dragging.current = false;
+      },
+    });
+  }
+
+  // HOME — abre homepage
+  const homePos = useRef(new Animated.ValueXY({ x: SW - BTN_SIZE - 12, y: SH * 0.60 })).current;
+  const homeDragging = useRef(false);
+  const homePanResponder = useRef(makeDraggable(homePos, homeDragging, () => router.push('/(tabs)' as any))).current;
+
+  // Altura del teclado custom / paneles — igual al teclado del sistema
+  const PANEL_HEIGHT = 291;
+  const panelSlide = useRef(new Animated.Value(PANEL_HEIGHT)).current;
+  const prevPanelVisible = useRef(false);
+
+  const anyPanelOpen = !editingMessage && (showAttach || showEmojis || showStickers);
+
+  useEffect(() => {
+    const visible = !editingMessage && (showAttach || showEmojis || showStickers);
+    if (visible && !prevPanelVisible.current) {
+      panelSlide.setValue(PANEL_HEIGHT);
+      Animated.spring(panelSlide, {
+        toValue: 0,
+        damping: 22,
+        stiffness: 280,
+        useNativeDriver: true,
+      }).start();
+    } else if (!visible && prevPanelVisible.current) {
+      Animated.timing(panelSlide, {
+        toValue: PANEL_HEIGHT,
+        duration: 180,
+        useNativeDriver: true,
+      }).start();
+    }
+    prevPanelVisible.current = visible;
+  }, [showAttach, showEmojis, showStickers, editingMessage]);
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
   const insets = useSafeAreaInsets();
   const { isRecording, durationFormatted, startRecording, stopRecording, cancelRecording } = useAudioRecorder();
-  const { isOnline, saveCache, readCache } = useOffline();
-  const { activeUserIds, seenUserIds } = useStoryRings();
+  const { isOnline: _isOnlineFromOffline, saveCache, readCache } = useOffline();
+  const { isOnline } = useNetworkStatus();
+  const dockBottomOffset = Platform.OS === 'ios' ? keyboardBottomOffset : 0;
+  const effectiveDockOffset = anyPanelOpen && dockBottomOffset === 0 ? PANEL_HEIGHT : dockBottomOffset;
+  const messagesBottomInset = bottomDockHeight + effectiveDockOffset + 12;
 
   useEffect(() => {
     getCfgBool(CFG.readReceipts, true).then(setShowReadReceipts);
     return () => clearAllMessageStatusTimers();
   }, []);
+
+  useEffect(() => {
+    const handleShow = (event: any) => {
+      const h = event.endCoordinates?.height ?? 0;
+      if (h > 0) {
+        try {
+          Keyboard.scheduleLayoutAnimation(event);
+        } catch {
+          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        }
+        setKeyboardBottomOffset(h);
+      }
+    };
+
+    const handleHide = (event: any) => {
+      try {
+        if (event) Keyboard.scheduleLayoutAnimation(event);
+        else LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      } catch {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      }
+      setKeyboardBottomOffset(0);
+    };
+
+    const willShowSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      handleShow
+    );
+    const didShowSub  = Keyboard.addListener('keyboardDidShow', handleShow);
+    const willHideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      handleHide
+    );
+    const didHideSub  = Keyboard.addListener('keyboardDidHide', handleHide);
+
+    return () => {
+      willShowSub.remove();
+      didShowSub.remove();
+      willHideSub.remove();
+      didHideSub.remove();
+    };
+  }, []);
+
+  // ── A2 Procesar mensajes programados cada 30s ──────────────────
+  useEffect(() => {
+    const interval = setInterval(() => {
+      processScheduledMessages().catch(() => {});
+    }, 30_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // ── SSE Stream — mensajes instantáneos desde el backend ──────────
+  useChatStream(currentUserId || undefined, (event) => {
+    if (event.type === 'new_message' && event.chatId === chatId && event.message) {
+      const msg = event.message;
+      if (msg.sender_id === currentUserId) return;
+      const enriched = normalizeMessage(msg);
+      setMessages(prev => mergeMessages(prev, [enriched]));
+      // Marcar como leído y notificar al emisor con checks azules (si los receipts están activados)
+      chatAPI.markAsRead(chatId, msg.id).catch(() => {});
+      if (showReadReceipts) {
+        broadcastReadReceipt(chatId, currentUserId, [msg.id]);
+      }
+      setIsTyping(false);
+      playMessageReceived(); // ← sonido de mensaje recibido
+    }
+
+    // Mensaje eliminado para todos — quitar de la UI inmediatamente
+    if (event.type === 'message_deleted' && event.chatId === chatId && event.messageId) {
+      setMessages(prev => prev.filter(m => m.id !== event.messageId));
+    }
+
+    if (event.type === 'typing' && event.chatId === chatId) {
+      const typing = Boolean(event.isTyping);
+      setIsTyping(typing);
+      if (typing) {
+        if (remoteTypingTimer.current) clearTimeout(remoteTypingTimer.current);
+        remoteTypingTimer.current = setTimeout(() => setIsTyping(false), 3500);
+      }
+    }
+
+    // Evento 'read' emitido por el backend cuando el receptor abre el chat
+    // Puede venir con un messageId individual o con messageIds (array)
+    if (event.type === 'read' && event.chatId === chatId) {
+      const ids: string[] = (event as any).messageIds || (event.messageId ? [event.messageId] : []);
+      if (ids.length > 0) {
+        setMessages(prev =>
+          prev.map(m =>
+            ids.includes(m.id) && m.sender_id === currentUserId
+              ? { ...m, status: 'read' as const }
+              : m,
+          ),
+        );
+      }
+    }
+
+    // 4a — Notificación push de reacción
+    if ((event as any).type === 'reaction_added' && (event as any).chatId === chatId) {
+      const ev = event as any;
+      // Solo notificar si el mensaje es nuestro (el servidor ya lo filtra, pero doble check)
+      notifyReaction({
+        senderName: ev.reactorName || 'Alguien',
+        emoji: ev.emoji,
+        messagePreview: ev.messagePreview,
+        chatId: ev.chatId,
+        chatName: chatName,
+      }).catch(() => {});
+      // Actualizar el mapa de reacciones localmente
+      if (ev.messageId) {
+        setMessageReactions(prev => {
+          const cur = prev[ev.messageId] || {};
+          return { ...prev, [ev.messageId]: { ...cur, [ev.emoji]: (cur[ev.emoji] || 0) + 1 } };
+        });
+      }
+    }
+  });
 
   useEffect(() => {
     if (!chatId) return;
@@ -211,56 +573,117 @@ export default function ChatScreen() {
       } catch { /* ignore */ }
     });
     AsyncStorage.getItem(`egchat_muted_${chatId}`).then(v => setIsMuted(v === '1'));
+    isIncognitoChat(chatId).then(setIsIncognito);
+    getPinnedMessages(chatId).then(setPinnedMessages);
+    // Sprint 1.2 — cargar duración efímera
+    getEphemeralDuration(chatId).then(setEphemeralDurationState);
+    // Sprint 1.4 — verificar si hay sesión live activa
+    setLiveLocationActive(isLiveLocationActive(chatId));
+    // Sprint 3.1 — cargar tono
+    getChatTone(chatId).then(setChatToneState);
+    // F1 — cargar respuestas rápidas
+    getAllQuickReplies().then(setQuickReplies);
   }, [chatId]);
 
   const applyMessageStatus = useCallback((messageId: string, status: Message['status']) => {
     setMessages(prev => prev.map(m => (m.id === messageId ? { ...m, status } : m)));
   }, []);
 
+  // Aplica 'delivered' al mensaje propio recién enviado.
+  // El estado 'read' llegará de verdad cuando el receptor abra el chat
+  // vía SSE o Supabase broadcast — ya NO hay timer falso.
   const markDeliveredAndScheduleRead = useCallback((messageId: string) => {
     applyMessageStatus(messageId, 'delivered');
-    scheduleReadReceipt(messageId, applyMessageStatus);
-  }, [applyMessageStatus]);
+    // scheduleReadReceipt ahora solo hace el POST real al backend, no un timer visual
+    scheduleReadReceipt(messageId, applyMessageStatus, chatId);
+  }, [applyMessageStatus, chatId]);
 
-  // Cargar datos iniciales
+  // Actualizar mi avatar/nombre cuando cambia el perfil
   useEffect(() => {
-    const init = async () => {
-      try {
-        // Obtener usuario actual via API (no decodificar JWT en RN)
-        const me = await authAPI.me();
-        setCurrentUserId(me?.id || '');
-        setMyProfile({ full_name: me?.full_name, avatar_url: me?.avatar_url, phone: me?.phone });
+    return onProfileUpdated(patch => {
+      if (patch.avatar_url || patch.full_name) {
+        setMyProfile(prev => ({
+          ...prev,
+          ...(patch.avatar_url ? { avatar_url: patch.avatar_url } : {}),
+          ...(patch.full_name ? { full_name: patch.full_name } : {}),
+        }));
+      }
+    });
+  }, []);
 
-        // Cargar chat y mensajes en paralelo
-        const [chats, msgs] = await Promise.all([
-          chatAPI.getChats(),
-          chatAPI.getMessages(chatId, 1, 50),
+  // Cargar datos iniciales — Instantáneo via Caché local + refresco en background
+  useEffect(() => {
+    let active = true;
+
+    const init = async () => {
+      let resolvedUserId = currentUserId;
+
+      try {
+        const [cachedMsgs, cachedChats, cachedUser] = await Promise.all([
+          readCache<Message[]>(`chat_messages_${chatId}`),
+          readCache<any[]>('chat_list'),
+          SessionManager.getInstance().getUser(),
         ]);
 
-        const current = chats.find((c: any) => c.id === chatId);
-        if (current) setChat(current);
+        if (cachedUser?.id && active) {
+          resolvedUserId = String(cachedUser.id);
+          setCurrentUserId(resolvedUserId);
+          setMyProfile({
+            full_name: cachedUser.full_name,
+            avatar_url: cachedUser.avatar_url,
+            phone: cachedUser.phone,
+          });
+        }
 
-        const msgList = normalizeMessages(msgs || []);
+        const cachedChat = cachedChats?.find((item: any) => item.id === chatId);
+        if (cachedChat && active) setChat(cachedChat);
+
+        if (cachedMsgs && cachedMsgs.length > 0 && active) {
+          const normCached = normalizeMessages(cachedMsgs);
+          setMessages(normCached);
+        }
+      } catch {}
+
+      if (active) setLoading(false);
+
+      void authAPI.me().then(me => {
+        if (!active || !me) return;
+        resolvedUserId = String(me.id || '');
+        setCurrentUserId(resolvedUserId);
+        setMyProfile({ full_name: me.full_name, avatar_url: me.avatar_url, phone: me.phone });
+      }).catch(() => {});
+
+      void chatAPI.getChats().then(chats => {
+        if (!active || !Array.isArray(chats)) return;
+        const current = chats.find((item: any) => item.id === chatId);
+        if (current) setChat(current);
+      }).catch(() => {});
+
+      void chatAPI.getMessages(chatId, 1, 50).then(msgs => {
+        if (!active || !Array.isArray(msgs) || msgs.length === 0) return;
+
+        const msgList = normalizeMessages(msgs);
         setMessages(msgList);
-        saveCache(`chat_messages_${chatId}`, msgList);
+        void saveCache(`chat_messages_${chatId}`, msgList);
         setHasMore(msgList.length === 50);
 
-        // Marcar como leídos
-        const lastReadableId = getLastReadableMessageId(msgList, me?.id || '');
+        const meId = resolvedUserId;
+        const firstUnread = msgList.find(message => message.sender_id !== meId && message.status !== 'read');
+        if (firstUnread) setFirstUnreadId(firstUnread.id);
+
+        const unreadCnt = msgList.filter(message => message.sender_id !== meId && message.status !== 'read').length;
+        if (unreadCnt > 0) setUnreadScrollCount(unreadCnt);
+
+        const lastReadableId = getLastReadableMessageId(msgList, meId);
         if (lastReadableId) {
-          chatAPI.markAsRead(chatId, lastReadableId).catch(() => {});
+          void chatAPI.markAsRead(chatId, lastReadableId);
         }
-      } catch (e) {
-        console.error('Error cargando chat:', e);
-        const cached = await readCache<Message[]>(`chat_messages_${chatId}`);
-        if (cached?.length) {
-          setMessages(normalizeMessages(cached));
-        }
-      } finally {
-        setLoading(false);
-      }
+        void markChatAsRead(chatId);
+      }).catch(() => {});
     };
+
     init();
+    return () => { active = false; };
   }, [chatId, readCache, saveCache]);
 
   useEffect(() => {
@@ -268,54 +691,135 @@ export default function ChatScreen() {
     saveCache(`chat_messages_${chatId}`, messages);
   }, [chatId, messages, saveCache]);
 
-  // Supabase Realtime
+  // Supabase Realtime + polling de respaldo (por si Realtime no está habilitado)
   useEffect(() => {
     if (!chatId || !currentUserId) return;
+
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
+    let realtimeWorking = false;
+
     const unsubscribe = subscribeToChat(chatId, (newMsg, event) => {
+      realtimeWorking = true;
       if (event === 'DELETE') {
         setMessages(prev => prev.filter(message => message.id !== newMsg.id));
         return;
       }
-
       if (newMsg.sender_id !== currentUserId) {
-        const enriched = normalizeMessage(newMsg);
-        setMessages(prev => mergeMessages(prev, [enriched]));
+        // Enriquecer con datos del sender del chat actual
+        setChat((currentChat: any) => {
+          const participant = currentChat?.participants?.find(
+            (p: any) => p.user_id === newMsg.sender_id
+          );
+          const enriched = normalizeMessage({
+            ...newMsg,
+            sender: newMsg.sender || (participant ? {
+              id: participant.user_id,
+              full_name: participant.full_name || '',
+              avatar_url: participant.avatar_url || '',
+            } : undefined),
+          });
+          setMessages(prev => mergeMessages(prev, [enriched]));
+          return currentChat;
+        });
         if (event === 'INSERT') {
+          // Marcar como leído inmediatamente (estamos en el chat activo)
           chatAPI.markAsRead(chatId, newMsg.id).catch(() => {});
+          // Broadcast de lectura solo si el usuario tiene readReceipts activados
+          if (showReadReceipts) {
+            broadcastReadReceipt(chatId, currentUserId, [newMsg.id]);
+          }
+          playMessageReceived(); // ← sonido en mensajes via Realtime
         }
         setIsTyping(false);
       } else if (event === 'UPDATE') {
-        setMessages(prev => mergeMessages(prev, [newMsg]));
+        // Si el UPDATE es un soft-delete, quitar el mensaje en lugar de mergearlo
+        if ((newMsg as any).deleted_at) {
+          setMessages(prev => prev.filter(m => m.id !== newMsg.id));
+        } else {
+          setMessages(prev => mergeMessages(prev, [newMsg]));
+        }
       }
     });
-    return unsubscribe;
-  }, [chatId, currentUserId]);
 
-  // Enriquecer perfil del otro usuario desde contactos cuando no hay avatar en el participante
-  useEffect(() => {
-    if (!chat || chat.type === 'group' || !currentUserId) return;
-    const other = chat.participants?.find((p: any) => p.user_id !== currentUserId);
-    if (!other || getParticipantAvatar(other)) return; // ya tiene avatar
-    
-    contactsAPI.getAll().then(contacts => {
-      const match = contacts.find((c: any) => 
-        (c.contact_user_id === other.user_id) || 
-        (c.user?.id === other.user_id)
+    // ── Suscripción a read receipts (checks azules en tiempo real) ──
+    // El emisor escucha cuándo el receptor lee sus mensajes
+    const unsubscribeRead = subscribeToReadBroadcast(chatId, currentUserId, (messageIds) => {
+      setMessages(prev =>
+        prev.map(m =>
+          messageIds.includes(m.id) && m.sender_id === currentUserId
+            ? { ...m, status: 'read' as const }
+            : m,
+        ),
       );
-      if (match) {
-        const realUser = match.user || match;
-        setOtherUserProfile({
-          avatar_url: realUser.avatar_url,
-          phone: realUser.phone,
-        });
+    });
+
+    // Si Realtime no responde en 5s, polling cada 2s
+    const realtimeCheck = setTimeout(() => {
+      if (!realtimeWorking) {
+        pollInterval = setInterval(async () => {
+          try {
+            const fresh = await chatAPI.getMessages(chatId, 1, 20);
+            if (!fresh?.length) return;
+            // replaceAll: true → los mensajes ausentes del servidor se consideran borrados
+            setMessages(prev => mergeMessages(prev, normalizeMessages(fresh), { replaceAll: true }));
+          } catch {}
+        }, 2000);
       }
-    }).catch(() => {});
-  }, [chat, currentUserId]);
+    }, 5000);
+
+    return () => {
+      unsubscribe();
+      unsubscribeRead();
+      clearTimeout(realtimeCheck);
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [chatId, currentUserId]);
 
   useEffect(() => {
     if (!currentUserId) return;
     return subscribeToOnlineUsers(setOnlineUserIds);
   }, [currentUserId]);
+
+  // Fallback: consultar online_status del otro usuario cada 15s
+  // (por si Supabase Presence no funciona en web)
+  // También obtiene last_seen y last_seen_visibility para respetar la privacidad
+  const [otherUserPrivacy, setOtherUserPrivacy] = useState<{
+    lastSeen: string | null;
+    visibility: 'todos' | 'contactos' | 'nadie';
+  }>({ lastSeen: null, visibility: 'todos' });
+
+  useEffect(() => {
+    const _isGroup = chat?.type === 'group';
+    const _otherParticipant = chat?.participants?.find((p: any) => String(p.user_id) !== String(currentUserId));
+    if (!_otherParticipant?.user_id || _isGroup) return;
+    const uid = String(_otherParticipant.user_id);
+
+    const check = async () => {
+      try {
+        const BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api-xlxj.onrender.com').replace(/\/$/, '');
+        const token = await getToken();
+        const res = await fetch(`${BASE}/api/users/${uid}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const user = await res.json();
+        // Actualizar estado online respetando la visibilidad que devuelve el backend
+        if (user?.online_status) {
+          setOnlineUserIds(prev => prev.includes(uid) ? prev : [...prev, uid]);
+        } else {
+          setOnlineUserIds(prev => prev.filter(id => id !== uid));
+        }
+        // Guardar preferencia de privacidad y última vez
+        setOtherUserPrivacy({
+          lastSeen: user?.last_seen || null,
+          visibility: (user?.last_seen_visibility as any) || 'todos',
+        });
+      } catch {}
+    };
+
+    check();
+    const interval = setInterval(check, 15000);
+    return () => clearInterval(interval);
+  }, [chat, currentUserId]);
 
   useEffect(() => {
     if (!chatId || !currentUserId) return;
@@ -337,12 +841,15 @@ export default function ChatScreen() {
     };
   }, [chatId, currentUserId]);
 
-  // Scroll al fondo cuando llegan mensajes nuevos
+  const scrollToBottom = useCallback((animated = false) => {
+    flatListRef.current?.scrollToEnd({ animated });
+  }, []);
+
   useEffect(() => {
-    if (messages.length > 0) {
-      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 80);
-    }
-  }, [messages.length]);
+    if (messages.length === 0) return;
+    const frame = requestAnimationFrame(() => scrollToBottom(false));
+    return () => cancelAnimationFrame(frame);
+  }, [messages.length, messagesBottomInset, inputBarHeight, isTyping, replyTo?.id, scrollToBottom]);
 
   // Cargar más mensajes (scroll hacia arriba)
   const loadMore = useCallback(async () => {
@@ -368,12 +875,15 @@ export default function ChatScreen() {
     if (typingTimer.current) clearTimeout(typingTimer.current);
     setText('');
     setReplyTo(null);
+    setQuickReplySuggestions([]);
     setSending(true);
-    haptics.light(); // feedback táctil al enviar
+    haptics.light();
 
+    // Animación de vuelo: escala abajo → rebote hacia arriba
     Animated.sequence([
-      Animated.spring(sendScale, { toValue: 0.85, useNativeDriver: true, speed: 50 }),
-      Animated.spring(sendScale, { toValue: 1, useNativeDriver: true, speed: 30 }),
+      Animated.timing(sendScale, { toValue: 0.75, duration: 80, useNativeDriver: true }),
+      Animated.spring(sendScale, { toValue: 1.15, useNativeDriver: true, speed: 40, bounciness: 14 }),
+      Animated.spring(sendScale, { toValue: 1, useNativeDriver: true, speed: 30, bounciness: 6 }),
     ]).start();
 
     const tempId = createTempMessageId();
@@ -389,9 +899,17 @@ export default function ChatScreen() {
     setMessages(prev => mergeMessages(prev, [tempMsg]));
 
     if (!isOnline) {
-      setMessages(prev => markMessageFailed(prev, tempId));
+      // Encolar en AsyncStorage — se enviará al reconectar aunque se cierre la app
+      await enqueueMessage({
+        chatId: chatId!,
+        tempId,
+        text: trimmed,
+        type: 'text',
+        reply_to: replyTo?.id,
+        createdAt: tempMsg.created_at,
+      });
+      // Dejar el mensaje como 'pending' (no failed) para que el usuario sepa que está encolado
       setSending(false);
-      toast.info('Sin conexión', 'El mensaje queda listo para reintentar');
       return;
     }
 
@@ -437,14 +955,44 @@ export default function ChatScreen() {
     toast.info('Destacado', starredIds.includes(contextMsg.id) ? 'Quitado de destacados' : 'Mensaje destacado');
   }, [contextMsg, starredIds, persistStarred]);
 
+  const [messageReactions, setMessageReactions] = useState<Record<string, Record<string, number>>>({});
+  const [translatedMessages, setTranslatedMessages] = useState<Record<string, string>>({});
+
+  const handleTranslate = useCallback(async () => {
+    if (!contextMsg?.text) return;
+    setContextVisible(false);
+    toast.info('🌐 Traduciendo...');
+    const translated = await translateText(contextMsg.text, 'es');
+    if (translated !== contextMsg.text) {
+      setTranslatedMessages(prev => ({ ...prev, [contextMsg.id]: translated }));
+      toast.success('Traducido', translated.slice(0, 50) + (translated.length > 50 ? '...' : ''));
+    } else {
+      toast.info('Ya está en español o no se pudo traducir');
+    }
+  }, [contextMsg]);
+
   const handleReaction = useCallback((emoji: string) => {
     if (!contextMsg || !chatId) return;
-    const reactText = `${emoji} reaccionaste a: ${(contextMsg.text || '').slice(0, 40)}`;
-    chatAPI.sendMessage(chatId, { text: reactText, type: 'text' }).catch(() => {});
-  }, [contextMsg, chatId]);
+    const msgId = contextMsg.id;
+    // Actualizar optimísticamente en local
+    setReactionsMap(prev => ({
+      ...prev,
+      [msgId]: applyReactionOptimistic(prev[msgId] || {}, emoji, currentUserId),
+    }));
+    // También actualizar el mapa legado para compatibilidad con ChatMessageBubble
+    setMessageReactions(prev => {
+      const current = prev[msgId] || {};
+      const alreadyReacted = Object.values(reactionsMap[msgId] || {}).find(r => r.emoji === emoji && r.reactedByMe);
+      const count = alreadyReacted ? Math.max(0, (current[emoji] || 1) - 1) : (current[emoji] || 0) + 1;
+      return { ...prev, [msgId]: { ...current, [emoji]: count } };
+    });
+    setContextVisible(false);
+    // Guardar en BD
+    toggleReaction(msgId, emoji, currentUserId).catch(() => {});
+  }, [contextMsg, chatId, currentUserId, reactionsMap]);
 
   const exportChat = useCallback(() => {
-    const other = chat?.participants?.find((p: any) => p.user_id !== currentUserId);
+    const other = chat?.participants?.find((p: any) => String(p.user_id) !== String(currentUserId));
     const name = chat?.type === 'group'
       ? (chat?.name || 'Grupo')
       : (getParticipantName(other) || 'Usuario');
@@ -477,22 +1025,58 @@ export default function ChatScreen() {
     if (!msg.reply_to) return undefined;
     const parent = messages.find(m => m.id === msg.reply_to);
     if (!parent) return undefined;
-    const other = chat?.participants?.find((p: any) => p.user_id !== currentUserId);
+    const other = chat?.participants?.find((p: any) => String(p.user_id) !== String(currentUserId));
     const fallbackName = chat?.type === 'group'
       ? (chat?.name || 'Grupo')
       : (getParticipantName(other) || 'Usuario');
+    // #6 — incluir thumbnail si el mensaje padre es imagen
+    const imageUri =
+      parent.type === 'image'
+        ? (parent.imageUrl || parent.file_url || undefined)
+        : undefined;
     return {
       author: parent.sender_id === currentUserId ? 'Tú' : (parent.sender?.full_name || fallbackName),
-      text: parent.text || 'Mensaje',
+      text: parent.type === 'image' ? '📷 Foto' : (parent.text || 'Mensaje'),
+      imageUri,
     };
   }, [messages, currentUserId, chat]);
 
   const handleScroll = useCallback((e: any) => {
     const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
     const distBottom = contentSize.height - contentOffset.y - layoutMeasurement.height;
-    setShowScrollBottom(distBottom > 200);
+    // Usar threshold más alto en Android para reducir setState en scroll
+    const threshold = Platform.OS === 'android' ? 250 : 200;
+    const shouldShow = distBottom > threshold;
+    // Solo actualizar estado si realmente cambia — evita re-renders continuos al hacer scroll
+    setShowScrollBottom(prev => prev === shouldShow ? prev : shouldShow);
     if (contentOffset.y < 60 && hasMore && !loadingMore) loadMore();
   }, [hasMore, loadingMore, loadMore]);
+
+  // ── Cerrar teclado/emojis/panels al tocar fuera del input ──────
+  // dismissPanels: cierra paneles (adjuntos, emojis) pero NO el teclado (tap simple)
+  // dismissAll: cierra todo incluyendo el teclado (doble tap)
+  const dismissPanels = useCallback(() => {
+    setShowEmojis(false);
+    setShowAttach(false);
+    setShowStickers(false);
+  }, []);
+
+  const dismissAll = useCallback(() => {
+    Keyboard.dismiss();
+    inputRef.current?.blur();
+    setShowEmojis(false);
+    setShowAttach(false);
+    setShowStickers(false);
+  }, []);
+
+  // Gesto de doble tap nativo para cerrar teclado (funciona sobre FlatList con keyboardShouldPersistTaps="always")
+  const doubleTapGesture = Gesture.Tap()
+    .numberOfTaps(2)
+    .maxDuration(300)
+    .runOnJS(true)
+    .onEnd(() => {
+      dismissAll();
+    });
 
   const handleCopy = useCallback(async () => {
     if (contextMsg?.text) await Clipboard.setStringAsync(contextMsg.text);
@@ -504,33 +1088,219 @@ export default function ChatScreen() {
     setContextVisible(false);
   }, [contextMsg]);
 
+  // ── Sprint 1.3: Editar mensaje ─────────────────────────────────
+  const handleEditMessage = useCallback(() => {
+    if (!contextMsg || contextMsg.type !== 'text') return;
+    setEditingMessage(contextMsg);
+    setEditText(contextMsg.text || '');
+    setContextVisible(false);
+  }, [contextMsg]);
+
+  const handleConfirmEdit = useCallback(async () => {
+    if (!editingMessage || !editText.trim()) return;
+    const newText = editText.trim();
+    // Optimista
+    setMessages(prev => applyEditLocally(prev, editingMessage.id, newText));
+    setEditingMessage(null);
+    setEditText('');
+    // Sincronizar con backend
+    const result = await editMessage(editingMessage.id, newText);
+    if (!result.success) {
+      toast.error('No se pudo editar', result.error || 'Error desconocido');
+      // Revertir
+      setMessages(prev => applyEditLocally(prev, editingMessage.id, editingMessage.text || ''));
+    }
+  }, [editingMessage, editText]);
+
+  // ── Sprint 1.3: Reenviar mensaje ───────────────────────────────
+  const handleForwardMessage = useCallback(() => {
+    if (!contextMsg) return;
+    setContextVisible(false);
+    // C7 — abrir modal de reenvío con comentario
+    setForwardMsg(contextMsg);
+    setShowForwardModal(true);
+  }, [contextMsg]);
+
+  // ── Sprint 1.4: Ubicación en vivo ──────────────────────────────
+  const handleStartLiveLocation = useCallback(async () => {
+    if (!chatId) return;
+    try {
+      setShowAttach(false);
+      await startLiveLocation(chatId, () => setLiveLocationActive(true));
+      setLiveLocationActive(true);
+      toast.info('📍 Ubicación en vivo', 'Compartiendo tu posición en tiempo real');
+    } catch (e: any) {
+      toast.error('Ubicación', e?.message || 'No se pudo iniciar');
+    }
+  }, [chatId]);
+
+  const handleStopLiveLocation = useCallback(() => {
+    if (!chatId) return;
+    stopLiveLocation(chatId);
+    setLiveLocationActive(false);
+    toast.info('Ubicación detenida');
+  }, [chatId]);
+
   const handleDelete = useCallback(() => {
     setContextVisible(false);
-    Alert.alert('Eliminar mensaje', '¿Eliminar para todos?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Eliminar', style: 'destructive',
-        onPress: async () => {
-          if (!contextMsg) return;
-          try {
-            await chatAPI.deleteMessage(contextMsg.id);
+    if (!contextMsg) return;
+    const isTransfer = contextMsg.type === 'money' || contextMsg.text?.includes('💸');
+    const itemLabel = isTransfer ? 'transacción' : 'mensaje';
+    Alert.alert(
+      `Eliminar ${itemLabel}`,
+      `¿Eliminar este ${itemLabel} para todos?\n\nQuedará guardado en el historial durante 5 años antes de borrarse definitivamente.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar para todos', style: 'destructive',
+          onPress: async () => {
+            // Optimistic: quitar de UI inmediatamente
             setMessages(prev => prev.filter(m => m.id !== contextMsg.id));
-          } catch {}
+            try {
+              await chatAPI.deleteMessage(contextMsg.id);
+              toast.success(`${itemLabel.charAt(0).toUpperCase() + itemLabel.slice(1)} eliminado para todos`);
+            } catch {
+              // Rollback si falla
+              toast.error(`No se pudo eliminar el ${itemLabel}`);
+              setMessages(prev => {
+                // Reinsertar el mensaje en su posición cronológica
+                const exists = prev.some(m => m.id === contextMsg.id);
+                if (exists) return prev;
+                return [...prev, contextMsg].sort(
+                  (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                );
+              });
+            }
+          },
         },
-      },
-    ]);
+      ]
+    );
   }, [contextMsg]);
 
   const handleDeleteForMe = useCallback(() => {
     setContextVisible(false);
     if (!contextMsg) return;
-    chatAPI.deleteMessageForMe(contextMsg.id).catch(() => {});
+    const isTransfer = contextMsg.type === 'money' || contextMsg.text?.includes('💸');
+    const itemLabel = isTransfer ? 'transacción' : 'mensaje';
+    // Optimistic: quitar de UI inmediatamente
     setMessages(prev => prev.filter(m => m.id !== contextMsg.id));
+    toast.info(`${itemLabel.charAt(0).toUpperCase() + itemLabel.slice(1)} eliminado para ti`);
+    chatAPI.deleteMessageForMe(contextMsg.id).catch(() => {
+      // Silencioso — el filtro local ya ocultó el mensaje; el servidor puede fallar sin impacto visible
+    });
+  }, [contextMsg]);
+
+  // ── Eliminar contacto desde el chat ────────────────────────────
+  // Nota: se define usando chat/currentUserId (disponibles) en lugar de
+  // otherParticipant/chatName (declarados más abajo en el render flow).
+  const handleDeleteContact = useCallback(() => {
+    setContextVisible(false);
+    const _otherParticipant = chat?.participants?.find(
+      (p: any) => String(p.user_id) !== String(currentUserId)
+    );
+    const targetUserId = _otherParticipant?.user_id;
+    const targetName =
+      _otherParticipant?.full_name ||
+      (_otherParticipant as any)?.users?.full_name ||
+      'este contacto';
+    if (!targetUserId) {
+      toast.error('No se pudo identificar al contacto');
+      return;
+    }
+    Alert.alert(
+      'Eliminar contacto',
+      `¿Quieres eliminar a ${targetName} de tus contactos?\n\nPodrás volver a agregarlo cuando quieras.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar contacto', style: 'destructive',
+          onPress: async () => {
+            const removed = await contactsAPI.removeByUserId(String(targetUserId));
+            if (removed) {
+              toast.success(`${targetName} eliminado de contactos`);
+            } else {
+              toast.info(`${targetName} no estaba en tus contactos`);
+            }
+          },
+        },
+      ]
+    );
+  }, [chat, currentUserId]);
+
+  // ── Descargar imagen / video / archivo ────────────────────────
+  const handleDownloadMedia = useCallback(async () => {
+    setContextVisible(false);
+    if (!contextMsg) return;
+
+    const url = (contextMsg as any).file_url || (contextMsg as any).imageUrl;
+    if (!url) {
+      toast.error('No hay archivo para descargar');
+      return;
+    }
+
+    // En web: abrir en nueva pestaña
+    if (Platform.OS === 'web') {
+      try {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = url.split('/').pop() || 'archivo';
+        a.target = '_blank';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        toast.success('Descarga iniciada');
+      } catch {
+        toast.error('No se pudo descargar');
+      }
+      return;
+    }
+
+    // En nativo: descargar a directorio temporal y compartir/guardar
+    try {
+      toast.info('Descargando...');
+      const fs = await import('expo-file-system/legacy');
+      const FS = (fs as any).default ?? fs;
+      const ext = url.split('?')[0].split('.').pop()?.toLowerCase() || 'bin';
+      const fileName = `egchat_${Date.now()}.${ext}`;
+      const destPath = `${FS.cacheDirectory}${fileName}`;
+
+      const dlResult = await FS.downloadAsync(url, destPath);
+      if (dlResult.status !== 200) throw new Error('Error al descargar');
+
+      // Intentar guardar en galería si es imagen/video
+      const isPhoto = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'mov', 'avi'].includes(ext);
+      if (isPhoto) {
+        try {
+          // Usar Sharing nativo si está disponible (no requiere dependencia extra)
+          const Sharing = await import('expo-sharing').catch(() => null);
+          if (Sharing && (await (Sharing as any).isAvailableAsync?.())) {
+            await (Sharing as any).shareAsync(destPath, { dialogTitle: 'Guardar archivo' });
+            return;
+          }
+        } catch { /* usar Share de RN */ }
+      }
+
+      // Fallback: Share nativo
+      await Share.share({ url: destPath, title: fileName });
+    } catch (e: any) {
+      toast.error('No se pudo descargar', e?.message || '');
+    }
   }, [contextMsg]);
 
   // Emitir "escribiendo..." al servidor con debounce
   const handleTextChange = useCallback((val: string) => {
     setText(val);
+    // Sprint 2.2 — detectar mención
+    if (chat?.type === 'group') {
+      const detection = detectMentionQuery(val);
+      setMentionQuery(detection ? detection.query : null);
+    }
+    // F1 — detectar respuestas rápidas (/)
+    if (val.startsWith('/')) {
+      setQuickReplySuggestions(searchQuickReplies(quickReplies, val));
+    } else {
+      setQuickReplySuggestions([]);
+    }
     if (typingTimer.current) clearTimeout(typingTimer.current);
     if (val.trim()) {
       typingChannelRef.current?.sendTyping(true);
@@ -540,7 +1310,7 @@ export default function ChatScreen() {
     } else {
       typingChannelRef.current?.sendTyping(false);
     }
-  }, [chatId]);
+  }, [chat, chatId, quickReplies]);
 
   const pushOptimistic = useCallback((msg: Message) => {
     setMessages(prev => mergeMessages(prev, [msg]));
@@ -555,6 +1325,33 @@ export default function ChatScreen() {
   const failOptimistic = useCallback((tempId: string) => {
     setMessages(prev => markMessageFailed(prev, tempId));
   }, []);
+
+  // ── Cola offline — procesa mensajes encolados al reconectar ──────
+  useOfflineQueue({
+    chatId: chatId!,
+    sendText: async (payload) => {
+      const real = await chatAPI.sendMessage(chatId!, {
+        text: payload.text,
+        type: payload.type,
+        reply_to: payload.reply_to,
+      });
+      return real;
+    },
+    onSent: ({ tempId: qTempId, realMessage }) => {
+      // Reemplazar el mensaje pendiente con el real del servidor
+      setMessages(prev => {
+        const exists = prev.find(m => m.id === qTempId);
+        if (exists) {
+          return replaceTempMessage(prev, qTempId, { ...realMessage, status: 'delivered' });
+        }
+        // Si ya no está en pantalla (usuario cerró y reabrió el chat), insertar normalmente
+        return mergeMessages(prev, [{ ...realMessage, status: 'delivered' }]);
+      });
+    },
+    onFailed: ({ tempId: qTempId }) => {
+      setMessages(prev => markMessageFailed(prev, qTempId));
+    },
+  });
 
   const retryMessage = useCallback(async (message: Message) => {
     if (!chatId || message.status !== 'failed') return;
@@ -675,42 +1472,66 @@ export default function ChatScreen() {
 
   const handleAttachAction = useCallback(async (action: AttachAction) => {
     if (!chatId) return;
+
+    // ── FOTO ─────────────────────────────────────────────────────
     if (action === 'photo') {
-      if (Platform.OS === 'web') {
-        const asset = await pickImageFromLibrary();
-        if (asset) await sendMedia(asset, { text: '📷 Foto', type: 'image' });
-        return;
-      }
-      Alert.alert('Foto', '¿Cómo quieres enviar la foto?', [
-        {
-          text: 'Cámara',
-          onPress: async () => {
-            const asset = await pickImageFromCamera();
-            if (asset) await sendMedia(asset, { text: '📷 Foto', type: 'image' });
-          },
-        },
-        {
-          text: 'Galería',
-          onPress: async () => {
-            const asset = await pickImageFromLibrary();
-            if (asset) await sendMedia(asset, { text: '📷 Foto', type: 'image' });
-          },
-        },
-        { text: 'Cancelar', style: 'cancel' },
-      ]);
+      setShowAttach(false);
+      setMediaPickerMode('photo');
       return;
     }
-    if (action === 'video') {
-      const asset = await pickVideo();
-      if (asset) {
-        await sendMedia(asset, { text: `🎥 ${asset.fileName}`, type: 'video' });
+
+    // ── ÁLBUM ─────────────────────────────────────────────────────
+    if (action === 'album') {
+      setShowAttach(false);
+      const assets = await pickMultipleImages();
+      if (!assets.length) return;
+      if (assets.length === 1) {
+        // Una sola foto → enviar como imagen normal
+        setMediaPreviewItem({ uri: assets[0].uri, fileName: assets[0].fileName, mimeType: assets[0].mimeType, type: 'image' });
+        return;
       }
+      // Múltiples → subir en paralelo y enviar como álbum
+      toast.info('📷 Subiendo álbum...', `${assets.length} fotos`);
+      const tempId = createTempMessageId();
+      pushOptimistic({
+        id: tempId, text: `📷 Álbum (${assets.length} fotos)`, type: 'album',
+        sender_id: currentUserId, status: 'pending',
+        created_at: new Date().toISOString(),
+        album_urls: assets.map(a => a.uri), // URIs locales mientras sube
+      });
+      try {
+        const uploadedUrls = await Promise.all(
+          assets.map(asset =>
+            uploadAndSend(chatId, asset, { text: asset.fileName, type: 'image' })
+              .then(msg => msg?.file_url || msg?.imageUrl || asset.uri)
+              .catch(() => asset.uri)
+          )
+        );
+        const sent = await chatAPI.sendMessage(chatId, {
+          text: `📷 Álbum (${uploadedUrls.length} fotos)`,
+          type: 'album',
+          album_urls: uploadedUrls,
+        });
+        replaceOptimistic(tempId, { ...sent, album_urls: uploadedUrls });
+      } catch {
+        failOptimistic(tempId);
+        toast.error('Error', 'No se pudo enviar el álbum');
+      }
+      return;
+    }
+
+    // ── VIDEO ─────────────────────────────────────────────────────
+    if (action === 'video') {
+      setShowAttach(false);
+      setMediaPickerMode('video');
       return;
     }
     if (action === 'file') {
-      const asset = await pickFile();
+      setShowAttach(false);
+      const asset = await pickDocument();
       if (asset) {
-        await sendMedia(asset, { text: `📄 ${asset.fileName}`, type: 'file' });
+        // Mostrar preview antes de enviar — el usuario confirma con caption opcional
+        setMediaPreviewItem({ uri: asset.uri, fileName: asset.fileName, mimeType: asset.mimeType, type: 'file' });
       }
       return;
     }
@@ -720,33 +1541,57 @@ export default function ChatScreen() {
       return;
     }
     if (action === 'location') {
-      const { lat, lng, label } = await getCurrentLocationLabel();
-      const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-      const msgText = `📍 ${label}\n${directionsUrl}`;
-      const tempId = createTempMessageId();
-      pushOptimistic({
-        id: tempId, text: msgText, type: 'location', sender_id: currentUserId,
-        status: 'pending', created_at: new Date().toISOString(),
-      });
       setShowAttach(false);
-      try {
-        const sent = await chatAPI.sendMessage(chatId, { text: msgText, type: 'text' });
-        replaceOptimistic(tempId, sent);
-      } catch {
-        failOptimistic(tempId);
-      }
+      // Preguntar: ubicación puntual o en vivo
+      Alert.alert('Compartir ubicación', '¿Cómo quieres compartirla?', [
+        {
+          text: 'Ubicación actual',
+          onPress: async () => {
+            toast.info('GPS', 'Obteniendo tu ubicación...');
+            const location = await getCurrentLocationLabel();
+            if (!location) {
+              toast.error('Ubicación', 'No se pudo obtener tu ubicación');
+              return;
+            }
+            const { lat, lng, label } = location;
+            const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+            const msgText = `📍 ${label}\n${mapsUrl}`;
+            const tempId = createTempMessageId();
+            pushOptimistic({
+              id: tempId, text: msgText, type: 'location', sender_id: currentUserId,
+              status: 'pending', created_at: new Date().toISOString(),
+            });
+            try {
+              const sent = await chatAPI.sendMessage(chatId, { text: msgText, type: 'location' });
+              replaceOptimistic(tempId, sent);
+            } catch {
+              failOptimistic(tempId);
+            }
+          },
+        },
+        {
+          text: liveLocationActive ? 'Detener ubicación en vivo' : 'Ubicación en vivo',
+          onPress: liveLocationActive ? handleStopLiveLocation : handleStartLiveLocation,
+        },
+        { text: 'Cancelar', style: 'cancel' },
+      ]);
       return;
     }
     if (action === 'music') {
-      const asset = await pickMusic();
+      setShowAttach(false);
+      const asset = await pickAudio();
       if (asset) {
-        await sendMedia(asset, { text: `🎵 ${asset.fileName}`, type: 'audio' });
+        await sendMedia(asset, { text: asset.fileName, type: 'music' });
       }
       return;
     }
     if (action === 'money') {
       setShowAttach(false);
       setShowQuickTransfer(true);
+    }
+    if (action === 'poll') {
+      setShowAttach(false);
+      setShowCreatePoll(true);
     }
   }, [chatId, sendMedia, pushOptimistic, replaceOptimistic, failOptimistic]);
 
@@ -789,14 +1634,16 @@ export default function ChatScreen() {
     if (!chatId) return;
     const name = contact.full_name || contact.name || 'Contacto';
     const phone = contact.phone || '';
-    const msgText = `👤 ${name}\n📞 ${phone}`;
+    const avatarUrl = contact.avatar_url || '';
+    // Formato: línea 0 = nombre, línea 1 = teléfono, línea 2 = avatar_url
+    const msgText = `${name}\n${phone}\n${avatarUrl}`;
     const tempId = createTempMessageId();
     pushOptimistic({
       id: tempId, text: msgText, type: 'contact', sender_id: currentUserId,
       status: 'pending', created_at: new Date().toISOString(),
     });
     try {
-      const sent = await chatAPI.sendMessage(chatId, { text: msgText, type: 'text' });
+      const sent = await chatAPI.sendMessage(chatId, { text: msgText, type: 'contact' });
       replaceOptimistic(tempId, sent);
       toast.success('Contacto compartido');
     } catch {
@@ -804,23 +1651,11 @@ export default function ChatScreen() {
     }
   }, [chatId, pushOptimistic, replaceOptimistic, failOptimistic]);
 
-  const openMessageAttachment = useCallback((msg: Message) => {
-    const url = msg.file_url || msg.imageUrl;
-    if (msg.type === 'location' || msg.text?.includes('google.com/maps')) {
-      const maps = msg.text?.split('\n').find(line => line.includes('google.com/maps'));
-      if (maps) Linking.openURL(maps).catch(() => {});
-      return;
-    }
-    if (url) {
-      Linking.openURL(url).catch(() => toast.error('No se pudo abrir', 'Archivo no disponible'));
-    }
-  }, []);
-
   const uploadChatAvatar = useCallback(async (uri: string) => {
     setUploadingAvatar(true);
     try {
       const token = await getToken();
-      const BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api.onrender.com').replace(/\/$/, '');
+      const BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api-xlxj.onrender.com').replace(/\/$/, '');
       const formData = new FormData();
       formData.append('avatar', { uri, type: 'image/jpeg', name: 'avatar.jpg' } as any);
       const res = await fetch(`${BASE}/api/user/avatar`, {
@@ -837,7 +1672,7 @@ export default function ChatScreen() {
           return {
             ...prev,
             participants: prev.participants?.map((p: any) =>
-              p.user_id === currentUserId ? { ...p, avatar_url } : p,
+              String(p.user_id) === String(currentUserId) ? { ...p, avatar_url } : p,
             ),
           };
         });
@@ -879,21 +1714,41 @@ export default function ChatScreen() {
   }, []);
 
   const isGroup = chat?.type === 'group';
-  const otherParticipant = chat?.participants?.find((p: any) => p.user_id !== currentUserId);
+  const otherParticipant = chat?.participants?.find((p: any) => String(p.user_id) !== String(currentUserId));
   const chatName = chat
     ? isGroup ? (chat.name || 'Grupo') : (getParticipantName(otherParticipant) || 'Usuario')
     : '...';
-  const chatAvatar = isGroup 
-    ? chat?.avatar_url 
-    : (getParticipantAvatar(otherParticipant) || otherUserProfile?.avatar_url || null);
-  const otherPhone = getParticipantPhone(otherParticipant) || otherUserProfile?.phone || '';
-  const isOtherOnline = !!otherParticipant?.user_id && onlineUserIds.includes(otherParticipant.user_id);
+  const chatAvatar = isGroup ? chat?.avatar_url : getParticipantAvatar(otherParticipant);
+  const otherPhone = getParticipantPhone(otherParticipant);
+  const isOtherOnline = !!otherParticipant?.user_id && onlineUserIds.includes(String(otherParticipant.user_id));
+
+  // Construir subtitle respetando last_seen_visibility del contacto
   const chatSubtitle = isGroup
     ? `${chat?.participants?.length || 0} miembros`
-    : isOtherOnline ? 'En línea' : 'Desconectado';
-  const otherUserId = otherParticipant?.user_id;
-  const chatHasStory = !isGroup && !!otherUserId && activeUserIds.has(otherUserId);
-  const chatStorySeen = !isGroup && !!otherUserId && seenUserIds.has(otherUserId);
+    : (() => {
+        if (otherUserPrivacy.visibility === 'nadie') {
+          return ''; // El contacto eligió no mostrar su estado
+        }
+        if (isOtherOnline) return 'En línea';
+        if (otherUserPrivacy.lastSeen) {
+          const diff = Date.now() - new Date(otherUserPrivacy.lastSeen).getTime();
+          const mins = Math.floor(diff / 60000);
+          const hours = Math.floor(diff / 3600000);
+          const days = Math.floor(diff / 86400000);
+          if (mins < 1) return 'Visto hace un momento';
+          if (mins < 60) return `Visto hace ${mins} min`;
+          if (hours < 24) return `Visto hace ${hours}h`;
+          if (days === 1) return 'Visto ayer';
+          if (days < 7) return `Visto hace ${days} días`;
+          return `Visto el ${new Date(otherUserPrivacy.lastSeen).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}`;
+        }
+        return '';
+      })();
+
+  // C3 — broadcast mode: solo admins escriben
+  const broadcastMode = isGroup && chat?.settings?.broadcast_mode === true;
+  const isGroupAdmin = isGroup && (chat?.participants || []).find((p: any) => String(p.user_id) === String(currentUserId))?.role === 'admin';
+  const canWrite = !broadcastMode || isGroupAdmin;
 
   // ── Items del drawer ──────────────────────────────────────────
   const IC = '#374151'; // color base
@@ -902,9 +1757,13 @@ export default function ChatScreen() {
     {
       section: 'main',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" strokeLinecap="round"/><Circle cx="12" cy="7" r="4"/></Svg>,
-      label: 'Ver perfil',
+      label: isGroup ? 'Info del grupo' : 'Ver perfil',
       color: IC,
-      onPress: () => { setDrawerVisible(false); setShowProfile(true); },
+      onPress: () => {
+        setDrawerVisible(false);
+        if (isGroup) setShowGroupInfo(true);
+        else setShowProfile(true);
+      },
     },
     {
       section: 'main',
@@ -927,13 +1786,41 @@ export default function ChatScreen() {
       color: IC,
       onPress: () => { setDrawerVisible(false); togglePin(); },
     },
+    // ── C5 Galería multimedia ──
+    {
+      section: 'main',
+      icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Rect x="3" y="3" width="18" height="18" rx="2"/><Circle cx="8.5" cy="8.5" r="1.5"/><Polyline points="21 15 16 10 5 21"/></Svg>,
+      label: 'Archivos multimedia',
+      color: IC,
+      onPress: () => { setDrawerVisible(false); setShowMediaGallery(true); },
+    },
     // ── Sección configuración ──
+    {
+      section: 'config',
+      icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#00C8A0" strokeWidth={1.8}><Circle cx="12" cy="12" r="10"/><Polyline points="12 6 12 12 16 14"/></Svg>,
+      label: ephemeralDuration > 0 ? `⏱ Mensajes temporales (activo)` : '⏱ Mensajes temporales',
+      color: ephemeralDuration > 0 ? '#00C8A0' : IC,
+      onPress: () => { setDrawerVisible(false); setShowEphemeralModal(true); },
+    },
     {
       section: 'config',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" strokeLinecap="round"/><Path d="M13.73 21a2 2 0 0 1-3.46 0" strokeLinecap="round"/></Svg>,
       label: isMuted ? 'Activar notificaciones' : 'Silenciar',
       color: IC,
       onPress: () => { setDrawerVisible(false); toggleMute(); },
+    },
+    {
+      section: 'config',
+      icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={isIncognito ? '#8b5cf6' : IC} strokeWidth={1.8}><Path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" strokeLinecap="round"/><Path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" strokeLinecap="round"/><Line x1="1" y1="1" x2="23" y2="23" strokeLinecap="round"/></Svg>,
+      label: isIncognito ? 'Desactivar incógnito' : '🕵️ Modo incógnito',
+      color: isIncognito ? '#8b5cf6' : IC,
+      onPress: async () => {
+        const next = !isIncognito;
+        await setIncognitoMode(chatId, next);
+        setIsIncognito(next);
+        setDrawerVisible(false);
+        toast.info(next ? '🕵️ Incógnito activado' : 'Incógnito desactivado');
+      },
     },
     {
       section: 'config',
@@ -949,14 +1836,42 @@ export default function ChatScreen() {
       color: '#00c8a0',
       onPress: () => Alert.alert('🔒 Cifrado E2E', 'Este chat está cifrado de extremo a extremo.'),
     },
+    {
+      section: 'config',
+      icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" strokeLinecap="round"/><Path d="M13.73 21a2 2 0 0 1-3.46 0" strokeLinecap="round"/></Svg>,
+      label: `🔔 Tono del chat`,
+      color: IC,
+      onPress: () => { setDrawerVisible(false); setShowToneModal(true); },
+    },
+    {
+      section: 'config',
+      icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" strokeLinecap="round"/><Line x1="7" y1="7" x2="7.01" y2="7" strokeLinecap="round"/></Svg>,
+      label: '🏷️ Etiquetas',
+      color: IC,
+      onPress: () => { setDrawerVisible(false); setShowLabelsModal(true); },
+    },
     // ── Sección acciones ──
     {
       section: 'actions',
+      icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" strokeLinecap="round"/><Path d="M19 10v2a7 7 0 0 1-14 0v-2" strokeLinecap="round"/></Svg>,
+      label: '🎙 Walkie-talkie',
+      color: IC,
+      onPress: () => { setDrawerVisible(false); setShowPTT(true); },
+    },
+    {
+      section: 'actions',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Line x1="22" y1="2" x2="11" y2="13" strokeLinecap="round"/><Polygon points="22 2 15 22 11 13 2 9 22 2"/></Svg>,
-      label: 'Dinero',
+      label: 'Enviar dinero',
       color: IC,
       onPress: () => { setDrawerVisible(false); setShowQuickTransfer(true); },
     },
+    ...(isGroup ? [{
+      section: 'actions' as const,
+      icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" strokeLinecap="round"/><Circle cx="9" cy="7" r="4"/><Path d="M23 21v-2a4 4 0 0 0-3-3.87" strokeLinecap="round"/></Svg>,
+      label: '💰 Dividir pago',
+      color: IC,
+      onPress: () => { setDrawerVisible(false); setShowGroupPayment(true); },
+    }] : []),
     {
       section: 'actions',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Circle cx="18" cy="5" r="3"/><Circle cx="6" cy="12" r="3"/><Circle cx="18" cy="19" r="3"/><Line x1="8.59" y1="13.51" x2="15.42" y2="17.49" strokeLinecap="round"/><Line x1="15.41" y1="6.51" x2="8.59" y2="10.49" strokeLinecap="round"/></Svg>,
@@ -1021,53 +1936,294 @@ export default function ChatScreen() {
     },
   ];
 
-  const displayMessages = chatSearchQuery.trim()
-    ? messages.filter(m => m.text?.toLowerCase().includes(chatSearchQuery.toLowerCase()))
-    : messages;
+  const displayMessages = useMemo(() =>
+    chatSearchQuery.trim()
+      ? messages.filter(m => m.text?.toLowerCase().includes(chatSearchQuery.toLowerCase()))
+      : filterExpiredMessages(messages, ephemeralDuration),
+  [messages, chatSearchQuery, ephemeralDuration]);
+
+  // Ref para acceder a displayMessages dentro de renderItem sin añadirlo
+  // como dependencia del useCallback — evita recrear el callback en cada mensaje nuevo
+  const displayMessagesRef = useRef(displayMessages);
+  useEffect(() => { displayMessagesRef.current = displayMessages; }, [displayMessages]);
 
   const starredMessages = messages.filter(m => starredIds.includes(m.id));
 
-  const renderItem = ({ item, index }: { item: Message; index: number }) => {
+  // ── Función para manejar click en tarjeta de transferencia ──────
+  // ── #4 Jump to message al tocar reply preview ─────────────────
+  const handleJumpToMessage = useCallback((parentId: string) => {
+    const idx = displayMessages.findIndex(m => m.id === parentId);
+    if (idx === -1) return;
+    try {
+      flatListRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.3 });
+    } catch { /* scrollToItem como fallback */ }
+  }, [displayMessages]);
+
+  // ── #1 Swipe-to-reply handler ──────────────────────────────────
+  const handleSwipeReply = useCallback((msg: Message) => {
+    setReplyTo(msg);
+    haptics.light();
+  }, []);
+
+  // ── #12 Selección múltiple ──────────────────────────────────────
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const exitSelectMode = useCallback(() => {
+    setIsSelectMode(false);
+    setSelectedIds(new Set());
+  }, []);
+
+  const handleDeleteSelected = useCallback(() => {
+    Alert.alert(
+      'Eliminar mensajes',
+      `¿Eliminar ${selectedIds.size} mensaje${selectedIds.size > 1 ? 's' : ''}?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar', style: 'destructive',
+          onPress: async () => {
+            const ids = Array.from(selectedIds);
+            await Promise.allSettled(ids.map(id => chatAPI.deleteMessage(id)));
+            setMessages(prev => prev.filter(m => !selectedIds.has(m.id)));
+            exitSelectMode();
+          },
+        },
+      ]
+    );
+  }, [selectedIds, exitSelectMode]);
+
+  const handleForwardSelected = useCallback(() => {
+    const msgs = messages.filter(m => selectedIds.has(m.id));
+    if (msgs.length === 0) return;
+    exitSelectMode();
+    // Reenviar el primero con el modal; si hay varios, los encola en globals para el modal
+    (global as any).__egchat_forward_msgs = msgs;
+    setForwardMsg(msgs[0]);
+    setShowForwardModal(true);
+  }, [messages, selectedIds, exitSelectMode]);
+
+  const handleTransferPress = useCallback((transferData: any, messageText?: string) => {
+    // Si el mensaje contiene "⏳ Pendiente" → es una transferencia que el receptor debe aceptar/rechazar
+    const isPending = messageText?.includes('⏳ Pendiente');
+    if (isPending && messageText) {
+      // Extraer el transferId UUID del marcador 🆔 que se guarda en el texto del mensaje
+      const idLine = messageText.split('\n').find(l => l.startsWith('🆔 '));
+      const transferId = idLine?.replace(/^🆔\s*/, '').trim();
+
+      if (transferId) {
+        // Extraer datos del mensaje para el modal
+        const lines = messageText.split('\n');
+        const amountLine = lines.find(l => l.includes('💰')) || '';
+        const fromLine   = lines.find(l => l.includes('👤')) || '';
+        const amountNum  = parseFloat(
+          amountLine.replace(/^💰\s*/, '').replace(/[^0-9.]/g, '')
+        ) || 0;
+        const senderName = fromLine.replace(/^👤 Para:\s*/i, '').trim() || 'Usuario';
+
+        setChatIncomingTransfer({
+          transferId,
+          amount:     amountNum,
+          senderName,
+          concept:    null,
+          expiresAt:  undefined,
+        });
+      } else {
+        // Sin UUID en el mensaje (transferencia antigua) → buscar en servidor
+        walletAPI.getPendingTransfers().then(res => {
+          const incoming = (res.transfers || []).find(
+            t => t.direction === 'incoming' && !t.isExpired,
+          );
+          if (incoming) {
+            setChatIncomingTransfer({
+              transferId: incoming.id,
+              amount:     incoming.amount,
+              senderName: incoming.senderName,
+              concept:    incoming.concept ?? null,
+              expiresAt:  incoming.expiresAt,
+            });
+          } else {
+            setTransferDetailsData(transferData);
+            setShowTransferDetails(true);
+          }
+        }).catch(() => {
+          setTransferDetailsData(transferData);
+          setShowTransferDetails(true);
+        });
+      }
+    } else {
+      setTransferDetailsData(transferData);
+      setShowTransferDetails(true);
+    }
+  }, []);
+
+  // Acepta una transferencia pendiente — se resuelve el transferId del texto del mensaje
+  // o buscando en el servidor como fallback para mensajes antiguos.
+  const handleTransferAccept = useCallback(async (transferId: string) => {
+    let resolvedId = transferId;
+    if (!resolvedId) {
+      // fallback: buscar en servidor
+      const res = await walletAPI.getPendingTransfers();
+      const incoming = (res.transfers || []).find(
+        t => t.direction === 'incoming' && !t.isExpired,
+      );
+      if (!incoming) throw new Error('No hay transferencias pendientes');
+      resolvedId = incoming.id;
+    }
+    await walletAPI.acceptTransfer(resolvedId);
+  }, []);
+
+  const handleTransferCancel = useCallback(async (transferId: string) => {
+    let resolvedId = transferId;
+    if (!resolvedId) {
+      const res = await walletAPI.getPendingTransfers();
+      const incoming = (res.transfers || []).find(
+        t => t.direction === 'incoming' && !t.isExpired,
+      );
+      if (!incoming) throw new Error('No hay transferencias pendientes');
+      resolvedId = incoming.id;
+    }
+    await walletAPI.cancelTransfer(resolvedId);
+  }, []);
+
+  const renderItem = useCallback(({ item, index }: { item: Message; index: number }) => {
     const isOwn = item.sender_id === currentUserId;
-    const prevMsg = index > 0 ? displayMessages[index - 1] : null;
+    const prevMsg = index > 0 ? displayMessagesRef.current[index - 1] : null;
     const showDate = !prevMsg || getDateLabel(item.created_at) !== getDateLabel(prevMsg.created_at);
     const searchHit = !!chatSearchQuery.trim() && !!item.text?.toLowerCase().includes(chatSearchQuery.toLowerCase());
+    // #8 — Separador de mensajes no leídos
+    const showUnreadSeparator = !!firstUnreadId && item.id === firstUnreadId;
+    // #12 — estado de selección
+    const isSelected = selectedIds.has(item.id);
 
     return (
-      <>
+      <TouchableOpacity
+        activeOpacity={isSelectMode ? 0.7 : 1}
+        onPress={isSelectMode ? () => toggleSelect(item.id) : undefined}
+        style={isSelected ? styles.selectedRow : undefined}
+      >
         {showDate && <DateSeparator label={getDateLabel(item.created_at)} />}
+        {showUnreadSeparator && (
+          <View style={styles.unreadSeparator}>
+            <View style={styles.unreadLine} />
+            <Text style={styles.unreadLabel}>Mensajes nuevos</Text>
+            <View style={styles.unreadLine} />
+          </View>
+        )}
+        {/* Checkmark de selección */}
+        {isSelectMode && (
+          <View style={[styles.selectCheck, isOwn ? styles.selectCheckOwn : styles.selectCheckTheir]}>
+            <View style={[styles.selectCircle, isSelected && styles.selectCircleActive]}>
+              {isSelected && <Text style={styles.selectTick}>✓</Text>}
+            </View>
+          </View>
+        )}
         <ChatMessageBubble
           message={item}
           isOwn={isOwn}
           isGroup={isGroup}
           myAvatar={myProfile.avatar_url}
           myName={myProfile.full_name}
+          otherName={chatName}
+          otherAvatar={chatAvatar}
           replyPreview={getReplyPreview(item)}
           showReadReceipts={showReadReceipts}
-          highlight={searchHit}
-          onLongPress={handleLongPress}
+          highlight={searchHit || isSelected}
+          reactions={messageReactions[item.id]}
+          onLongPress={(msg) => {
+            if (isSelectMode) {
+              toggleSelect(msg.id);
+              return;
+            }
+            haptics.medium();
+            setIsSelectMode(true);
+            setSelectedIds(new Set([msg.id]));
+            handleLongPress(msg);
+            if (isGroup && msg.sender_id === currentUserId) {
+              setReceiptsMsgId(msg.id);
+            }
+          }}
           onRetry={retryMessage}
           onOpenImage={setPreviewImageUri}
-          onOpenAttachment={openMessageAttachment}
+          onTransferPress={(transferData) => handleTransferPress(transferData, item.text || '')}
+          onTransferAccept={handleTransferAccept}
+          onTransferCancel={handleTransferCancel}
+          onSwipeReply={isSelectMode ? undefined : handleSwipeReply}
+          onReplyTap={handleJumpToMessage}
+          onReactionPress={(msgId, rxns) => {
+            setReactionDetailMsgId(msgId);
+            setReactionDetailCounts(rxns);
+          }}
+          onCallback={() => {
+            const txt = item.text?.toLowerCase() || '';
+            const isVideo = txt.includes('video') || txt.includes('📹') || txt.includes('videollamada');
+            goToCall(isVideo ? 'video' : 'audio');
+          }}
+          onTranscribed={(msgId, transcriptText) => {
+            // C8 — guardar transcripción en el estado del mensaje
+            setMessages(prev => prev.map(m =>
+              m.id === msgId ? { ...m, voice_transcript: transcriptText } : m
+            ));
+          }}
+          onOpenContact={(phone, name, avatarUrl) => {
+            setCardContact({ phone, name, avatarUrl });
+          }}
+          onContactCall={(type, phone, name) => {
+            router.push({
+              pathname: '/call/[callId]',
+              params: {
+                callId: `call_${Date.now()}`,
+                targetName: name,
+                targetAvatar: '',
+                callType: type,
+                role: 'caller',
+                targetPhone: phone,
+              },
+            } as any);
+          }}
+          onContactMessage={(phone, name) => {
+            router.push({ pathname: '/chat/[id]', params: { id: phone, name } } as any);
+          }}
         />
-      </>
+      </TouchableOpacity>
     );
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    currentUserId, chatSearchQuery, firstUnreadId,
+    selectedIds, isSelectMode, isGroup, myProfile, chatName, chatAvatar,
+    showReadReceipts, messageReactions, toggleSelect, retryMessage,
+    setPreviewImageUri, handleTransferPress, handleTransferAccept, handleTransferCancel,
+    handleSwipeReply, handleJumpToMessage, handleLongPress,
+  ]);
 
   const goToCall = (callType: 'audio' | 'video') => {
-    if (chatId && currentUserId) {
-      const label = callType === 'video' ? '↗ Videollamada saliente\n▱ Videollamada' : '↗ Llamada saliente\nLlamada de voz';
-      const tempId = createTempMessageId();
-      pushOptimistic({
-        id: tempId,
-        text: label,
-        type: 'call',
-        sender_id: currentUserId,
-        status: 'delivered',
-        created_at: new Date().toISOString(),
+    // Si es chat grupal → llamada grupal
+    if (isGroup && chat?.participants?.length > 2) {
+      const otherIds = chat.participants
+        .filter((p: any) => String(p.user_id) !== String(currentUserId))
+        .map((p: any) => p.user_id);
+      const names: Record<string, string> = {};
+      chat.participants.forEach((p: any) => {
+        names[p.user_id] = p.full_name || p.user_id;
       });
-      chatAPI.sendMessage(chatId, { text: label, type: 'call' }).catch(() => {});
+      router.push({
+        pathname: '/group-call',
+        params: {
+          groupId: `group_${chatId}_${Date.now()}`,
+          myUserId: currentUserId,
+          participantIds: JSON.stringify(otherIds),
+          callType,
+          participantNames: JSON.stringify(names),
+        },
+      } as any);
+      return;
     }
+    // Chat privado → llamada 1:1
     router.push({
       pathname: '/call/[callId]',
       params: {
@@ -1077,9 +2233,19 @@ export default function ChatScreen() {
         callType,
         role: 'caller',
         targetUserId: otherParticipant?.user_id || '',
+        chatId,
       },
     } as any);
   };
+
+  // Guard: chatId debe ser un string válido (no undefined, no array)
+  if (!chatId || Array.isArray(chatId)) {
+    return (
+      <View style={styles.center}>
+        <Text style={{ color: Colors.textSecondary }}>Chat no encontrado</Text>
+      </View>
+    );
+  }
 
   if (loading) {
     return (
@@ -1090,21 +2256,24 @@ export default function ChatScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: C.bgTertiary }]} edges={['bottom', 'left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: C.bgPrimary }]} edges={['left', 'right']}>
       <ChatHeader
         chatName={chatName}
         chatAvatar={chatAvatar}
         subtitle={chatSubtitle}
         isTyping={isTyping}
         isOnline={isOtherOnline}
-        hasStory={chatHasStory}
-        storySeen={chatStorySeen}
+        isGroup={isGroup}
         onBack={() => router.back()}
-        onProfilePress={() => setShowProfile(true)}
+        onProfilePress={() => isGroup ? setShowGroupInfo(true) : setShowProfile(true)}
         onAudioCall={() => goToCall('audio')}
         onVideoCall={() => goToCall('video')}
+        onGroupCall={() => goToCall('audio')}
         onMenuPress={() => setDrawerVisible(true)}
       />
+
+      {/* Sprint 1.4 — barra de ubicación en vivo */}
+      <LiveLocationBar active={liveLocationActive} onStop={handleStopLiveLocation} />
 
       {showChatSearch && (
         <ChatSearchBar
@@ -1114,21 +2283,75 @@ export default function ChatScreen() {
         />
       )}
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <View style={styles.chatBg}>
+      {/* Barra de mensaje fijado */}
+      {pinnedMessages.length > 0 && (
+        <TouchableOpacity
+          style={styles.pinnedBar}
+          onPress={() => {
+            const first = pinnedMessages[pinnedMessages.length - 1];
+            const msg = messages.find(m => m.id === first.id);
+            if (msg) flatListRef.current?.scrollToItem({ item: msg, animated: true });
+          }}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.pinnedIcon}>📌</Text>
+          <View style={styles.pinnedContent}>
+            <Text style={styles.pinnedName}>{pinnedMessages[pinnedMessages.length - 1].senderName}</Text>
+            <Text style={styles.pinnedText} numberOfLines={1}>
+              {pinnedMessages[pinnedMessages.length - 1].text}
+            </Text>
+          </View>
+          {pinnedMessages.length > 1 && (
+            <Text style={styles.pinnedCount}>{pinnedMessages.length}</Text>
+          )}
+        </TouchableOpacity>
+      )}
+
+      {/* Badge incógnito */}
+      {isIncognito && (
+        <View style={styles.incognitoBadge}>
+          <Text style={styles.incognitoText}>🕵️ Modo incógnito</Text>
+        </View>
+      )}
+
+      <View style={{ flex: 1 }}>
+        <Pressable style={[styles.chatBg, { flex: 1 }]} onPress={dismissPanels}>
           <ChatWallpaperBackground wallpaperId={wallpaperId} />
+          <GestureDetector gesture={doubleTapGesture}>
           <FlatList
             ref={flatListRef}
             data={displayMessages}
             keyExtractor={item => item.id}
             renderItem={renderItem}
-            contentContainerStyle={styles.messagesList}
+            contentContainerStyle={[
+              styles.messagesList,
+              {
+                paddingBottom: 12,
+                flexGrow: 1,
+                justifyContent: 'flex-end',
+              },
+            ]}
             showsVerticalScrollIndicator={false}
             onScroll={handleScroll}
-            scrollEventThrottle={16}
+            scrollEventThrottle={Platform.OS === 'android' ? 100 : 16}
+            onScrollBeginDrag={() => dismissPanels()}
+            keyboardShouldPersistTaps="always"
             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+            // ── Optimizaciones de rendimiento ──────────────────────
+            initialNumToRender={Platform.OS === 'android' ? 12 : 15}
+            maxToRenderPerBatch={Platform.OS === 'android' ? 4 : 10}
+            updateCellsBatchingPeriod={Platform.OS === 'android' ? 120 : 80}
+            windowSize={Platform.OS === 'android' ? 4 : 7}
+            removeClippedSubviews={Platform.OS === 'android'}
+            getItemLayout={undefined}
+            // ────────────────────────────────────────────────────────
             ListHeaderComponent={loadingMore ? <ActivityIndicator size="small" color={Colors.accent} style={{ marginVertical: 8 }} /> : null}
-            ListFooterComponent={isTyping ? <TypingIndicator /> : null}
+            ListFooterComponent={(
+              <>
+                {isTyping && <TypingIndicator />}
+                <View style={{ height: messagesBottomInset }} />
+              </>
+            )}
             ListEmptyComponent={
               <View style={styles.emptyChat}>
                 <Text style={styles.emptyChatIcon}>💬</Text>
@@ -1136,94 +2359,309 @@ export default function ChatScreen() {
               </View>
             }
           />
+          </GestureDetector>
 
           {showScrollBottom && (
             <TouchableOpacity
               style={styles.scrollBottomBtn}
-              onPress={() => flatListRef.current?.scrollToEnd({ animated: true })}
+              onPress={() => {
+                flatListRef.current?.scrollToEnd({ animated: true });
+                setUnreadScrollCount(0);
+                setFirstUnreadId(null);
+              }}
               activeOpacity={0.85}
             >
+              {unreadScrollCount > 0 && (
+                <View style={styles.scrollBottomBadge}>
+                  <Text style={styles.scrollBottomBadgeText}>
+                    {unreadScrollCount > 99 ? '99+' : unreadScrollCount}
+                  </Text>
+                </View>
+              )}
               <Text style={styles.scrollBottomIcon}>↓</Text>
             </TouchableOpacity>
           )}
 
-          <TouchableOpacity
-            style={styles.liaFloat}
-            onPress={() => router.push('/(tabs)/lia' as any)}
-            activeOpacity={0.85}
+          {/* Botón HOME — arrastrable, abre homepage */}
+          <Animated.View
+            style={[styles.homeFloat, { left: homePos.x, top: homePos.y }]}
+            {...homePanResponder.panHandlers}
           >
             <LinearGradient
               colors={['#00C8A0', '#00B4E6']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={styles.liaFloatGrad}
+              style={styles.homeFloatGrad}
             >
-              <Image
-                source={require('../../assets/logo-transparent.png')}
-                style={styles.liaFloatLogo}
-                resizeMode="cover"
-              />
+              <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <Path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <Polyline points="9 22 9 12 15 12 15 22"/>
+              </Svg>
             </LinearGradient>
-          </TouchableOpacity>
+          </Animated.View>
+        </Pressable>
+
+        {/* ── BOTTOM DOCK — acompaña al teclado con su misma animación ── */}
+        <View
+          onLayout={e => setBottomDockHeight(e.nativeEvent.layout.height)}
+          style={[styles.bottomDock, { bottom: effectiveDockOffset }]}
+        >
+
+            {replyTo && (
+              <ReplyPreview
+                author={replyTo.sender_id === currentUserId ? 'Tú' : (replyTo.sender?.full_name || chatName)}
+                text={replyTo.text || 'Mensaje'}
+                onCancel={() => setReplyTo(null)}
+              />
+            )}
+
+            {/* Sprint 1.3 — Barra de edición */}
+            {editingMessage && (
+              <EditMessageBar
+                message={editingMessage}
+                editText={editText}
+                onChangeText={setEditText}
+                onConfirm={handleConfirmEdit}
+                onCancel={() => { setEditingMessage(null); setEditText(''); }}
+              />
+            )}
+
+            {/* #12 — Barra de acciones de selección múltiple */}
+            {isSelectMode && (
+              <View style={styles.multiSelectBar}>
+                {/* Botón cerrar */}
+                <TouchableOpacity style={styles.multiSelectClose} onPress={exitSelectMode} activeOpacity={0.7}>
+                  <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth={2.5}>
+                    <Line x1="18" y1="6" x2="6" y2="18" strokeLinecap="round"/>
+                    <Line x1="6" y1="6" x2="18" y2="18" strokeLinecap="round"/>
+                  </Svg>
+                </TouchableOpacity>
+
+                {/* Contador */}
+                <View style={styles.multiSelectCountWrap}>
+                  <Text style={styles.multiSelectCountNum}>{selectedIds.size}</Text>
+                  <Text style={styles.multiSelectCountLabel}>
+                    {selectedIds.size === 1 ? 'seleccionado' : 'seleccionados'}
+                  </Text>
+                </View>
+
+                {/* Acciones */}
+                <View style={styles.multiSelectActions}>
+                  {/* Reenviar */}
+                  <TouchableOpacity
+                    style={[styles.multiSelectBtn, styles.multiSelectBtnForward, selectedIds.size === 0 && styles.multiSelectBtnDisabled]}
+                    onPress={selectedIds.size > 0 ? handleForwardSelected : undefined}
+                    activeOpacity={0.75}
+                  >
+                    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.2}>
+                      <Path d="M22 2L11 13" strokeLinecap="round" strokeLinejoin="round"/>
+                      <Polyline points="22 2 15 22 11 13 2 9 22 2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </Svg>
+                    <Text style={styles.multiSelectBtnLabel}>Reenviar</Text>
+                  </TouchableOpacity>
+
+                  {/* Eliminar */}
+                  <TouchableOpacity
+                    style={[styles.multiSelectBtn, styles.multiSelectBtnDanger, selectedIds.size === 0 && styles.multiSelectBtnDisabled]}
+                    onPress={selectedIds.size > 0 ? handleDeleteSelected : undefined}
+                    activeOpacity={0.75}
+                  >
+                    <Svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.2}>
+                      <Polyline points="3 6 5 6 21 6" strokeLinecap="round"/>
+                      <Path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" strokeLinecap="round"/>
+                      <Path d="M10 11v6M14 11v6" strokeLinecap="round"/>
+                      <Path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" strokeLinecap="round"/>
+                    </Svg>
+                    <Text style={styles.multiSelectBtnLabelDanger}>Eliminar</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* F1 — Respuestas rápidas */}
+            {quickReplySuggestions.length > 0 && (
+              <QuickReplyPanel
+                visible
+                replies={quickReplySuggestions}
+                onSelect={(reply) => {
+                  setText(reply.text);
+                  setQuickReplySuggestions([]);
+                }}
+              />
+            )}
+
+            {/* Sprint 2.2 — Sugerencias de menciones */}
+            {isGroup && mentionQuery !== null && (
+              <MentionSuggestions
+                visible
+                users={groupMembers}
+                query={mentionQuery}
+                onSelect={(user) => {
+                  const newText = applyMention(text, user);
+                  setText(newText);
+                  setMentionQuery(null);
+                }}
+              />
+            )}
+
+            {/* Input bar */}
+            {!editingMessage && !isSelectMode && (
+              <View onLayout={e => setInputBarHeight(e.nativeEvent.layout.height)}>
+                {!canWrite ? (
+                  <View style={styles.broadcastBlock}>
+                    <Text style={styles.broadcastBlockText}>📢 Solo los administradores pueden escribir</Text>
+                  </View>
+                ) : (
+                <ChatInputBar
+                  text={text}
+                  sending={sending}
+                  showAttach={showAttach}
+                  showEmojis={showEmojis}
+                  isRecording={isRecording}
+                  keyboardVisible={keyboardBottomOffset > 0}
+                  durationFormatted={durationFormatted}
+                  sendScale={sendScale}
+                  onChangeText={handleTextChange}
+                  onToggleAttach={() => {
+                    setShowAttach(v => {
+                      const n = !v;
+                      if (n) {
+                        setShowEmojis(false);
+                        setShowStickers(false);
+                        inputRef.current?.blur();
+                        Keyboard.dismiss();
+                      }
+                      return n;
+                    });
+                  }}
+                  onToggleEmojis={() => {
+                    setShowEmojis(v => {
+                      const n = !v;
+                      if (n) {
+                        setShowAttach(false);
+                        setShowStickers(false);
+                        inputRef.current?.blur();
+                        Keyboard.dismiss();
+                      }
+                      return n;
+                    });
+                  }}
+                  onToggleStickers={() => {
+                    setShowStickers(v => {
+                      const n = !v;
+                      if (n) {
+                        setShowAttach(false);
+                        setShowEmojis(false);
+                        inputRef.current?.blur();
+                        Keyboard.dismiss();
+                      }
+                      return n;
+                    });
+                  }}
+                  inputRef={inputRef}
+                  onSend={sendMessage}
+                  onLongPressSend={() => {
+                    if (text.trim()) setShowScheduleModal(true);
+                  }}
+                  onStartRecording={async () => {
+                    haptics.medium();
+                    const ok = await startRecording();
+                    if (!ok) toast.error('Sin permiso', 'Activa el micrófono en ajustes');
+                  }}
+                  onCancelRecording={cancelRecording}
+                  onStopRecording={async () => {
+                    const rec = await stopRecording();
+                    if (!rec?.uri || !chatId) return;
+                    haptics.success();
+                    const tempId = createTempMessageId();
+                    const label = `🎵 Audio (${rec.duration}s)`;
+                    pushOptimistic({
+                      id: tempId, text: label, type: 'audio', sender_id: currentUserId,
+                      status: 'pending', created_at: new Date().toISOString(),
+                    });
+                    try {
+                      const asset = { uri: rec.uri, fileName: 'audio.m4a', mimeType: 'audio/m4a' };
+                      const sent = await uploadAndSend(chatId, asset, { text: label, type: 'audio' });
+                      replaceOptimistic(tempId, sent);
+                    } catch {
+                      failOptimistic(tempId);
+                      toast.error('Error', 'No se pudo enviar el audio');
+                    }
+                  }}
+                />
+                )}
+              </View>
+            )}
+          {/* ── FIN BOTTOM DOCK ── */}
         </View>
 
-        {replyTo && (
-          <ReplyPreview
-            author={replyTo.sender_id === currentUserId ? 'Tú' : (replyTo.sender?.full_name || chatName)}
-            text={replyTo.text || 'Mensaje'}
-            onCancel={() => setReplyTo(null)}
-          />
+        {/* ── PANELES ADJUNTOS/EMOJIS/STICKERS — fijos debajo de la barra ── */}
+        {!editingMessage && (showAttach || showEmojis || showStickers) && (
+          <Animated.View
+            style={[
+              styles.panelContainer,
+              { bottom: effectiveDockOffset - PANEL_HEIGHT, transform: [{ translateY: panelSlide }] },
+            ]}
+          >
+            {showAttach && (
+              <View style={[styles.bottomSheet, { height: PANEL_HEIGHT }]}>
+                <Pressable
+                  style={StyleSheet.absoluteFillObject}
+                  onPress={() => setShowAttach(false)}
+                />
+                <ChatAttachPanel onAction={handleAttachAction} />
+                {/* Botón volver al teclado */}
+                <TouchableOpacity
+                  style={styles.kbBackBtn}
+                  onPress={() => {
+                    setShowAttach(false);
+                    inputRef.current?.focus();
+                  }}
+                  activeOpacity={0.7}
+                  hitSlop={8}
+                >
+                  <Text style={styles.kbBackBtnText}>⌨️</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+            {showEmojis && (
+              <View style={[styles.bottomSheet, { height: PANEL_HEIGHT }]}>
+                <ChatEmojiPanel onPick={insertEmoji} onSendSticker={sendStickerMessage} />
+              </View>
+            )}
+            {showStickers && (
+              <View style={[styles.bottomSheet, { height: PANEL_HEIGHT }]}>
+                <StickerPanel
+                  onSelect={async (url) => {
+                    setShowStickers(false);
+                    const tempId = createTempMessageId();
+                    pushOptimistic({
+                      id: tempId,
+                      text: '🎭 Sticker',
+                      type: 'image',
+                      imageUrl: url,
+                      file_url: url,
+                      sender_id: currentUserId,
+                      status: 'pending',
+                      created_at: new Date().toISOString(),
+                    });
+                    try {
+                      const sent = await chatAPI.sendMessage(chatId!, {
+                        text: '🎭 Sticker',
+                        type: 'image',
+                        file_url: url,
+                      });
+                      replaceOptimistic(tempId, { ...sent, imageUrl: url, file_url: url });
+                    } catch { failOptimistic(tempId); }
+                  }}
+                  onClose={() => setShowStickers(false)}
+                />
+              </View>
+            )}
+          </Animated.View>
         )}
 
-        {/* Panel adjuntos — se muestra encima del input */}
-        {showAttach && <ChatAttachPanel onAction={handleAttachAction} />}
-        {showEmojis && (
-          <ChatEmojiPanel onPick={insertEmoji} onSendSticker={sendStickerMessage} />
-        )}
-
-        <ChatInputBar
-          text={text}
-          sending={sending}
-          showAttach={showAttach}
-          showEmojis={showEmojis}
-          isRecording={isRecording}
-          durationFormatted={durationFormatted}
-          sendScale={sendScale}
-          onChangeText={handleTextChange}
-          onToggleAttach={() => {
-            setShowAttach(v => { const n = !v; if (n) setShowEmojis(false); return n; });
-          }}
-          onToggleEmojis={() => {
-            setShowEmojis(v => { const n = !v; if (n) setShowAttach(false); return n; });
-          }}
-          onSend={sendMessage}
-          onStartRecording={async () => {
-            haptics.medium();
-            const ok = await startRecording();
-            if (!ok) toast.error('Sin permiso', 'Activa el micrófono en ajustes');
-          }}
-          onCancelRecording={cancelRecording}
-          onStopRecording={async () => {
-            const rec = await stopRecording();
-            if (!rec?.uri || !chatId) return;
-            haptics.success();
-            const tempId = createTempMessageId();
-            const label = `🎵 Audio (${rec.duration}s)`;
-            pushOptimistic({
-              id: tempId, text: label, type: 'audio', sender_id: currentUserId,
-              status: 'pending', created_at: new Date().toISOString(),
-            });
-            try {
-              const asset = { uri: rec.uri, fileName: 'audio.m4a', mimeType: 'audio/m4a' };
-              const sent = await uploadAndSend(chatId, asset, { text: label, type: 'audio' });
-              replaceOptimistic(tempId, sent);
-            } catch {
-              failOptimistic(tempId);
-              toast.error('Error', 'No se pudo enviar el audio');
-            }
-          }}
-        />
-      </KeyboardAvoidingView>
+      </View>
 
       <ChatContextMenu
         visible={contextVisible}
@@ -1236,7 +2674,222 @@ export default function ChatScreen() {
         onDelete={handleDelete}
         onDeleteForMe={handleDeleteForMe}
         onReaction={handleReaction}
+        onTranslate={handleTranslate}
+        onEdit={handleEditMessage}
+        onForward={handleForwardMessage}
+        onDownload={handleDownloadMedia}
+        onDeleteContact={!isGroup ? handleDeleteContact : undefined}
+        onSelectMode={() => {
+          setContextVisible(false);
+          if (contextMsg) {
+            setIsSelectMode(true);
+            setSelectedIds(new Set([contextMsg.id]));
+          }
+        }}
+        onEditHistory={() => {
+          if (contextMsg?.edited) setEditHistoryMsg(contextMsg);
+          setContextVisible(false);
+        }}
+        onEphemeral={() => {
+          setContextVisible(false);
+          setShowEphemeralModal(true);
+        }}
+        onPin={() => {
+          if (!contextMsg || !chatId) return;
+          const senderName = contextMsg.sender_id === currentUserId
+            ? (myProfile.full_name || 'Yo')
+            : chatName;
+          pinMessage(chatId, {
+            id: contextMsg.id,
+            text: contextMsg.text || '📎 Adjunto',
+            senderName,
+            pinnedAt: new Date().toISOString(),
+          }).then(ok => {
+            if (ok) {
+              getPinnedMessages(chatId).then(setPinnedMessages);
+              toast.info('📌 Mensaje fijado');
+            }
+          });
+        }}
       />
+
+      {/* Sprint 1.2 — Modal mensajes temporales */}
+      <EphemeralSettingsModal
+        visible={showEphemeralModal}
+        current={ephemeralDuration}
+        onSelect={async (d) => {
+          setEphemeralDurationState(d);
+          if (chatId) await setEphemeralDuration(chatId, d);
+          const label = d === 0 ? 'Mensajes temporales desactivados' : `Mensajes temporales: ${d >= 86400 ? `${d/86400}d` : d >= 3600 ? `${d/3600}h` : `${d}s`}`;
+          toast.info(label);
+        }}
+        onClose={() => setShowEphemeralModal(false)}
+      />
+
+      {/* Sprint 1.1 — Modal info del grupo */}
+      {isGroup && (
+        <GroupInfoModal
+          visible={showGroupInfo}
+          chat={chat}
+          currentUserId={currentUserId}
+          onClose={() => setShowGroupInfo(false)}
+          onLeft={() => { setShowGroupInfo(false); router.back(); }}
+        />
+      )}
+
+      {/* Sprint 3.1 — Tono personalizado */}
+      <ChatToneModal
+        visible={showToneModal}
+        current={chatTone}
+        onSelect={async (toneId) => {
+          setChatToneState(toneId);
+          if (chatId) await setChatTone(chatId, toneId);
+        }}
+        onClose={() => setShowToneModal(false)}
+      />
+
+      {/* Sprint 3.5 — Etiquetas */}
+      <ChatLabelsModal
+        visible={showLabelsModal}
+        chatId={chatId}
+        onClose={() => setShowLabelsModal(false)}
+      />
+
+      {/* C3 — Crear encuesta */}
+      <CreatePollModal
+        visible={showCreatePoll}
+        currentUserId={currentUserId}
+        onClose={() => setShowCreatePoll(false)}
+        onSend={async (pollText) => {
+          const tempId = createTempMessageId();
+          pushOptimistic({ id: tempId, text: pollText, type: 'poll' as any, sender_id: currentUserId, status: 'pending', created_at: new Date().toISOString() });
+          try {
+            const sent = await chatAPI.sendMessage(chatId, { text: pollText, type: 'text' });
+            replaceOptimistic(tempId, sent);
+          } catch { failOptimistic(tempId); }
+        }}
+      />
+
+      {/* F3 — Receipts de lectura en grupo */}
+      {isGroup && (
+        <MessageReadReceiptsModal
+          visible={!!receiptsMsgId}
+          messageId={receiptsMsgId || ''}
+          chatParticipants={(chat?.participants || []).map((p: any) => ({
+            user_id: p.user_id,
+            full_name: p.full_name || p.users?.full_name || 'Usuario',
+            avatar_url: p.avatar_url || p.users?.avatar_url,
+          }))}
+          currentUserId={currentUserId}
+          onClose={() => setReceiptsMsgId(null)}
+        />
+      )}
+
+      {/* #7 — Modal de quién reaccionó */}
+      <ReactionDetailModal
+        visible={!!reactionDetailMsgId}
+        messageId={reactionDetailMsgId}
+        localCounts={reactionDetailCounts}
+        currentUserId={currentUserId}
+        onClose={() => setReactionDetailMsgId(null)}
+        resolveUser={(uid) => {
+          const p = (chat?.participants || []).find((x: any) => x.user_id === uid);
+          if (!p) return undefined;
+          return {
+            full_name: p.full_name || p.users?.full_name,
+            avatar_url: p.avatar_url || p.users?.avatar_url,
+          };
+        }}
+      />
+
+      {/* A2 — Modal de mensaje programado */}
+      <ScheduledMessageModal
+        visible={showScheduleModal}
+        chatId={chatId || ''}
+        messageText={text}
+        onClose={() => setShowScheduleModal(false)}
+        onScheduled={() => {
+          setShowScheduleModal(false);
+          setText('');
+          toast.success('Programado ✓', 'El mensaje se enviará en la fecha indicada');
+        }}
+      />
+
+      {/* A3 — Historial de ediciones */}
+      <EditHistoryModal
+        visible={!!editHistoryMsg}
+        history={editHistoryMsg?.edit_history || []}
+        currentText={editHistoryMsg?.text}
+        onClose={() => setEditHistoryMsg(null)}
+      />
+
+      {/* C5 — Galería multimedia */}
+      <ChatMediaGallery
+        visible={showMediaGallery}
+        chatId={chatId || ''}
+        chatName={chatName}
+        onClose={() => setShowMediaGallery(false)}
+      />
+
+      {/* C7 — Reenvío con comentario */}
+      <ForwardWithCommentModal
+        visible={showForwardModal}
+        message={forwardMsg}
+        currentUserId={currentUserId}
+        onClose={() => { setShowForwardModal(false); setForwardMsg(null); }}
+        onForwarded={() => { setShowForwardModal(false); setForwardMsg(null); }}
+      />
+
+      {/* PTT — Walkie-talkie */}
+      {showPTT && (
+        <Modal visible transparent animationType="slide" onRequestClose={() => setShowPTT(false)}>
+          <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }} onPress={() => setShowPTT(false)}>
+            <Pressable style={{ backgroundColor: C.bgPrimary, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 }} onPress={e => e.stopPropagation()}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: C.textPrimary, textAlign: 'center', marginBottom: 16 }}>
+                🎙 Walkie-talkie con {chatName}
+              </Text>
+              <PushToTalkButton
+                chatId={chatId}
+                currentUserId={currentUserId}
+                otherName={chatName}
+                onRecorded={async (uri, dur) => {
+                  setShowPTT(false);
+                  const tempId = createTempMessageId();
+                  const label = `🎙 PTT (${dur}s)`;
+                  pushOptimistic({ id: tempId, text: label, type: 'audio', sender_id: currentUserId, status: 'pending', created_at: new Date().toISOString() });
+                  try {
+                    const asset = { uri, fileName: 'ptt.m4a', mimeType: 'audio/m4a' };
+                    const sent = await uploadAndSend(chatId, asset, { text: label, type: 'audio' });
+                    replaceOptimistic(tempId, sent);
+                  } catch { failOptimistic(tempId); }
+                }}
+              />
+            </Pressable>
+          </Pressable>
+        </Modal>
+      )}
+
+      {/* Sprint 2.4 — Pago grupal */}
+      {isGroup && (
+        <GroupPaymentModal
+          visible={showGroupPayment}
+          chatId={chatId}
+          members={(chat?.participants || []).map((p: any) => ({
+            user_id: p.user_id,
+            full_name: p.full_name || p.users?.full_name || 'Usuario',
+            avatar_url: p.avatar_url || p.users?.avatar_url,
+          }))}
+          currentUserId={currentUserId}
+          onClose={() => setShowGroupPayment(false)}
+          onSent={(msg) => {
+            const tempId = createTempMessageId();
+            pushOptimistic({ id: tempId, text: msg, type: 'text', sender_id: currentUserId, status: 'pending', created_at: new Date().toISOString() });
+            chatAPI.sendMessage(chatId, { text: msg, type: 'text' })
+              .then(real => replaceOptimistic(tempId, real))
+              .catch(() => failOptimistic(tempId));
+          }}
+        />
+      )}
       <ChatWallpaperModal
         visible={showWallpaperModal}
         activeId={wallpaperId}
@@ -1244,6 +2897,32 @@ export default function ChatScreen() {
         onSelect={async (id) => {
           setWallpaperId(id);
           if (chatId) await setChatWallpaperId(chatId, id);
+        }}
+      />
+
+      {/* F4 — Preview antes de enviar */}
+      <MediaPreviewModal
+        visible={!!mediaPreviewItem}
+        item={mediaPreviewItem}
+        sending={mediaSending}
+        onCancel={() => setMediaPreviewItem(null)}
+        onSend={async (caption) => {
+          if (!mediaPreviewItem || !chatId) return;
+          setMediaSending(true);
+          try {
+            const asset = {
+              uri: mediaPreviewItem.uri,
+              fileName: mediaPreviewItem.fileName,
+              mimeType: mediaPreviewItem.mimeType,
+            };
+            const type = mediaPreviewItem.type === 'image' ? 'image'
+              : mediaPreviewItem.type === 'video' ? 'video' : 'file';
+            const label = caption || asset.fileName;
+            await sendMedia(asset, { text: label, type });
+          } finally {
+            setMediaSending(false);
+            setMediaPreviewItem(null);
+          }
         }}
       />
       <ChatStarredModal
@@ -1268,6 +2947,115 @@ export default function ChatScreen() {
         onClose={() => setShowContactPicker(false)}
         onSelect={handleShareContact}
       />
+
+      {/* ── Transfer Details Modal ── */}
+      <TransferDetailsModal
+        visible={showTransferDetails}
+        onClose={() => setShowTransferDetails(false)}
+        transferData={transferDetailsData}
+        isReceived={false}
+      />
+
+      {/* ── Incoming Transfer Modal (receptor acepta/rechaza desde el chat) ── */}
+      <IncomingTransferModal
+        transfer={chatIncomingTransfer}
+        onAccepted={(newBalance) => {
+          setChatIncomingTransfer(null);
+        }}
+        onCancelled={() => setChatIncomingTransfer(null)}
+        onDismiss={() => setChatIncomingTransfer(null)}
+      />
+
+      {/* ── Bottom-sheet selector Foto / Video ── */}
+      <Modal
+        visible={!!mediaPickerMode}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setMediaPickerMode(null)}
+      >
+        <Pressable style={mpStyles.overlay} onPress={() => setMediaPickerMode(null)}>
+          <Pressable style={mpStyles.sheet} onPress={e => e.stopPropagation()}>
+            {/* Handle arrastrable */}
+            <TouchableOpacity onPress={() => setMediaPickerMode(null)} style={mpStyles.handleWrap} activeOpacity={0.7}>
+              <View style={mpStyles.handle} />
+            </TouchableOpacity>
+
+            <Text style={mpStyles.title}>
+              {mediaPickerMode === 'photo' ? 'Añadir foto' : 'Añadir video'}
+            </Text>
+
+            {/* Opción Cámara */}
+            <TouchableOpacity
+              style={mpStyles.option}
+              activeOpacity={0.7}
+              onPress={async () => {
+                setMediaPickerMode(null);
+                if (mediaPickerMode === 'photo') {
+                  const a = await pickImageFromCamera();
+                  if (a) setPhotoEditUri(a.uri);
+                } else {
+                  const a = await pickVideoFromCamera();
+                  if (a) setMediaPreviewItem({ uri: a.uri, fileName: a.fileName, mimeType: a.mimeType, type: 'video' });
+                }
+              }}
+            >
+              <View style={[mpStyles.optionIcon, { backgroundColor: '#fff3e0' }]}>
+                <Svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+                  <Path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                  <Circle cx="12" cy="13" r="4"/>
+                </Svg>
+              </View>
+              <View style={mpStyles.optionText}>
+                <Text style={mpStyles.optionLabel}>
+                  {mediaPickerMode === 'photo' ? 'Hacer una foto' : 'Grabar un video'}
+                </Text>
+                <Text style={mpStyles.optionSub}>Abrir la cámara ahora</Text>
+              </View>
+              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth={2} strokeLinecap="round"><Path d="M9 18l6-6-6-6"/></Svg>
+            </TouchableOpacity>
+
+            <View style={mpStyles.divider} />
+
+            {/* Opción Galería */}
+            <TouchableOpacity
+              style={mpStyles.option}
+              activeOpacity={0.7}
+              onPress={async () => {
+                setMediaPickerMode(null);
+                if (mediaPickerMode === 'photo') {
+                  const a = await pickImageFromLibrary();
+                  if (a) setPhotoEditUri(a.uri);
+                } else {
+                  const a = await pickVideo();
+                  if (a) setMediaPreviewItem({ uri: a.uri, fileName: a.fileName, mimeType: a.mimeType, type: 'video' });
+                }
+              }}
+            >
+              <View style={[mpStyles.optionIcon, { backgroundColor: '#e8f5e9' }]}>
+                <Svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+                  <Rect x="3" y="3" width="18" height="18" rx="3"/>
+                  <Circle cx="8.5" cy="8.5" r="1.5"/>
+                  <Polyline points="21 15 16 10 5 21"/>
+                </Svg>
+              </View>
+              <View style={mpStyles.optionText}>
+                <Text style={mpStyles.optionLabel}>Elegir de la galería</Text>
+                <Text style={mpStyles.optionSub}>Seleccionar desde el dispositivo</Text>
+              </View>
+              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth={2} strokeLinecap="round"><Path d="M9 18l6-6-6-6"/></Svg>
+            </TouchableOpacity>
+
+            {/* Botón cancelar */}
+            <TouchableOpacity
+              style={mpStyles.cancelBtn}
+              onPress={() => setMediaPickerMode(null)}
+              activeOpacity={0.7}
+            >
+              <Text style={mpStyles.cancelText}>Cancelar</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
       <ContactProfileModal
         visible={showProfile}
         contact={{
@@ -1275,19 +3063,61 @@ export default function ChatScreen() {
           title: chatName,
           name: chatName,
           avatarUrl: chatAvatar,
+          avatar_url: chatAvatar,
+          banner_url: (otherParticipant as any)?.banner_url || null,
           phone: otherPhone,
+          status: isOtherOnline ? 'online' : 'offline',
           isGroup,
           type: isGroup ? 'group' : 'private',
-          hasStory: chatHasStory,
-          storySeen: chatStorySeen,
         }}
         onClose={() => setShowProfile(false)}
         onStartCall={(type) => {
           setShowProfile(false);
-          goToCall(type);
+          router.push({
+            pathname: '/call/[callId]',
+            params: {
+              callId: `call_${Date.now()}`,
+              targetName: chatName,
+              targetAvatar: chatAvatar || '',
+              callType: type,
+              role: 'caller',
+              targetUserId: otherParticipant?.user_id || '',
+            },
+          } as any);
         }}
         onSendMoney={() => { setShowProfile(false); setShowQuickTransfer(true); }}
       />
+      {/* Modal de perfil para contacto compartido en tarjeta */}
+      {cardContact && (
+        <ContactProfileModal
+          visible={!!cardContact}
+          contact={{
+            id: cardContact.phone,
+            title: cardContact.name,
+            name: cardContact.name,
+            avatarUrl: cardContact.avatarUrl,
+            phone: cardContact.phone,
+            isGroup: false,
+            type: 'private',
+          }}
+          onClose={() => setCardContact(null)}
+          onStartCall={(type) => {
+            setCardContact(null);
+            router.push({
+              pathname: '/call/[callId]',
+              params: {
+                callId: `call_${Date.now()}`,
+                targetName: cardContact.name,
+                targetAvatar: cardContact.avatarUrl || '',
+                callType: type,
+                role: 'caller',
+                targetPhone: cardContact.phone,
+              },
+            } as any);
+          }}
+          onSendMoney={() => setCardContact(null)}
+        />
+      )}
       <QuickTransferModal
         visible={showQuickTransfer}
         onClose={() => setShowQuickTransfer(false)}
@@ -1298,6 +3128,55 @@ export default function ChatScreen() {
         myAvatar={myProfile.avatar_url}
         myName={myProfile.full_name || 'Yo'}
         onTransferred={sendTransferMessage}
+        onNeedPin={(executeTransferWithPin) => {
+          transferExecutorRef.current = executeTransferWithPin;
+          setTransferPinSubtitle(`Ingresa tu PIN para confirmar la transferencia a ${chatName}`);
+          setTransferPinError('');
+          setTransferPinLoading(false);
+          // Cerrar QuickTransferModal primero para evitar modales anidados en iOS
+          setShowQuickTransfer(false);
+          setTimeout(() => setShowTransferPin(true), 350);
+        }}
+        onNeedSetupPin={(onPinSetupDone) => {
+          pinSetupDoneRef.current = onPinSetupDone;
+          // Cerrar tanto QuickTransferModal como PinInputModal antes de abrir SetupPin
+          setShowQuickTransfer(false);
+          setShowTransferPin(false);
+          setTransferPinLoading(false);
+          setTransferPinError('');
+          setTimeout(() => setShowTransferSetupPin(true), 350);
+        }}
+      />
+      {/* PIN input modal para transferencia — fuera del QuickTransferModal para evitar anidación en iOS */}
+      <PinInputModal
+        visible={showTransferPin}
+        onClose={() => {
+          setShowTransferPin(false);
+          setTransferPinLoading(false);
+          setTransferPinError('');
+          transferExecutorRef.current = null;
+        }}
+        onSuccess={handleTransferPinSuccess}
+        title="🔒 Confirmar transferencia"
+        subtitle={transferPinSubtitle}
+        loading={transferPinLoading}
+        error={transferPinError}
+      />
+      {/* Setup PIN modal para transferencia — fuera del QuickTransferModal */}
+      <SetupPinModal
+        visible={showTransferSetupPin}
+        onClose={() => {
+          setShowTransferSetupPin(false);
+          pinSetupDoneRef.current = null;
+        }}
+        onSuccess={() => {
+          setShowTransferSetupPin(false);
+          if (pinSetupDoneRef.current) {
+            pinSetupDoneRef.current();
+            pinSetupDoneRef.current = null;
+          }
+        }}
+        title="🔒 Configurar PIN de Pagos"
       />
       {cropUri ? (
         <AvatarCropModal
@@ -1305,6 +3184,23 @@ export default function ChatScreen() {
           imageUri={cropUri}
           onClose={() => setCropUri(null)}
           onSave={uploadChatAvatar}
+        />
+      ) : null}
+      {/* Editor de fotos antes de enviar */}
+      {photoEditUri && chatId ? (
+        <PhotoEditorModal
+          visible
+          photoUri={photoEditUri}
+          chatId={chatId}
+          onClose={() => setPhotoEditUri(null)}
+          onSend={async (_cId, caption, editedUri) => {
+            setPhotoEditUri(null);
+            setShowAttach(false);
+            await sendMedia(
+              { uri: editedUri, fileName: 'photo.jpg', mimeType: 'image/jpeg' },
+              { text: caption || '📷 Foto', type: 'image' },
+            );
+          }}
         />
       ) : null}
       {uploadingAvatar && (
@@ -1319,6 +3215,9 @@ export default function ChatScreen() {
           ) : null}
         </Pressable>
       </Modal>
+
+      {/* iOS Privacy Blur — oculta el chat cuando está en background/app-switcher */}
+      <PrivacyBlurOverlay visible={showBlur} />
     </SafeAreaView>
   );
 }
@@ -1409,9 +3308,153 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   scrollBottomIcon: { fontSize: 18, color: '#00c8a0', fontWeight: '700' },
+  scrollBottomBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -4,
+    backgroundColor: '#00c8a0',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  scrollBottomBadgeText: { fontSize: 10, fontWeight: '800', color: '#fff' },
+  // ── Separador de mensajes no leídos (#8) ──
+  unreadSeparator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 8,
+    paddingHorizontal: 12,
+    gap: 8,
+  },
+  unreadLine: { flex: 1, height: 1, backgroundColor: '#00b4e6', opacity: 0.35 },
+  unreadLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#00b4e6',
+    backgroundColor: 'rgba(0,180,230,0.10)',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  // ── Selección múltiple (#12) ──
+  selectedRow: {
+    backgroundColor: 'rgba(0,180,230,0.10)',
+  },
+  selectCheck: {
+    position: 'absolute',
+    top: '50%',
+    zIndex: 10,
+    marginTop: -12,
+  },
+  selectCheckOwn:   { right: 8 },
+  selectCheckTheir: { left: 8 },
+  selectCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#00b4e6',
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectCircleActive: {
+    backgroundColor: '#00b4e6',
+    borderColor: '#00b4e6',
+  },
+  selectTick: { fontSize: 13, color: '#fff', fontWeight: '700' },
+  multiSelectBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderTopWidth: 1,
+    borderTopColor: '#e9ecef',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  multiSelectClose: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#f0f2f5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  multiSelectCountWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 4,
+  },
+  multiSelectCountNum: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+    letterSpacing: -0.3,
+  },
+  multiSelectCountLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#6b7280',
+  },
+  multiSelectActions: { flexDirection: 'row', gap: 8 },
+  multiSelectBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 22,
+  },
+  multiSelectBtnForward: {
+    backgroundColor: '#00b4e6',
+    shadowColor: '#00b4e6',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.30,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  multiSelectBtnDanger: {
+    backgroundColor: '#ef4444',
+    shadowColor: '#ef4444',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.30,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  multiSelectBtnDisabled: { opacity: 0.35 },
+  multiSelectBtnLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#ffffff',
+    letterSpacing: 0.2,
+  },
+  multiSelectBtnLabelDanger: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#ffffff',
+    letterSpacing: 0.2,
+  },
+  // C3 — broadcast block
+  broadcastBlock: {
+    paddingVertical: 14, alignItems: 'center', backgroundColor: '#fff',
+    borderTopWidth: 1, borderTopColor: '#e5e7eb',
+  },
+  broadcastBlockText: { fontSize: 13, color: '#f97316', fontWeight: '600' },
 
   // Messages
-  messagesList: { paddingHorizontal: Spacing.sm + 2, paddingVertical: Spacing.sm, gap: 2 },
+  messagesList: { paddingHorizontal: Spacing.sm + 2, paddingTop: 4, paddingBottom: Spacing.sm, gap: 2 },
 
   // Bubble
   bubbleWrapper: { marginVertical: 1, flexDirection: 'row', alignItems: 'flex-end' },
@@ -1555,10 +3598,23 @@ const styles = StyleSheet.create({
   // LIA-25 flotante en el chat (36px como web)
   liaFloat: {
     position: 'absolute',
-    right: 12,
-    bottom: 120,
     zIndex: 10,
     ...Shadow.md,
+  },
+  homeFloat: {
+    position: 'absolute',
+    zIndex: 10,
+    ...Shadow.md,
+  },
+  homeFloatGrad: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.6)',
+    overflow: 'hidden',
   },
   liaFloatGrad: {
     width: 36,
@@ -1592,6 +3648,54 @@ const styles = StyleSheet.create({
   imagePreview: {
     width: '100%',
     height: '100%',
+  },
+
+  // Bottom dock — posición absoluta para acompañar al teclado con effectiveDockOffset
+  bottomDock: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'transparent',
+    zIndex: 20,
+  },
+
+  bottomSheet: {
+    backgroundColor: Colors.bgSecondary,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: -2 },
+    elevation: 6,
+  },
+  bottomSheetCompact: {
+    marginBottom: -1,
+  },
+  kbBackBtn: {
+    position: 'absolute',
+    top: 10,
+    right: 14,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  kbBackBtnText: {
+    fontSize: 18,
+  },
+  panelContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    zIndex: 10,
   },
 
   // Panel adjuntos — grid 2 columnas
@@ -1718,4 +3822,83 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.error,
   },
   recordingTime: { fontSize: 14, fontWeight: '700', color: Colors.error },
+  // Mensajes fijados
+  pinnedBar: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: 'rgba(0,200,160,0.08)', paddingHorizontal: 14, paddingVertical: 8,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(0,200,160,0.15)',
+  },
+  pinnedIcon: { fontSize: 14 },
+  pinnedContent: { flex: 1 },
+  pinnedName: { fontSize: 11, fontWeight: '700', color: '#00c8a0' },
+  pinnedText: { fontSize: 12, color: '#6b7280' },
+  pinnedCount: {
+    fontSize: 11, fontWeight: '700', color: '#fff',
+    backgroundColor: '#00c8a0', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 1,
+  },
+  // Modo incógnito
+  incognitoBadge: {
+    backgroundColor: 'rgba(139,92,246,0.12)', paddingHorizontal: 14, paddingVertical: 6,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(139,92,246,0.2)',
+    alignItems: 'center',
+  },
+  incognitoText: { fontSize: 12, color: '#8b5cf6', fontWeight: '600' },
+});
+
+// ── Estilos Modal Selector Foto/Video ─────────────────────────────
+const mpStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingBottom: 34,
+    paddingTop: 0,
+    paddingHorizontal: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 20,
+  },
+  handleWrap: {
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  handle: {
+    width: 40, height: 4, borderRadius: 2,
+    backgroundColor: '#d1d5db',
+  },
+  title: {
+    fontSize: 17, fontWeight: '700', color: '#111827',
+    textAlign: 'center', marginBottom: 20,
+  },
+  option: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 0,
+  },
+  optionIcon: {
+    width: 52, height: 52, borderRadius: 16,
+    alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0,
+  },
+  optionText: { flex: 1 },
+  optionLabel: { fontSize: 16, fontWeight: '600', color: '#111827' },
+  optionSub: { fontSize: 13, color: '#9ca3af', marginTop: 3 },
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: '#f3f4f6' },
+  cancelBtn: {
+    marginTop: 16,
+    paddingVertical: 16,
+    borderRadius: 14,
+    backgroundColor: '#f9fafb',
+    alignItems: 'center',
+  },
+  cancelText: { fontSize: 16, fontWeight: '600', color: '#6b7280' },
 });
