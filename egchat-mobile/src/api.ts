@@ -252,3 +252,13 @@ export const taxiAPI = {
   cancelRide: (rideId: string) => post<any>(`/api/taxi/${rideId}/cancel`, {}),
   getRideStatus: (rideId: string) => get<any>(`/api/taxi/${rideId}/status`),
 };
+
+// ══════════════════════════════════════════════════════════════════
+// CEMAC — transferencias a la zona (la comisión la fija el arancel)
+// ══════════════════════════════════════════════════════════════════
+export const cemacAPI = {
+  rates: () => get<{ base: string; countries: string[]; transfer_fee_flat: number | null; min_amount: number; max_amount: number }>('/api/cemac/rates'),
+  create: (datos: { from_country: string; to_country: string; beneficiary_name: string; beneficiary_account: string; amount: number; external_id?: string }) =>
+    post<{ transfer: any; ledger_journal_id: string; balance: number }>('/api/cemac/transfers', datos),
+  list: () => get<any[]>('/api/cemac/transfers'),
+};
