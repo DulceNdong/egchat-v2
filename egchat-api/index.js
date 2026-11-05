@@ -2517,6 +2517,7 @@ app.get('/api/wallet/transactions', auth, async (req, res) => {
     .select('*', { count: 'exact' })
     .eq('user_id', req.user.id)
     .eq('status', 'completed')
+    .neq('ledger_link', 'previa')
     .order('created_at', { ascending: false })
     .range(from, from + limit - 1);
 
@@ -2549,7 +2550,7 @@ app.post('/api/wallet/deposit', auth, walletLimiter, async (req, res) => {
 
     const { data: tx } = await supabase.from('transactions').insert({
       user_id: req.user.id, type: 'deposit', amount, method,
-      reference, status: 'completed'
+      reference, status: 'completed', ledger_journal_id: credit.journal_id
     }).select().single();
 
     res.json({ balance: credit.balance, transaction: tx, sandbox: WALLET_SANDBOX });
@@ -2591,7 +2592,7 @@ app.post('/api/wallet/withdraw', auth, walletLimiter, async (req, res) => {
 
     const { data: tx } = await supabase.from('transactions').insert({
       user_id: req.user.id, type: 'withdraw', amount, method,
-      reference: destination, status: 'completed'
+      reference: destination, status: 'completed', ledger_journal_id: debit.journal_id
     }).select().single();
 
     res.json({ balance: debit.balance, transaction: tx, sandbox: WALLET_SANDBOX });
@@ -2954,16 +2955,29 @@ app.post('/api/wallet/transfer', auth, walletLimiter, async (req, res) => {
     if (!traspaso.ok) return transferErrorResponse(res, traspaso.code);
 
     const detail = concept ? ` · ${String(concept).slice(0, 140)}` : '';
-    const { data: sent } = await supabase.from('transactions').insert({
-      user_id: req.user.id,
-      type: 'transfer_sent',
-      amount,
-      method: 'EGCHAT',
-      reference: recipient ? `A: ${recipient.phone || recipient.id}${detail}` : `Servicio: ${to}${detail}`,
-      status: 'completed',
-    }).select().single();
+    // El libro ya conocia este client_ref: el asiento se devolvio sin mover
+    // dinero, asi que tampoco hay que escribir una segunda vez la historia.
+    const yaHecho = traspaso.already_posted === true;
+    let sent = null;
+    if (yaHecho) {
+      const { data: previa } = await supabase.from('transactions')
+        .select('*').eq('user_id', req.user.id).eq('type', 'transfer_sent')
+        .eq('ledger_journal_id', traspaso.journal_id).maybeSingle();
+      sent = previa;
+    } else {
+      const { data: creada } = await supabase.from('transactions').insert({
+        user_id: req.user.id,
+        type: 'transfer_sent',
+        amount,
+        method: 'EGCHAT',
+        reference: recipient ? `A: ${recipient.phone || recipient.id}${detail}` : `Servicio: ${to}${detail}`,
+        status: 'completed',
+        ledger_journal_id: traspaso.journal_id,
+      }).select().single();
+      sent = creada;
+    }
 
-    if (recipient) {
+    if (recipient && !yaHecho) {
       await supabase.from('transactions').insert({
         user_id: recipient.id,
         type: 'transfer_received',
@@ -2971,6 +2985,7 @@ app.post('/api/wallet/transfer', auth, walletLimiter, async (req, res) => {
         method: 'EGCHAT',
         reference: `DE: ${req.user.phone || req.user.id}${detail}`,
         status: 'completed',
+        ledger_journal_id: traspaso.journal_id,
       });
       notifyMoney(
         recipient.id,
@@ -3042,6 +3057,9 @@ app.post('/api/wallet/transfer/pending', auth, walletLimiter, async (req, res) =
       await supabase.from('transactions').update({ status: 'cancelled' }).eq('id', transfer.id).eq('status', 'pending');
       return transferErrorResponse(res, debit.code);
     }
+    await supabase.from('transactions')
+      .update({ ledger_journal_id: debit.journal_id })
+      .eq('id', transfer.id);
 
     notifyMoney(
       recipient.id,
@@ -3205,6 +3223,7 @@ app.post('/api/wallet/transfer/accept/:id', auth, walletLimiter, async (req, res
       method: 'EGCHAT',
       reference: `DE: ${transfer.user_id}${parsed.concept ? ` · ${parsed.concept.slice(0, 140)}` : ''}`,
       status: 'completed',
+      ledger_journal_id: credit.journal_id,
     });
 
     notifyMoney(
@@ -3305,7 +3324,7 @@ const redeemRechargeCode = async ({ userId, code }) => {
 
   await supabase.from('transactions').insert({
     user_id: userId, type: 'deposit', amount, method: 'Código de recarga',
-    reference: raw, status: 'completed',
+    reference: raw, status: 'completed', ledger_journal_id: credit.journal_id,
   });
   return { ok: true, amount, balance: credit.balance };
 };
@@ -3463,6 +3482,7 @@ app.post('/api/payments/deposit/confirm', auth, walletLimiter, async (req, res) 
       method: intent.gateway,
       reference: intent.id,
       status: 'completed',
+      ledger_journal_id: credit.journal_id,
     }).select().single();
 
     res.json({ ok: true, transactionId: tx?.id || intent.id, newBalance: credit.balance, sandbox: true });
@@ -3573,6 +3593,7 @@ app.post('/api/payments/withdraw/confirm/:id', auth, walletLimiter, async (req, 
       method: intent.gateway,
       reference: intent.id,
       status: 'completed',
+      ledger_journal_id: debit.journal_id,
     }).select().single();
 
     res.json({ ok: true, transactionId: tx?.id || intent.id, newBalance: debit.balance, sandbox: true });
@@ -3702,7 +3723,8 @@ app.post('/api/wallet/hold/:id/capture', auth, walletLimiter, async (req, res) =
 
   const { data: tx } = await supabase.from('transactions').insert({
     user_id: req.user.id, type: 'payment_capture', amount, method: 'EGCHAT',
-    reference: `CAPTURE:${hold.reference || holdId}`, status: 'completed'
+    reference: `CAPTURE:${hold.reference || holdId}`, status: 'completed',
+    ledger_journal_id: debit.journal_id
   }).select().single();
   res.json({ balance: debit.balance, transaction: tx });
 });
@@ -4040,6 +4062,7 @@ app.post('/api/cemac/transfers', auth, walletLimiter, async (req, res) => {
       method: 'EGCHAT',
       reference: `CEMAC:${transferRef}`,
       status: 'completed',
+      ledger_journal_id: journalId,
     });
     
     await logAudit(req.user.id, 'cemac_transfer_create', 'cemac', transfer.id, { transfer_ref: transferRef, amount: Number(amount), fee });
@@ -5417,6 +5440,7 @@ const servicePay = async (provider, billId, userId) => {
     method: 'EGCHAT',
     reference: `${label}-${r.contract_ref}`,
     status: 'completed',
+    ledger_journal_id: r.journal_id || null,
   });
   await logAudit(userId, 'service_bill_paid', 'services', r.bill_id, r);
 
@@ -6195,6 +6219,7 @@ app.post('/api/insurance/contract', auth, walletLimiter, async (req, res) => {
         method: payment_method,
         reference: `INSURANCE-${policy.id}`,
         status: 'completed',
+        ledger_journal_id: debit.journal_id,
         metadata: {
           policy_id: policy.id,
           insurance_type,
