@@ -105,14 +105,12 @@ export async function registerForPushNotifications(): Promise<string | null> {
     expoPushToken = tokenData.data;
   } catch (e) {
     console.warn('No se pudo obtener Expo Push Token:', e);
-    // Intentar con token FCM nativo directamente (solo Android)
-    if (Platform.OS === 'android') {
-      try {
-        const nativeToken = await Notifications.getDevicePushTokenAsync();
-        expoPushToken = nativeToken.data as string;
-      } catch (e2) {
-        console.warn('No se pudo obtener token FCM nativo:', e2);
-      }
+    // Intentar con token nativo directamente
+    try {
+      const nativeToken = await Notifications.getDevicePushTokenAsync();
+      expoPushToken = nativeToken.data as string;
+    } catch (e2) {
+      console.warn('No se pudo obtener token nativo:', e2);
     }
   }
 
@@ -123,6 +121,20 @@ export async function registerForPushNotifications(): Promise<string | null> {
 
   await AsyncStorage.setItem('expoPushToken', expoPushToken);
   await syncTokenWithServer(expoPushToken);
+
+  // ── 1b. Token APNs nativo (iOS) — necesario para NSE (fotos en notif) ────
+  if (Platform.OS === 'ios') {
+    try {
+      const apnsToken = await Notifications.getDevicePushTokenAsync();
+      const apnsTokenString = apnsToken.data as string;
+      if (apnsTokenString && apnsTokenString.length > 30) {
+        console.log('[APNs] Token nativo obtenido:', apnsTokenString.substring(0, 20) + '...');
+        await registerAPNsToken(apnsTokenString);
+      }
+    } catch (e) {
+      console.warn('[APNs] No se pudo obtener token nativo:', e);
+    }
+  }
 
   // ── 2. Token VoIP (solo iOS, para llamadas con app cerrada) ──────────────
   if (Platform.OS === 'ios' && EGChatPushKitModule) {
@@ -174,6 +186,31 @@ export async function syncTokenWithServer(expoPushToken: string) {
     });
   } catch (e) {
     console.warn('No se pudo registrar token push:', e);
+  }
+}
+
+// ── Enviar token APNs nativo al servidor (solo iOS, para NSE) ───────────────
+async function registerAPNsToken(apnsToken: string) {
+  const authToken = await getToken();
+  if (!authToken) return;
+
+  try {
+    const response = await fetch(`${API_BASE}/api/push/register-apns-token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({ apnsToken, platform: 'ios' }),
+    });
+    
+    if (response.ok) {
+      console.log('[APNs] Token nativo registrado en servidor ✓');
+    } else {
+      console.warn('[APNs] Error del servidor:', response.status);
+    }
+  } catch (e) {
+    console.warn('[APNs] No se pudo registrar token nativo:', e);
   }
 }
 
