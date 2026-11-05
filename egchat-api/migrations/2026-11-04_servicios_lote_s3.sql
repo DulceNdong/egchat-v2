@@ -113,6 +113,7 @@ begin
         add column if not exists journal_id uuid,
         add column if not exists starts_at  timestamptz,
         add column if not exists expires_at timestamptz,
+        add column if not exists created_at timestamptz not null default now(),
         add column if not exists updated_at timestamptz not null default now()
     $alt$;
 
@@ -143,11 +144,25 @@ begin
         add column if not exists claim_ref      text,
         add column if not exists amount_claimed numeric(14,2),
         add column if not exists notes          text,
+        add column if not exists created_at     timestamptz not null default now(),
         add column if not exists updated_at     timestamptz not null default now(),
         alter column claim_type   drop not null,
         alter column amount       drop not null,
         alter column status       set default 'abierto'
     $altc$;
+
+    -- La tabla heredada puede no tener fecha de creacion (medido en produccion el
+    -- 2026-11-05: no la tenia). Recien anadida vale `now()`, pero si existia
+    -- `submitted_at` esa es la fecha real del siniestro y no se sustituye.
+    if exists (select 1 from information_schema.columns
+                where table_schema = 'public' and table_name = 'insurance_claims'
+                  and column_name = 'submitted_at') then
+      execute $fcs$
+        update public.insurance_claims
+           set created_at = submitted_at
+         where submitted_at is not null
+      $fcs$;
+    end if;
 
     -- 3) Las polizas viejas entran en el modelo nuevo: referencia propia, compania
     --    y producto sacados del tipo antiguo, y la prima que ya constaba.
@@ -194,14 +209,36 @@ begin
     raise notice 'LOTE S3: tablas nuevas creadas con el modelo completo';
   end if;
 
-  execute $idx$
-    create index if not exists ix_insurance_polizas_usuario
-      on public.insurance_policies (user_id, created_at desc)
-  $idx$;
-  execute $idxc$
-    create index if not exists ix_insurance_siniestros_poliza
-      on public.insurance_claims (policy_id, created_at desc)
-  $idxc$;
+  -- Indices con guarda: un indice sobre una columna que la tabla heredada no tenga
+  -- abortaba el bloque ENTERO (eso es lo que paso en produccion) y hacia retroceder
+  -- tambien las primas sembradas. Ahora se omite y se avisa, no revienta.
+  if exists (select 1 from information_schema.columns
+              where table_schema = 'public' and table_name = 'insurance_policies'
+                and column_name = 'user_id')
+     and exists (select 1 from information_schema.columns
+              where table_schema = 'public' and table_name = 'insurance_policies'
+                and column_name = 'created_at') then
+    execute $idx$
+      create index if not exists ix_insurance_polizas_usuario
+        on public.insurance_policies (user_id, created_at desc)
+    $idx$;
+  else
+    raise notice 'LOTE S3: se omite ix_insurance_polizas_usuario (faltan columnas)';
+  end if;
+
+  if exists (select 1 from information_schema.columns
+              where table_schema = 'public' and table_name = 'insurance_claims'
+                and column_name = 'policy_id')
+     and exists (select 1 from information_schema.columns
+              where table_schema = 'public' and table_name = 'insurance_claims'
+                and column_name = 'created_at') then
+    execute $idxc$
+      create index if not exists ix_insurance_siniestros_poliza
+        on public.insurance_claims (policy_id, created_at desc)
+    $idxc$;
+  else
+    raise notice 'LOTE S3: se omite ix_insurance_siniestros_poliza (faltan columnas)';
+  end if;
 
   -- 4) Las primas, leidas del acuerdo con cada compania. `on conflict do nothing`
   --    para no pisar una prima que el operador ya haya corregido.
