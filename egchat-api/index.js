@@ -721,10 +721,11 @@ app.get('/api/auth/activity', auth, async (req, res) => {
       activity.push({ id: 'login_1', type: 'login', action: 'Inicio de sesión', description: 'Sesión activa en este dispositivo', timestamp: user.last_login });
     }
 
-    // Transacciones recientes
-    const { data: txs } = await supabase.from('transactions').select('id, type, amount, description, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(5);
+    // Transacciones recientes. La tabla no tiene columna `description`: se pedía
+    // y el consultor devolvía error, así que el listado salía vacío siempre.
+    const { data: txs } = await supabase.from('transactions').select('id, type, amount, currency, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(5);
     (txs || []).forEach(tx => {
-      activity.push({ id: `tx_${tx.id}`, type: 'transaction', action: tx.type === 'transfer' ? 'Transferencia' : tx.type === 'deposit' ? 'Recarga' : 'Pago', description: tx.description || `${tx.amount} XAF`, timestamp: tx.created_at });
+      activity.push({ id: `tx_${tx.id}`, type: 'transaction', action: tx.type === 'transfer' ? 'Transferencia' : tx.type === 'deposit' ? 'Recarga' : 'Pago', description: `${tx.amount} ${(tx.currency || 'XAF').toUpperCase()}`, timestamp: tx.created_at });
     });
 
     // Mensajes enviados recientes (como indicador de actividad de chat)
@@ -6210,6 +6211,13 @@ app.post('/api/insurance/contract', auth, walletLimiter, async (req, res) => {
     }
 
     // Registrar transacciÁƒÂ³n
+    // La póliza queda atada al asiento que la cobró: sin eso, el libro y la
+    // historia del cliente no tienen forma de encontrarse.
+    await supabase
+      .from('insurance_policies')
+      .update({ ledger_journal_id: debit.journal_id })
+      .eq('id', policy.id);
+
     await supabase
       .from('transactions')
       .insert({
@@ -6220,11 +6228,6 @@ app.post('/api/insurance/contract', auth, walletLimiter, async (req, res) => {
         reference: `INSURANCE-${policy.id}`,
         status: 'completed',
         ledger_journal_id: debit.journal_id,
-        metadata: {
-          policy_id: policy.id,
-          insurance_type,
-          duration_months
-        }
       });
 
     res.json({
