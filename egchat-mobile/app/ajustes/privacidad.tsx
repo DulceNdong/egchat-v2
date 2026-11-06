@@ -45,6 +45,25 @@ const VIS_OPTS = [
   { id: 'contactos', labelKey: 'contacts' },
   { id: 'nadie', labelKey: 'nobody' },
 ];
+
+// El servidor es quien aplica la visibilidad; el teléfono solo guarda una copia.
+// Sin esta lectura, lo cambiado en el otro dispositivo seguiría apareciendo aquí
+// con el valor viejo y la pantalla contaría una cosa mientras el backend hace otra.
+async function fetchPrivacyFromBackend(): Promise<Record<string, unknown> | null> {
+  try {
+    const token = await getToken();
+    const base = getApiBase();
+    const res = await fetch(`${base}/api/auth/privacy`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data && typeof data === 'object' ? data : null;
+  } catch {
+    return null;
+  }
+}
+
 interface BlockedContact {
   id: string;
   contact_user_id: string;
@@ -63,10 +82,26 @@ export default function PrivacidadScreen() {
   const visOptions = VIS_OPTS.map(o => ({ id: o.id, label: t(o.labelKey) }));
 
   useEffect(() => {
+    let vivo = true;
     getCfgString(CFG.lastSeen, 'todos').then(setLastSeen);
     getCfgString(CFG.photoVis, 'todos').then(setPhotoVis);
     getCfgString(CFG.statusVis, 'todos').then(setStatusVis);
     loadBlocked();
+    fetchPrivacyFromBackend().then(p => {
+      if (!vivo || !p) return;
+      for (const [clave, cfgKey, setter] of [
+        ['last_seen_visibility', CFG.lastSeen, setLastSeen],
+        ['photo_visibility', CFG.photoVis, setPhotoVis],
+        ['status_visibility', CFG.statusVis, setStatusVis],
+      ] as const) {
+        const v = p[clave];
+        if (typeof v === 'string' && VIS_OPTS.some(o => o.id === v)) {
+          setter(v);
+          setCfg(cfgKey, v);
+        }
+      }
+    });
+    return () => { vivo = false; };
   }, []);
 
   // Actualiza una opción localmente Y sincroniza con backend

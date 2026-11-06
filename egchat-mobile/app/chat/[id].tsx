@@ -67,7 +67,7 @@ import {
   markMessageRead,
 } from '../../src/features/chat/messageStatus';
 import { CFG, getCfgBool } from '../../src/services/settingsPrefs';
-import { getChatWallpaperId, setChatWallpaperId } from '../../src/utils/chatWallpaper';
+import { getChatWallpaperId, setChatWallpaperId, sincronizarWallpaper } from '../../src/utils/chatWallpaper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ContactProfileModal } from '../../src/components/ContactProfileModal';
 import { onProfileUpdated } from '../../src/utils/profileEvents';
@@ -598,7 +598,12 @@ export default function ChatScreen() {
 
   useEffect(() => {
     if (!chatId) return;
-    getChatWallpaperId(chatId).then(setWallpaperId);
+    getChatWallpaperId(chatId).then(id => {
+      setWallpaperId(id);
+      sincronizarWallpaper(chatId, id).then(nuevo => {
+        if (nuevo) setWallpaperId(nuevo);
+      });
+    });
     AsyncStorage.getItem('egchat_starred_msgs').then(raw => {
       if (!raw) return;
       try {
