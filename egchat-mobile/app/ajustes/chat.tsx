@@ -38,10 +38,29 @@ export default function ChatSettingsScreen() {
   const { translate: t } = useLanguage();
 
   useEffect(() => {
+    let vivo = true;
     getCfgBool(CFG.enterSend, false).then(setEnterSend);
     getCfgBool(CFG.readReceipts, true).then(setReadReceipts);
     getCfgBool(CFG.savePhotos, false).then(setSavePhotos);
     getCfgString(CFG.fontSizeChat, 'medium').then(v => setFontSz((v as ChatFontSize) || 'medium'));
+    // El backend decide si tus confirmaciones salen, así que su respuesta manda
+    // sobre la copia local; si no, aquí pondría «Activadas» mientras deja de
+    // enviarlas desde el otro dispositivo.
+    (async () => {
+      try {
+        const token = await getToken();
+        const base = getApiBase();
+        const res = await fetch(`${base}/api/auth/privacy`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!vivo || typeof data?.read_receipts_enabled !== 'boolean') return;
+        setReadReceipts(data.read_receipts_enabled);
+        setCfgBool(CFG.readReceipts, data.read_receipts_enabled);
+      } catch { /* la copia local ya está mostrada */ }
+    })();
+    return () => { vivo = false; };
   }, []);
 
   const handleReadReceiptsChange = useCallback(async (v: boolean) => {
