@@ -1,46 +1,55 @@
 workflows:
-  ios-react-native:
-    name: iOS React Native
+  react-native-ios:
+    name: React Native iOS
     max_build_duration: 120
     instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: codemagic
     environment:
-      groups:
-        - app_store_credentials
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.jallzstores.egchat
       vars:
         XCODE_WORKSPACE: "ios/egchat.xcworkspace"
         XCODE_SCHEME: "egchat"
-        BUNDLE_ID: "com.jallzstores.egchat"
-      node: latest
-      xcode: 15.4
+        APP_STORE_APPLE_ID: 6810877584
+      node: v18.20.0
+      xcode: 16.0
+      cocoapods: default
     scripts:
       - name: Install npm dependencies
         script: |
-          npm install
+          npm ci
       - name: Install CocoaPods dependencies
         script: |
           cd ios && pod install
-      - name: Set up provisioning profiles
+      - name: Set up provisioning profiles settings on Xcode project
+        script: xcode-project use-profiles
+      - name: Increment build number
         script: |
-          keychain initialize
-      - name: Build iOS app
+          cd ios
+          LATEST_BUILD_NUMBER=$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID")
+          agvtool new-version -all $(($LATEST_BUILD_NUMBER + 1))
+      - name: Build ipa for distribution
         script: |
-          xcodebuild -workspace ios/egchat.xcworkspace \
-            -scheme egchat \
-            -sdk iphoneos \
-            -configuration Release \
-            -archivePath $CM_BUILD_DIR/egchat.xcarchive \
-            clean archive
-      - name: Export IPA
-        script: |
-          xcodebuild -exportArchive \
-            -archivePath $CM_BUILD_DIR/egchat.xcarchive \
-            -exportOptionsPlist $CM_BUILD_DIR/ios/exportOptions.plist \
-            -exportPath $CM_BUILD_OUTPUT_DIR/ios
+          xcode-project build-ipa \
+            --workspace "$XCODE_WORKSPACE" \
+            --scheme "$XCODE_SCHEME"
     artifacts:
-      - ios/*.ipa
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.app
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM
     publishing:
+      email:
+        recipients:
+          - patron.bernardo111@gmail.com
+        notify:
+          success: true
+          failure: true
       app_store_connect:
-        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        auth: integration
         submit_to_testflight: true
+        beta_groups:
+          - App Store Connect Users
+        submit_to_app_store: false
