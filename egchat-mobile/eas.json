@@ -17,6 +17,9 @@
       }
     },
     "production": {
+      "ios": {
+        "image": "stable"
+      },
       "android": {
         "buildType": "apk"
       }

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, Linking } from 'react-native';
-import { BarCodeScanner } from 'expo-barcode-scanner';
-import { Camera } from 'expo-camera';
+import { Camera, CameraView, BarcodeScanningResult } from 'expo-camera';
 
 interface QRScannerProps {
   onScanComplete: (data: string) => void;
@@ -21,8 +20,9 @@ export default function QRScanner({ onScanComplete, onClose }: QRScannerProps) {
     setHasPermission(status === 'granted');
   };
 
-  const handleBarCodeScanned = ({ type, data }: { type: string; data: string }) => {
-    if (type === 'org.iso.QRCode' && !scanned) {
+  const handleBarCodeScanned = (result: BarcodeScanningResult) => {
+    const { type, data } = result;
+    if (type === 'qr' && !scanned) {
       setScanned(true);
       
       // Vibrate para feedback
@@ -108,9 +108,13 @@ export default function QRScanner({ onScanComplete, onClose }: QRScannerProps) {
         <Text style={styles.subtitle}>Apunta la cámara al código QR</Text>
       </View>
 
-      <BarCodeScanner
-        onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
+      <CameraView
         style={StyleSheet.absoluteFillObject}
+        facing="back"
+        barcodeScannerSettings={{
+          barcodeTypes: ["qr"],
+        }}
+        onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
       />
 
       {scanned && (

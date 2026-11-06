@@ -1,0 +1,46 @@
+workflows:
+  ios-react-native:
+    name: iOS React Native
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+    environment:
+      groups:
+        - app_store_credentials
+      vars:
+        XCODE_WORKSPACE: "ios/egchat.xcworkspace"
+        XCODE_SCHEME: "egchat"
+        BUNDLE_ID: "com.jallzstores.egchat"
+      node: latest
+      xcode: 15.4
+    scripts:
+      - name: Install npm dependencies
+        script: |
+          npm install
+      - name: Install CocoaPods dependencies
+        script: |
+          cd ios && pod install
+      - name: Set up provisioning profiles
+        script: |
+          keychain initialize
+      - name: Build iOS app
+        script: |
+          xcodebuild -workspace ios/egchat.xcworkspace \
+            -scheme egchat \
+            -sdk iphoneos \
+            -configuration Release \
+            -archivePath $CM_BUILD_DIR/egchat.xcarchive \
+            clean archive
+      - name: Export IPA
+        script: |
+          xcodebuild -exportArchive \
+            -archivePath $CM_BUILD_DIR/egchat.xcarchive \
+            -exportOptionsPlist $CM_BUILD_DIR/ios/exportOptions.plist \
+            -exportPath $CM_BUILD_OUTPUT_DIR/ios
+    artifacts:
+      - ios/*.ipa
+    publishing:
+      app_store_connect:
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        submit_to_testflight: true

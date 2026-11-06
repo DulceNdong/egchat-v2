@@ -1,14 +1,19 @@
- {
+{
   "expo": {
     "name": "EGCHAT",
     "slug": "egchat",
-    "version": "2.5.4",
+    "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "ios": {
-      "bundleIdentifier": "com.egchat.app",
-      "buildNumber": "7",
-      "supportsTablet": false
+      "bundleIdentifier": "com.jallzstores.egchat",
+      "buildNumber": "136",
+      "supportsTablet": false,
+      "appleTeamId": "XU6YD7ZJ2K",
+      "deploymentTarget": "15.0",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.egchat.app",
@@ -52,7 +57,9 @@
             "./assets/notification.wav"
           ]
         }
-      ]
+      ],
+      "expo-secure-store",
+      "./plugins/withIOSDeploymentTarget.js"
     ],
     "scheme": "egchat",
     "extra": {
@@ -61,12 +68,12 @@
         "origin": false
       },
       "eas": {
-        "projectId": "6200ec00-54d7-4ef4-a348-56e80a1452f6"
+        "projectId": "e34a8c35-0c47-4c88-8c6b-e7dda1d3956b"
       }
     },
     "runtimeVersion": {
       "policy": "appVersion"
     },
-    "owner": "reddington120"
+    "owner": "dutti98"
   }
 }
