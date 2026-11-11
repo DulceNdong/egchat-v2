@@ -14,13 +14,36 @@ import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
 import { EGButton, EGInput, EGErrorMessage } from '../../src/components/ui';
 import { useTranslation } from '../../src/context/LanguageContext';
+import { maxDigitos, nacionalLimpia, nacionalValida } from '../../src/utils/phonePlan';
 
 const COUNTRIES = [
-  { code: 'GQ', name: 'Guinea Ecuatorial', phone: '+240' },
-  { code: 'CM', name: 'Camerún', phone: '+237' },
-  { code: 'GA', name: 'Gabón', phone: '+241' },
-  { code: 'ES', name: 'España', phone: '+34' },
-  { code: 'FR', name: 'Francia', phone: '+33' },
+  { code: 'GQ', nameKey: 'svcEquatorialGuinea',          phone: '+240' },
+  { code: 'CM', nameKey: 'setCountryCameroon',           phone: '+237' },
+  { code: 'GA', nameKey: 'setCountryGabon',              phone: '+241' },
+  { code: 'CG', nameKey: 'authCountryCongo',             phone: '+242' },
+  { code: 'CF', nameKey: 'authCountryCentralAfricanRep', phone: '+236' },
+  { code: 'TD', nameKey: 'authCountryChad',              phone: '+235' },
+  { code: 'NG', nameKey: 'setCountryNigeria',            phone: '+234' },
+  { code: 'ES', nameKey: 'setCountrySpain',              phone: '+34'  },
+  { code: 'FR', nameKey: 'setCountryFrance',             phone: '+33'  },
+  { code: 'GB', nameKey: 'authCountryUk',                phone: '+44'  },
+  { code: 'US', nameKey: 'setCountryUsa',                phone: '+1'   },
+  { code: 'DE', nameKey: 'authCountryGermany',           phone: '+49'  },
+  { code: 'IT', nameKey: 'authCountryItaly',             phone: '+39'  },
+  { code: 'PT', nameKey: 'authCountryPortugal',          phone: '+351' },
+  { code: 'SN', nameKey: 'authCountrySenegal',           phone: '+221' },
+  { code: 'CI', nameKey: 'authCountryCoteDivoire',       phone: '+225' },
+  { code: 'MA', nameKey: 'authCountryMorocco',           phone: '+212' },
+  { code: 'BR', nameKey: 'authCountryBrazil',            phone: '+55'  },
+  { code: 'MX', nameKey: 'authCountryMexico',            phone: '+52'  },
+  { code: 'CO', nameKey: 'authCountryColombia',          phone: '+57'  },
+  { code: 'AR', nameKey: 'authCountryArgentina',         phone: '+54'  },
+  { code: 'VE', nameKey: 'authCountryVenezuela',         phone: '+58'  },
+  { code: 'AO', nameKey: 'authCountryAngola',            phone: '+244' },
+  { code: 'CD', nameKey: 'authCountryCongoDrc',          phone: '+243' },
+  { code: 'KE', nameKey: 'authCountryKenya',             phone: '+254' },
+  { code: 'GH', nameKey: 'authCountryGhana',             phone: '+233' },
+  { code: 'ZA', nameKey: 'authCountrySouthAfrica',       phone: '+27'  },
 ];
 const getFlag = (code: string) =>
   String.fromCodePoint(...code.toUpperCase().split('').map(c => 127397 + c.charCodeAt(0)));
@@ -29,7 +52,8 @@ type RecoverStep = 1 | 2 | 3;
 
 export default function ForgotPasswordScreen() {
   const [recoverStep, setRecoverStep] = useState<RecoverStep>(1);
-  const [countryCode] = useState('+240');
+  const [countryCode, setCountryCode] = useState('+240');
+  const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
   const [newPass, setNewPass] = useState('');
@@ -42,41 +66,42 @@ export default function ForgotPasswordScreen() {
   const { t } = useTranslation();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
 
-  const fullPhone = countryCode + phone.replace(/\s/g, '');
+  const fullPhone = countryCode + nacionalLimpia(countryCode, phone);
   const selectedCountry = COUNTRIES.find(c => c.phone === countryCode) || COUNTRIES[0];
 
   const sendCode = async () => {
-    if (!phone.trim()) { setError('Introduce tu número de teléfono'); return; }
+    if (!phone.trim()) { setError(t('authPhoneRequired')); return; }
+    if (!nacionalValida(countryCode, phone)) { setError(t('authPhoneDigitsWrong')); return; }
     setLoading(true); setError('');
     try {
       await authAPI.sendVerification(fullPhone);
       setRecoverStep(2);
     } catch (e: any) {
-      setError(e.message || 'Error al enviar el código');
+      setError(e.message || t('authSendCodeError'));
     } finally { setLoading(false); }
   };
 
   const verifyCode = async () => {
-    if (code.length < 4) { setError('Introduce el código completo'); return; }
+    if (code.length < 4) { setError(t('authEnterFullCode')); return; }
     setLoading(true); setError('');
     try {
       const { verified } = await authAPI.verifyCode(fullPhone, code);
       if (verified) setRecoverStep(3);
-      else setError('Código incorrecto. Inténtalo de nuevo.');
+      else setError(t('authCodeWrong'));
     } catch (e: any) {
-      setError(e.message || 'Código inválido');
+      setError(e.message || t('authCodeInvalid'));
     } finally { setLoading(false); }
   };
 
   const savePassword = async () => {
-    if (newPass.length < 6) { setError('La contraseña debe tener al menos 6 caracteres'); return; }
-    if (newPass !== newPass2) { setError('Las contraseñas no coinciden'); return; }
+    if (newPass.length < 6) { setError(t('setPasswordMin6')); return; }
+    if (newPass !== newPass2) { setError(t('setPasswordsDontMatch')); return; }
     setLoading(true); setError('');
     try {
       await authAPI.resetPassword(fullPhone, code, newPass);
       setDone(true);
     } catch (e: any) {
-      setError(e.message || 'Error al cambiar la contraseña');
+      setError(e.message || t('authPasswordChangeError'));
     } finally { setLoading(false); }
   };
 
@@ -108,10 +133,36 @@ export default function ForgotPasswordScreen() {
                 <Text style={[styles.subtitle, { color: C.textSecondary }]}>{t('createStrongPassword')}</Text>
                 <View style={styles.fieldGroup}>
                   <Text style={[styles.fieldLabel, { color: C.textTertiary }]}>{t('country')}</Text>
-                  <View style={[styles.countrySelector, { backgroundColor: C.bgSecondary, borderColor: C.border }]}>
+                  <TouchableOpacity
+                    style={[styles.countrySelector, { backgroundColor: C.bgSecondary, borderColor: C.border }]}
+                    onPress={() => setShowCountryPicker(p => !p)}
+                    activeOpacity={0.8}
+                  >
                     <Text style={styles.countryFlag}>{getFlag(selectedCountry.code)}</Text>
-                    <Text style={[styles.countryName, { color: C.textPrimary }]}>{selectedCountry.name}:</Text>
-                  </View>
+                    <Text style={[styles.countryName, { color: C.textPrimary }]}>{t(selectedCountry.nameKey)}:</Text>
+                    <Text style={[styles.countryPhone, { color: C.textTertiary }]}>{selectedCountry.phone}</Text>
+                    <Text style={[styles.countryChevron, { color: C.textTertiary }]}>{showCountryPicker ? '▲' : '▼'}</Text>
+                  </TouchableOpacity>
+                  {showCountryPicker && (
+                    <ScrollView
+                      style={[styles.countryDropdown, { backgroundColor: C.bgSecondary, borderColor: C.border }]}
+                      keyboardShouldPersistTaps="handled"
+                      nestedScrollEnabled={true}
+                    >
+                      {COUNTRIES.map(c => (
+                        <TouchableOpacity
+                          key={c.phone}
+                          style={[styles.countryOption, { borderBottomColor: C.borderLight }]}
+                          onPress={() => { setCountryCode(c.phone); setShowCountryPicker(false); setError(''); }}
+                          activeOpacity={0.75}
+                        >
+                          <Text style={styles.countryFlag}>{getFlag(c.code)}</Text>
+                          <Text style={[styles.countryOptionText, { color: C.textPrimary }]}>{t(c.nameKey)}</Text>
+                          <Text style={[styles.countryPhone, { color: C.textTertiary }]}>{c.phone}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  )}
                 </View>
                 <View style={styles.fieldGroup}>
                   <Text style={[styles.fieldLabel, { color: C.textTertiary }]}>{t('phone')}</Text>
@@ -119,7 +170,14 @@ export default function ForgotPasswordScreen() {
                     <View style={[styles.phonePrefix, { backgroundColor: C.bgTertiary, borderColor: C.border }]}>
                       <Text style={[styles.phonePrefixText, { color: C.textPrimary }]}>{countryCode}</Text>
                     </View>
-                    <EGInput value={phone} onChangeText={setPhone} placeholder="222 XXX XXX" keyboardType="phone-pad" containerStyle={styles.phoneInputContainer} />
+                    <EGInput
+                      value={phone}
+                      onChangeText={v => { setPhone(nacionalLimpia(countryCode, v).slice(0, maxDigitos(countryCode))); setError(''); }}
+                      placeholder="222 XXX XXX"
+                      keyboardType="phone-pad"
+                      maxLength={maxDigitos(countryCode)}
+                      containerStyle={styles.phoneInputContainer}
+                    />
                   </View>
                 </View>
                 {error ? <EGErrorMessage text={error} /> : null}
@@ -131,7 +189,7 @@ export default function ForgotPasswordScreen() {
               <>
                 <Text style={[styles.title, { color: C.textPrimary }]}>{t('enterCode')}</Text>
                 <Text style={[styles.subtitle, { color: C.textSecondary }]}>
-                  Enviamos un código a <Text style={[styles.phoneHighlight, { color: C.textPrimary }]}>{fullPhone}</Text>
+                  {t('authCodeSentTo')} <Text style={[styles.phoneHighlight, { color: C.textPrimary }]}>{fullPhone}</Text>
                 </Text>
                 <EGInput label={t('verificationCode')} value={code} onChangeText={value => setCode(value.replace(/\D/g, '').slice(0, 6))} placeholder="000000" keyboardType="number-pad" maxLength={6} />
                 {error ? <EGErrorMessage text={error} /> : null}
@@ -147,7 +205,7 @@ export default function ForgotPasswordScreen() {
                 <Text style={[styles.title, { color: C.textPrimary }]}>{t('newPassword')}</Text>
                 <Text style={[styles.subtitle, { color: C.textSecondary }]}>{t('enterPhone')}</Text>
                 <EGInput label={t('newPassword')} value={newPass} onChangeText={setNewPass} showPasswordToggle placeholder={t('minCharacters')} />
-                <EGInput label={t('confirmPassword')} value={newPass2} onChangeText={setNewPass2} secureTextEntry placeholder={t('repeatPassword')} error={newPass2 && newPass !== newPass2 ? 'Las contraseñas no coinciden' : undefined} />
+                <EGInput label={t('confirmPassword')} value={newPass2} onChangeText={setNewPass2} secureTextEntry placeholder={t('repeatPassword')} error={newPass2 && newPass !== newPass2 ? t('setPasswordsDontMatch') : undefined} />
                 {error ? <EGErrorMessage text={error} /> : null}
                 <EGButton title={loading ? t('saving') : t('saveNewPassword')} onPress={savePassword} loading={loading} disabled={newPass.length < 6 || newPass !== newPass2} />
               </>
@@ -177,6 +235,23 @@ const styles = StyleSheet.create({
   },
   countryFlag: { fontSize: 18 },
   countryName: { flex: 1, fontSize: FontSize.base, fontWeight: FontWeight.medium },
+  countryChevron: { fontSize: 14 },
+  countryPhone: { fontSize: FontSize.sm, fontWeight: FontWeight.medium },
+  countryDropdown: {
+    marginTop: 4,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    maxHeight: 220,
+    zIndex: 100,
+  },
+  countryOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderBottomWidth: 1,
+    gap: Spacing.sm,
+  },
+  countryOptionText: { flex: 1, fontSize: FontSize.base },
   phoneRow: { flexDirection: 'row', alignItems: 'flex-start' },
   phonePrefix: {
     borderWidth: 1.5, borderRightWidth: 0,

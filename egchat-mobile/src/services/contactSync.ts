@@ -15,6 +15,7 @@
 import * as Contacts from 'expo-contacts';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getToken, getApiBase } from '../api';
+import { t as tr } from '../translations';
 
 const LAST_SYNC_KEY = 'egchat_contacts_last_sync';
 const KNOWN_EGCHAT_KEY = 'egchat_known_phones';
@@ -100,7 +101,7 @@ export async function syncPhoneContacts(force = false): Promise<SyncResult> {
     // Extraer y normalizar números
     const phoneMap: Record<string, string> = {};
     for (const contact of data) {
-      const name = contact.name || 'Sin nombre';
+      const name = contact.name || tr('mznNoName');
       for (const ph of contact.phoneNumbers || []) {
         const normalized = normalizePhone(ph.number || '');
         if (normalized && !phoneMap[normalized]) {
@@ -205,7 +206,7 @@ export function formatLastSync(date: Date | null): string {
   const h = Math.floor(ms / 3600000);
   const m = Math.floor(ms / 60000);
 
-  if (m < 1) return 'Hace un momento';
+  if (m < 1) return tr('xtHaceUnMomento');
   if (m < 60) return `Hace ${m} min`;
   if (h < 24) return `Hace ${h}h`;
   return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });

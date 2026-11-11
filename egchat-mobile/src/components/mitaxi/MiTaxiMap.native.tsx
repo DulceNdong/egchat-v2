@@ -3,6 +3,7 @@ import { Platform, StyleSheet, View } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_DEFAULT, UrlTile } from 'react-native-maps';
 import { MALABO_CENTER, MITAXI_PLACES, MapCoord } from '../../data/mitaxiPlaces';
 import type { MiTaxiMapProps } from './types';
+import { t as tr } from '../../translations';
 
 const NEARBY_OFFSETS = [
   { dLat: 0.003, dLng: 0.002 },
@@ -103,7 +104,7 @@ export function MiTaxiMap({
         ))}
 
         {userLocation && (
-          <Marker coordinate={userLocation} title="Tu ubicación" pinColor={accentColor} />
+          <Marker coordinate={userLocation} title={tr('xtTuUbicacion')} pinColor={accentColor} />
         )}
 
         {destLocation && (
@@ -111,7 +112,7 @@ export function MiTaxiMap({
         )}
 
         {driverLocation && (
-          <Marker coordinate={driverLocation} title="Conductor" pinColor="#10B981" />
+          <Marker coordinate={driverLocation} title={tr('xtConductor')} pinColor="#10B981" />
         )}
 
         {showNearby && nearby.map(n => (

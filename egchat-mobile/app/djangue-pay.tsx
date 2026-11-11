@@ -13,6 +13,8 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router';
 import Svg, { Path, Line, Circle } from 'react-native-svg';
 import { apiFetch } from '../src/api';
+import { usePaymentPin } from '../src/context/PaymentPinContext';
+import { t as tr } from '../src/translations';
 
 const fmtAmount = (n: number, currency = 'XAF') =>
   `${Number(n).toLocaleString('fr-FR')} ${currency}`;
@@ -33,6 +35,7 @@ interface WalletInfo {
 
 export default function DjanguePayScreen() {
   const insets = useSafeAreaInsets();
+  const { runWithPin } = usePaymentPin();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [group, setGroup]   = useState<DjangueInfo | null>(null);
   const [wallet, setWallet] = useState<WalletInfo | null>(null);
@@ -61,14 +64,14 @@ export default function DjanguePayScreen() {
 
   const handlePay = async () => {
     const token = await AsyncStorage.getItem('token');
-    if (!token) return Alert.alert('No autenticado', 'Debes iniciar sesión.');
+    if (!token) return Alert.alert(tr('djhNotAuthTitle'), 'Debes iniciar sesión.');
     if (!group || !wallet) return;
     if (wallet.balance < group.quota_amount) {
       Alert.alert(
-        'Saldo insuficiente',
+        tr('svcInsufficientBalance'),
         `Necesitas ${fmtAmount(group.quota_amount, group.currency)} pero tienes ${fmtAmount(wallet.balance, wallet.currency)}.\n\nRecarga tu monedero para poder pagar.`,
         [
-          { text: 'Cancelar', style: 'cancel' },
+          { text: tr('cancel'), style: 'cancel' },
           { text: 'Recargar', onPress: () => router.push('/(tabs)/monedero' as any) },
         ],
       );
@@ -76,27 +79,34 @@ export default function DjanguePayScreen() {
     }
 
     Alert.alert(
-      'Confirmar pago',
+      tr('djhConfirmPayout'),
       `¿Pagar ${fmtAmount(group.quota_amount, group.currency)} para el turno ${group.current_turn} del djangue "${group.name}"?`,
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: tr('cancel'), style: 'cancel' },
         {
-          text: 'Confirmar pago',
+          text: tr('djhConfirmPayout'),
           onPress: async () => {
             setPaying(true);
             try {
-              const result = await apiFetch(`/api/djangue/${id}/pay`, { method: 'POST' });
+              const result = await runWithPin(
+                pin => apiFetch(`/api/djangue/${id}/pay`, {
+                  method: 'POST',
+                  body: JSON.stringify({ pin }),
+                }),
+                tr('xtIntroduceTuPIN'),
+              );
+              if (!result) return;
               setPaid(true);
               setWallet(prev => prev ? { ...prev, balance: result.new_balance } : prev);
               if (result.all_paid) {
                 Alert.alert(
-                  '🎉 ¡Todos pagaron!',
+                  tr('djhAllPaidTitle'),
                   result.message,
-                  [{ text: 'Ver djangue', onPress: () => router.back() }],
+                  [{ text: tr('djhViewDjangue'), onPress: () => router.back() }],
                 );
               }
             } catch (e: any) {
-              Alert.alert('Error al pagar', e.message);
+              Alert.alert(tr('djhPayError'), e.message);
             } finally {
               setPaying(false);
             }
@@ -112,9 +122,9 @@ export default function DjanguePayScreen() {
 
   if (error || !group || !wallet) return (
     <View style={s.center}>
-      <Text style={{ color: '#ef4444', fontSize: 15 }}>{error || 'Error al cargar'}</Text>
+      <Text style={{ color: '#ef4444', fontSize: 15 }}>{error || tr('djhLoadError')}</Text>
       <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 16 }}>
-        <Text style={{ color: '#6366f1', fontWeight: '700' }}>Volver</Text>
+        <Text style={{ color: '#6366f1', fontWeight: '700' }}>{tr('djhBack')}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -135,7 +145,7 @@ export default function DjanguePayScreen() {
           </Svg>
         </TouchableOpacity>
         <View style={{ flex: 1, alignItems: 'center' }}>
-          <Text style={s.headerTitle}>Pagar Cuota</Text>
+          <Text style={s.headerTitle}>{tr('djhPayDue')}</Text>
           <Text style={s.headerSub}>{group.name}</Text>
         </View>
         <View style={{ width: 40 }} />
@@ -151,19 +161,19 @@ export default function DjanguePayScreen() {
                 <Path d="M20 6L9 17l-5-5" />
               </Svg>
             </View>
-            <Text style={s.successTitle}>¡Cuota pagada!</Text>
+            <Text style={s.successTitle}>{tr('djhDuePaidTitle')}</Text>
             <Text style={s.successAmount}>{fmtAmount(group.quota_amount, group.currency)}</Text>
             <Text style={s.successSub}>Turno {group.current_turn} · {group.name}</Text>
             <Text style={s.successBalance}>Tu saldo: {fmtAmount(wallet.balance, wallet.currency)}</Text>
             <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-              <Text style={s.backBtnTxt}>Ver Djangue</Text>
+              <Text style={s.backBtnTxt}>{tr('djhViewDjangue')}</Text>
             </TouchableOpacity>
           </View>
         ) : (
           <>
             {/* Importe */}
             <View style={s.amountCard}>
-              <Text style={s.amountLabel}>Cuota a pagar</Text>
+              <Text style={s.amountLabel}>{tr('djhDueToPay')}</Text>
               <Text style={s.amountValue}>{fmtAmount(group.quota_amount, group.currency)}</Text>
               <Text style={s.amountSub}>Turno {group.current_turn} de {group.total_turns}</Text>
             </View>
@@ -171,7 +181,7 @@ export default function DjanguePayScreen() {
             {/* Saldo disponible */}
             <View style={[s.balanceCard, !hasFunds && s.balanceCardLow]}>
               <View>
-                <Text style={s.balanceLabel}>Tu saldo disponible</Text>
+                <Text style={s.balanceLabel}>{tr('djhAvailableBalance')}</Text>
                 <Text style={[s.balanceValue, !hasFunds && { color: '#ef4444' }]}>
                   {fmtAmount(wallet.balance, wallet.currency)}
                 </Text>
@@ -197,7 +207,7 @@ export default function DjanguePayScreen() {
             {/* Progreso del turno */}
             <View style={s.progressCard}>
               <View style={s.progressHeader}>
-                <Text style={s.progressTitle}>Estado del turno actual</Text>
+                <Text style={s.progressTitle}>{tr('djhTurnStatus')}</Text>
                 <Text style={s.progressCount}>{group.paid_count} pagaron</Text>
               </View>
               <View style={s.progressBg}>
@@ -219,7 +229,7 @@ export default function DjanguePayScreen() {
                 <ActivityIndicator color="#fff" />
               ) : (
                 <Text style={s.payBtnTxt}>
-                  {hasFunds ? `💳 Confirmar — ${fmtAmount(group.quota_amount, group.currency)}` : 'Saldo insuficiente'}
+                  {hasFunds ? `💳 Confirmar — ${fmtAmount(group.quota_amount, group.currency)}` : tr('svcInsufficientBalance')}
                 </Text>
               )}
             </TouchableOpacity>

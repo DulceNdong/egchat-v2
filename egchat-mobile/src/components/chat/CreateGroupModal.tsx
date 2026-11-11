@@ -17,6 +17,7 @@ import { toast } from '../Toast';
 import { useThemeContext } from '../../theme/ThemeContext';
 import { Colors } from '../../theme/colors';
 import { DarkColors } from '../../theme/darkMode';
+import { useTranslation } from '../../context/LanguageContext';
 
 interface Contact {
   id: string;
@@ -35,8 +36,8 @@ interface Props {
   onGroupCreated: (chat: any) => void;
 }
 
-function getName(c: Contact) {
-  return c.full_name || c.users?.full_name || c.user?.full_name || c.phone || 'Usuario';
+function getName(c: Contact, t: (k: string) => string) {
+  return c.full_name || c.users?.full_name || c.user?.full_name || c.phone || t('chtUser');
 }
 function getAvatar(c: Contact) {
   return c.avatar_url || c.users?.avatar_url || c.user?.avatar_url || undefined;
@@ -46,6 +47,7 @@ function getUserId(c: Contact) {
 }
 
 export function CreateGroupModal({ visible, onClose, onGroupCreated }: Props) {
+  const { t } = useTranslation();
   const [step, setStep] = useState<1 | 2>(1);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [selected, setSelected] = useState<Contact[]>([]);
@@ -66,41 +68,41 @@ export function CreateGroupModal({ visible, onClose, onGroupCreated }: Props) {
     setLoading(true);
     contactsAPI.getAll()
       .then(data => setContacts(Array.isArray(data) ? data : []))
-      .catch(() => toast.error('No se pudieron cargar los contactos'))
+      .catch(() => toast.error(t('chtLoadContactsFailed')))
       .finally(() => setLoading(false));
-  }, [visible]);
+  }, [visible, t]);
 
   const filtered = contacts.filter(c => {
     const q = search.toLowerCase();
-    return !q || getName(c).toLowerCase().includes(q) || (c.phone || '').includes(q);
+    return !q || getName(c, t).toLowerCase().includes(q) || (c.phone || '').includes(q);
   });
 
   const toggleSelect = useCallback((c: Contact) => {
     setSelected(prev => {
       const id = getUserId(c);
       if (prev.find(s => getUserId(s) === id)) return prev.filter(s => getUserId(s) !== id);
-      if (prev.length >= 255) { toast.info('Máximo 255 participantes'); return prev; }
+      if (prev.length >= 255) { toast.info(t('chtMax255')); return prev; }
       return [...prev, c];
     });
-  }, []);
+  }, [t]);
 
   const handleCreate = useCallback(async () => {
     const name = groupName.trim();
-    if (!name) { toast.error('Ponle un nombre al grupo'); return; }
-    if (selected.length < 1) { toast.error('Selecciona al menos 1 participante'); return; }
+    if (!name) { toast.error(t('chtGroupNameRequired')); return; }
+    if (selected.length < 1) { toast.error(t('chtSelectOneMember')); return; }
     setCreating(true);
     try {
       const ids = selected.map(getUserId).filter(Boolean) as string[];
       const chat = await chatAPI.createGroup(name, ids);
-      toast.success('Grupo creado', name);
+      toast.success(t('chtGroupCreated'), name);
       onGroupCreated(chat);
       onClose();
     } catch (e: any) {
-      toast.error(e?.message || 'No se pudo crear el grupo');
+      toast.error(e?.message || t('chtGroupCreateFailed'));
     } finally {
       setCreating(false);
     }
-  }, [groupName, selected, onGroupCreated, onClose]);
+  }, [groupName, selected, onGroupCreated, onClose, t]);
 
   const isSelectedContact = (c: Contact) =>
     !!selected.find(s => getUserId(s) === getUserId(c));
@@ -121,14 +123,14 @@ export function CreateGroupModal({ visible, onClose, onGroupCreated }: Props) {
               </Svg>
             </TouchableOpacity>
             <Text style={s.headerTitle}>
-              {step === 1 ? 'Nuevo grupo' : 'Nombre del grupo'}
+              {step === 1 ? t('chtNewGroup') : t('chtGroupNameTitle')}
             </Text>
             {step === 1 ? (
               <TouchableOpacity
                 onPress={() => selected.length > 0 && setStep(2)}
                 style={[s.headerBtn, s.nextBtn, selected.length === 0 && s.nextBtnDisabled]}
               >
-                <Text style={s.nextText}>Siguiente</Text>
+                <Text style={s.nextText}>{t('chtNext')}</Text>
               </TouchableOpacity>
             ) : (
               <TouchableOpacity onPress={handleCreate} style={s.headerBtn} disabled={creating}>
@@ -153,8 +155,8 @@ export function CreateGroupModal({ visible, onClose, onGroupCreated }: Props) {
                     contentContainerStyle={{ padding: 8, gap: 10 }}
                     renderItem={({ item }) => (
                       <TouchableOpacity style={s.chip} onPress={() => toggleSelect(item)}>
-                        <EGAvatar src={getAvatar(item)} name={getName(item)} size={40} />
-                        <Text style={[s.chipName, { color: C.textPrimary }]} numberOfLines={1}>{getName(item)}</Text>
+                        <EGAvatar src={getAvatar(item)} name={getName(item, t)} size={40} />
+                        <Text style={[s.chipName, { color: C.textPrimary }]} numberOfLines={1}>{getName(item, t)}</Text>
                         <View style={s.chipX}>
                           <Text style={s.chipXText}>×</Text>
                         </View>
@@ -162,7 +164,7 @@ export function CreateGroupModal({ visible, onClose, onGroupCreated }: Props) {
                     )}
                   />
                   <Text style={[s.selectedCount, { color: C.textTertiary }]}>
-                    {selected.length} seleccionado{selected.length !== 1 ? 's' : ''}
+                    {selected.length} {selected.length !== 1 ? t('chtSelectedPlural') : t('chtSelectedSingular')}
                   </Text>
                 </View>
               )}
@@ -174,7 +176,7 @@ export function CreateGroupModal({ visible, onClose, onGroupCreated }: Props) {
                 </Svg>
                 <TextInput
                   style={[s.searchInput, { color: C.textPrimary }]}
-                  placeholder="Buscar contactos..."
+                  placeholder={t('chtSearchContacts')}
                   placeholderTextColor={C.textTertiary}
                   value={search}
                   onChangeText={setSearch}
@@ -198,9 +200,9 @@ export function CreateGroupModal({ visible, onClose, onGroupCreated }: Props) {
                           activeOpacity={0.7}
                         >
                           <View style={s.contactLeft}>
-                            <EGAvatar src={getAvatar(item)} name={getName(item)} size={46} />
+                            <EGAvatar src={getAvatar(item)} name={getName(item, t)} size={46} />
                             <View style={s.contactInfo}>
-                              <Text style={[s.contactName, { color: C.textPrimary }]}>{getName(item)}</Text>
+                              <Text style={[s.contactName, { color: C.textPrimary }]}>{getName(item, t)}</Text>
                               {item.phone && <Text style={[s.contactPhone, { color: C.textTertiary }]}>{item.phone}</Text>}
                             </View>
                           </View>
@@ -216,7 +218,7 @@ export function CreateGroupModal({ visible, onClose, onGroupCreated }: Props) {
                     }}
                     ListEmptyComponent={
                       <Text style={[s.empty, { color: C.textTertiary }]}>
-                        {search ? 'Sin resultados' : 'No tienes contactos aún'}
+                        {search ? t('noResults') : t('chtNoContactsYet')}
                       </Text>
                     }
                   />
@@ -230,7 +232,7 @@ export function CreateGroupModal({ visible, onClose, onGroupCreated }: Props) {
               <View style={s.membersPreview}>
                 {selected.slice(0, 5).map((c, i) => (
                   <View key={getUserId(c)} style={[s.memberAvatar, { marginLeft: i > 0 ? -10 : 0, zIndex: 5 - i }]}>
-                    <EGAvatar src={getAvatar(c)} name={getName(c)} size={44} />
+                    <EGAvatar src={getAvatar(c)} name={getName(c, t)} size={44} />
                   </View>
                 ))}
                 {selected.length > 5 && (
@@ -240,7 +242,7 @@ export function CreateGroupModal({ visible, onClose, onGroupCreated }: Props) {
                 )}
               </View>
               <Text style={[s.memberCount, { color: C.textTertiary }]}>
-                {selected.length} participante{selected.length !== 1 ? 's' : ''}
+                {selected.length} {selected.length !== 1 ? t('chtParticipantPlural') : t('chtParticipantSingular')}
               </Text>
 
               {/* Campo nombre */}
@@ -253,7 +255,7 @@ export function CreateGroupModal({ visible, onClose, onGroupCreated }: Props) {
                 </Svg>
                 <TextInput
                   style={[s.nameInput, { color: C.textPrimary }]}
-                  placeholder="Nombre del grupo..."
+                  placeholder={t('chtGroupNamePlaceholder')}
                   placeholderTextColor={C.textTertiary}
                   value={groupName}
                   onChangeText={setGroupName}
@@ -271,7 +273,7 @@ export function CreateGroupModal({ visible, onClose, onGroupCreated }: Props) {
               <Text style={[s.nameHint, { color: C.textTertiary }]}>{groupName.length}/60</Text>
 
               {/* Lista de miembros */}
-              <Text style={[s.membersLabel, { color: C.textTertiary }]}>Participantes</Text>
+              <Text style={[s.membersLabel, { color: C.textTertiary }]}>{t('chtParticipantsLabel')}</Text>
               <FlatList
                 data={selected}
                 keyExtractor={c => getUserId(c)}
@@ -279,8 +281,8 @@ export function CreateGroupModal({ visible, onClose, onGroupCreated }: Props) {
                 renderItem={({ item }) => (
                   <View style={[s.contactRow, { borderBottomColor: C.borderLight }]}>
                     <View style={s.contactLeft}>
-                      <EGAvatar src={getAvatar(item)} name={getName(item)} size={42} />
-                      <Text style={[s.contactName, { color: C.textPrimary }]}>{getName(item)}</Text>
+                      <EGAvatar src={getAvatar(item)} name={getName(item, t)} size={42} />
+                      <Text style={[s.contactName, { color: C.textPrimary }]}>{getName(item, t)}</Text>
                     </View>
                     <TouchableOpacity onPress={() => toggleSelect(item)}>
                       <Text style={{ color: '#ef4444', fontSize: 20, fontWeight: '700', paddingHorizontal: 8 }}>×</Text>

@@ -21,6 +21,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Line, Path, Polyline, Rect, Circle } from 'react-native-svg';
+import { useTranslation } from '../../context/LanguageContext';
 
 const { width: W, height: H } = Dimensions.get('window');
 
@@ -169,6 +170,7 @@ export interface VideoViewerModalProps {
 // ── Componente principal ─────────────────────────────────────────
 
 export function VideoViewerModal({ visible, uri, title, onClose }: VideoViewerModalProps) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const videoRef = useRef<any>(null);
 
@@ -292,7 +294,7 @@ export function VideoViewerModal({ visible, uri, title, onClose }: VideoViewerMo
           const { status } = await MediaLibrary.requestPermissionsAsync();
           if (status === 'granted') {
             await MediaLibrary.saveToLibraryAsync(result.uri);
-            Alert.alert('✅ Guardado', 'El video se guardó en tu galería de fotos.');
+            Alert.alert(t('chtVideoSavedTitle'), t('chtVideoSavedBody'));
             return;
           }
         } catch {}
@@ -302,21 +304,21 @@ export function VideoViewerModal({ visible, uri, title, onClose }: VideoViewerMo
         if (canShare) {
           await Sharing.shareAsync(result.uri, {
             mimeType: 'video/mp4',
-            dialogTitle: 'Guardar video',
+            dialogTitle: t('chtSaveVideo'),
             UTI: 'com.apple.quicktime-movie',
           });
         } else {
-          Alert.alert('Video descargado', `Guardado en: ${fileName}`);
+          Alert.alert(t('chtVideoDownloaded'), `${t('chtSavedInPrefix')} ${fileName}`);
         }
       } else {
-        Alert.alert('Error', 'No se pudo descargar el video.');
+        Alert.alert(t('error'), t('chtVideoDownloadFailed'));
       }
     } catch (e) {
-      Alert.alert('Error', 'No se pudo descargar el video.');
+      Alert.alert(t('error'), t('chtVideoDownloadFailed'));
     } finally {
       setDownloading(false);
     }
-  }, [uri, downloading]);
+  }, [uri, downloading, t]);
 
   // Compartir video directamente con el share sheet del sistema
   const handleShare = useCallback(async () => {
@@ -325,7 +327,7 @@ export function VideoViewerModal({ visible, uri, title, onClose }: VideoViewerMo
       const Sharing = require('expo-sharing');
       const canShare = await Sharing.isAvailableAsync();
       if (!canShare) {
-        Alert.alert('Compartir no disponible', 'Esta función no está disponible en este dispositivo.');
+        Alert.alert(t('chtShareUnavailable'), t('chtShareUnavailableBody'));
         return;
       }
       // Descargar primero a archivo local para poder compartir
@@ -336,14 +338,14 @@ export function VideoViewerModal({ visible, uri, title, onClose }: VideoViewerMo
       if (result.status === 200) {
         await Sharing.shareAsync(result.uri, {
           mimeType: 'video/mp4',
-          dialogTitle: 'Compartir video',
+          dialogTitle: t('chtShareVideo'),
           UTI: 'com.apple.quicktime-movie',
         });
       }
     } catch {
-      Alert.alert('Error', 'No se pudo compartir el video.');
+      Alert.alert(t('error'), t('chtVideoShareFailed'));
     }
-  }, [uri]);
+  }, [uri, t]);
 
   // ── Web fallback ─────────────────────────────────────────────
 

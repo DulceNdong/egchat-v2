@@ -11,7 +11,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
-import { chatAPI, authAPI, getToken, contactsAPI } from '../../src/api';
+import { chatAPI, authAPI, getToken, contactsAPI, blockAPI, reportAPI } from '../../src/api';
 import { walletAPI } from '../../src/api';
 import { IncomingTransferModal } from '../../src/components/wallet/IncomingTransferModal';
 import { ChatAttachPanel, AttachAction } from '../../src/components/chat/ChatAttachPanel';
@@ -45,7 +45,9 @@ import {
   type EphemeralDuration,
 } from '../../src/services/ephemeralMessages';
 import { editMessage, applyEditLocally } from '../../src/services/editMessage';
+import { useTranslation } from '../../src/context/LanguageContext';
 import { startLiveLocation, stopLiveLocation, isLiveLocationActive } from '../../src/services/liveLocation';
+import { onTransferResolved } from '../../src/utils/transferEvents';
 import { MentionSuggestions, detectMentionQuery, applyMention, type MentionUser } from '../../src/components/chat/MentionSuggestions';
 import { GroupPaymentModal } from '../../src/components/chat/GroupPaymentModal';
 import { ChatToneModal } from '../../src/components/chat/ChatToneModal';
@@ -65,7 +67,7 @@ import {
   markMessageRead,
 } from '../../src/features/chat/messageStatus';
 import { CFG, getCfgBool } from '../../src/services/settingsPrefs';
-import { getChatWallpaperId, setChatWallpaperId } from '../../src/utils/chatWallpaper';
+import { getChatWallpaperId, setChatWallpaperId, sincronizarWallpaper } from '../../src/utils/chatWallpaper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ContactProfileModal } from '../../src/components/ContactProfileModal';
 import { onProfileUpdated } from '../../src/utils/profileEvents';
@@ -117,6 +119,7 @@ import {
   replaceTempMessage,
 } from '../../src/features/chat/messageUtils';
 import Svg, { Path, Circle, Line, Polyline, Polygon, Rect } from 'react-native-svg';
+import { t as tr } from '../../src/translations';
 
 const KEYBOARD_INPUT_GAP = 0;
 
@@ -132,8 +135,8 @@ const getDateLabel = (dateStr: string) => {
   const today = new Date();
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
-  if (d.toDateString() === today.toDateString()) return 'Hoy';
-  if (d.toDateString() === yesterday.toDateString()) return 'Ayer';
+  if (d.toDateString() === today.toDateString()) return 'chtDateToday';
+  if (d.toDateString() === yesterday.toDateString()) return 'msgYesterday';
   return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
 };
 
@@ -210,6 +213,7 @@ const DateSeparator = ({ label }: { label: string }) => (
 
 // ── Pantalla principal ────────────────────────────────────────────
 export default function ChatScreen() {
+  const { t } = useTranslation();
   const { id: chatId } = useLocalSearchParams<{ id: string }>();
   const [messages, setMessages] = useState<Message[]>([]);
   const [chat, setChat] = useState<any>(null);
@@ -252,7 +256,7 @@ export default function ChatScreen() {
       transferExecutorRef.current = null;
     } catch (e: any) {
       setTransferPinLoading(false);
-      setTransferPinError(e?.message || 'PIN incorrecto o error en la transferencia');
+      setTransferPinError(e?.message || t('chtPinError'));
     }
   }, []);
   const [myProfile, setMyProfile] = useState<{ full_name?: string; avatar_url?: string; phone?: string }>({});
@@ -324,6 +328,8 @@ export default function ChatScreen() {
   // ── #12 Selección múltiple de mensajes ─────────────────────────
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // ── #13 Modal confirmar eliminación ────────────────────────────
+  const [deleteConfirmIds, setDeleteConfirmIds] = useState<string[] | null>(null);
   // ── A2 Mensajes programados ────────────────────────────────────
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   // ── A3 Historial de ediciones ──────────────────────────────────
@@ -333,6 +339,7 @@ export default function ChatScreen() {
   // ── C7 Reenvío con comentario ──────────────────────────────────
   const [showForwardModal, setShowForwardModal] = useState(false);
   const [forwardMsg, setForwardMsg] = useState<Message | null>(null);
+  const [forwardSelectedMsgs, setForwardSelectedMsgs] = useState<Message[]>([]);
   // ── F1 Respuestas rápidas ──────────────────────────────────────
   const [quickReplies, setQuickReplies] = useState<QuickReply[]>([]);
   const [quickReplySuggestions, setQuickReplySuggestions] = useState<QuickReply[]>([]);
@@ -341,11 +348,12 @@ export default function ChatScreen() {
         .filter((p: any) => String(p.user_id) !== String(currentUserId))
         .map((p: any) => ({
           user_id: p.user_id,
-          full_name: p.full_name || p.users?.full_name || p.user?.full_name || 'Usuario',
+          full_name: p.full_name || p.users?.full_name || p.user?.full_name || t('setUser'),
           avatar_url: p.avatar_url || p.users?.avatar_url,
         }))
     : [];
   const flatListRef = useRef<FlatList>(null);
+  const isLoadingMoreRef = useRef(false); // true mientras se cargan mensajes históricos (evita auto-scroll al fondo)
   const inputRef = useRef<TextInput>(null);
   const sendScale = useRef(new Animated.Value(1)).current;
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -364,6 +372,14 @@ export default function ChatScreen() {
   const { width: SW, height: SH } = Dimensions.get('window');
   const BTN_SIZE = 44;
 
+  function getAnimVal(val: any): number {
+    if (!val) return 0;
+    if (typeof val.__getValue === 'function') return val.__getValue();
+    if (typeof val._value === 'number') return val._value;
+    if (typeof val._offset === 'number') return val._offset;
+    return 0;
+  }
+
   function makeDraggable(
     pos: Animated.ValueXY,
     dragging: React.MutableRefObject<boolean>,
@@ -374,7 +390,7 @@ export default function ChatScreen() {
       onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 4 || Math.abs(g.dy) > 4,
       onPanResponderGrant: () => {
         dragging.current = false;
-        pos.setOffset({ x: (pos.x as any)._value, y: (pos.y as any)._value });
+        pos.setOffset({ x: getAnimVal(pos.x), y: getAnimVal(pos.y) });
         pos.setValue({ x: 0, y: 0 });
       },
       onPanResponderMove: (_, g) => {
@@ -384,9 +400,9 @@ export default function ChatScreen() {
       onPanResponderRelease: () => {
         pos.flattenOffset();
         if (!dragging.current) { onTap(); return; }
-        const curX = (pos.x as any)._value;
+        const curX = getAnimVal(pos.x);
         const snapX = curX < SW / 2 ? 12 : SW - BTN_SIZE - 12;
-        const rawY = (pos.y as any)._value;
+        const rawY = getAnimVal(pos.y);
         const snapY = Math.max(60, Math.min(rawY, SH - BTN_SIZE - 80));
         Animated.spring(pos, { toValue: { x: snapX, y: snapY }, useNativeDriver: false, damping: 18, stiffness: 200 }).start();
         dragging.current = false;
@@ -432,12 +448,37 @@ export default function ChatScreen() {
   const { isOnline } = useNetworkStatus();
   const dockBottomOffset = Platform.OS === 'ios' ? keyboardBottomOffset : 0;
   const effectiveDockOffset = anyPanelOpen && dockBottomOffset === 0 ? PANEL_HEIGHT : dockBottomOffset;
-  const messagesBottomInset = bottomDockHeight + effectiveDockOffset + 12;
+  const ANDROID_INPUT_BAR_FALLBACK = 70; // altura aproximada de ChatInputBar
+  const messagesBottomInset =
+    bottomDockHeight > 0
+      ? bottomDockHeight + effectiveDockOffset + 12
+      : (Platform.OS === 'android' ? ANDROID_INPUT_BAR_FALLBACK + 12 : 12);
 
   useEffect(() => {
     getCfgBool(CFG.readReceipts, true).then(setShowReadReceipts);
     return () => clearAllMessageStatusTimers();
   }, []);
+
+  // ── Contenido compartido desde otra app (Share Extension) ───────────────
+  // Cuando el usuario llega desde share-picker, lee el pendiente y lo
+  // pre-carga en el input (texto) o abre el editor de imagen/video.
+  useEffect(() => {
+    AsyncStorage.getItem('egchat_pending_share').then(async (raw) => {
+      if (!raw) return;
+      await AsyncStorage.removeItem('egchat_pending_share');
+      try {
+        const shared = JSON.parse(raw);
+        if (shared.type === 'text' && shared.text) {
+          // Pre-cargar texto en el input
+          setText(shared.text);
+        } else if ((shared.type === 'image' || shared.type === 'video') && shared.uri) {
+          // Abrir el editor de foto/video (igual que si lo hubiera seleccionado de galería)
+          setPhotoEditUri(shared.uri);
+        }
+      } catch { /* silencioso */ }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatId]);
 
   useEffect(() => {
     const handleShow = (event: any) => {
@@ -539,7 +580,7 @@ export default function ChatScreen() {
       const ev = event as any;
       // Solo notificar si el mensaje es nuestro (el servidor ya lo filtra, pero doble check)
       notifyReaction({
-        senderName: ev.reactorName || 'Alguien',
+        senderName: ev.reactorName || t('chtSomeone'),
         emoji: ev.emoji,
         messagePreview: ev.messagePreview,
         chatId: ev.chatId,
@@ -557,7 +598,12 @@ export default function ChatScreen() {
 
   useEffect(() => {
     if (!chatId) return;
-    getChatWallpaperId(chatId).then(setWallpaperId);
+    getChatWallpaperId(chatId).then(id => {
+      setWallpaperId(id);
+      sincronizarWallpaper(chatId, id).then(nuevo => {
+        if (nuevo) setWallpaperId(nuevo);
+      });
+    });
     AsyncStorage.getItem('egchat_starred_msgs').then(raw => {
       if (!raw) return;
       try {
@@ -659,13 +705,41 @@ export default function ChatScreen() {
         if (current) setChat(current);
       }).catch(() => {});
 
-      void chatAPI.getMessages(chatId, 1, 50).then(msgs => {
+      void chatAPI.getMessages(chatId, 1, 50).then(async msgs => {
         if (!active || !Array.isArray(msgs) || msgs.length === 0) return;
 
         const msgList = normalizeMessages(msgs);
         setMessages(msgList);
         void saveCache(`chat_messages_${chatId}`, msgList);
-        setHasMore(msgList.length === 50);
+        setHasMore(msgList.length >= 20); // Si hay 20+ mensajes, probablemente hay más
+
+        // ── Auto-limpiar mensajes de transferencia cuyo estado ya no es pendiente ──
+        // Si un mensaje tiene "⏳ Pendiente" pero la transferencia ya fue resuelta
+        // (aceptada o rechazada), actualizar el texto para quitar los botones.
+        const pendingMsgs = msgList.filter(m => m.text?.includes('⏳ Pendiente'));
+        if (pendingMsgs.length > 0) {
+          walletAPI.getPendingTransfers().then(res => {
+            const activePendingIds = new Set(
+              (res.transfers || [])
+                .filter((t: any) => t.direction === 'incoming' && !t.isExpired)
+                .map((t: any) => t.id)
+            );
+            pendingMsgs.forEach(m => {
+              const idLine = m.text?.split('\n').find((l: string) => l.startsWith('🆔 '));
+              const tId = idLine?.replace(/^🆔\s*/, '').trim();
+              if (tId && !activePendingIds.has(tId)) {
+                // La transferencia ya no está pendiente — asumir recibida si no está cancelada
+                const newText = (m.text || '').replace('⏳ Pendiente de aceptación', '✅ Transferencia recibida');
+                editMessage(m.id, newText).catch(() => {});
+                if (active) {
+                  setMessages(prev => prev.map(msg =>
+                    msg.id === m.id ? { ...msg, text: newText } : msg
+                  ));
+                }
+              }
+            });
+          }).catch(() => {});
+        }
 
         const meId = resolvedUserId;
         const firstUnread = msgList.find(message => message.sender_id !== meId && message.status !== 'read');
@@ -847,14 +921,25 @@ export default function ChatScreen() {
 
   useEffect(() => {
     if (messages.length === 0) return;
-    const frame = requestAnimationFrame(() => scrollToBottom(false));
+    // No saltar al fondo cuando se están cargando mensajes históricos (scroll hacia arriba)
+    if (isLoadingMoreRef.current) return;
+    // Solo auto-scroll al fondo en la carga inicial (page===1) o cuando llega un mensaje nuevo
+    const frame = requestAnimationFrame(() => {
+      // Pequeño delay en Android para evitar el flash de layout
+      if (Platform.OS === 'android') {
+        setTimeout(() => scrollToBottom(false), 80);
+      } else {
+        scrollToBottom(false);
+      }
+    });
     return () => cancelAnimationFrame(frame);
-  }, [messages.length, messagesBottomInset, inputBarHeight, isTyping, replyTo?.id, scrollToBottom]);
+  }, [messages.length, scrollToBottom]);
 
   // Cargar más mensajes (scroll hacia arriba)
   const loadMore = useCallback(async () => {
     if (!hasMore || loadingMore) return;
     setLoadingMore(true);
+    isLoadingMoreRef.current = true;
     try {
       const nextPage = page + 1;
       const older = await chatAPI.getMessages(chatId, nextPage, 50);
@@ -866,7 +951,11 @@ export default function ChatScreen() {
         setHasMore(false);
       }
     } catch {}
-    finally { setLoadingMore(false); }
+    finally {
+      setLoadingMore(false);
+      // Pequeño delay antes de desactivar la bandera para que el useEffect no reaccione
+      setTimeout(() => { isLoadingMoreRef.current = false; }, 300);
+    }
   }, [chatId, page, hasMore, loadingMore]);
 
   const sendMessage = useCallback(async () => {
@@ -952,7 +1041,7 @@ export default function ChatScreen() {
       ? starredIds.filter(id => id !== contextMsg.id)
       : [...starredIds, contextMsg.id];
     persistStarred(next);
-    toast.info('Destacado', starredIds.includes(contextMsg.id) ? 'Quitado de destacados' : 'Mensaje destacado');
+    toast.info(t('chtStarred'), starredIds.includes(contextMsg.id) ? t('chtRemovedFromStarred') : t('chtMessageStarred'));
   }, [contextMsg, starredIds, persistStarred]);
 
   const [messageReactions, setMessageReactions] = useState<Record<string, Record<string, number>>>({});
@@ -961,13 +1050,13 @@ export default function ChatScreen() {
   const handleTranslate = useCallback(async () => {
     if (!contextMsg?.text) return;
     setContextVisible(false);
-    toast.info('🌐 Traduciendo...');
+    toast.info(t('chtTranslating'));
     const translated = await translateText(contextMsg.text, 'es');
     if (translated !== contextMsg.text) {
       setTranslatedMessages(prev => ({ ...prev, [contextMsg.id]: translated }));
-      toast.success('Traducido', translated.slice(0, 50) + (translated.length > 50 ? '...' : ''));
+      toast.success(t('chtTranslated'), translated.slice(0, 50) + (translated.length > 50 ? '...' : ''));
     } else {
-      toast.info('Ya está en español o no se pudo traducir');
+      toast.info(t('chtAlreadyInSpanish'));
     }
   }, [contextMsg]);
 
@@ -994,13 +1083,13 @@ export default function ChatScreen() {
   const exportChat = useCallback(() => {
     const other = chat?.participants?.find((p: any) => String(p.user_id) !== String(currentUserId));
     const name = chat?.type === 'group'
-      ? (chat?.name || 'Grupo')
-      : (getParticipantName(other) || 'Usuario');
+      ? (chat?.name || t('msgGroup'))
+      : (getParticipantName(other) || t('setUser'));
     const body = messages.map(m => {
-      const who = m.sender_id === currentUserId ? 'Yo' : name;
+      const who = m.sender_id === currentUserId ? t('chtMe') : name;
       return `[${formatTime(m.created_at)}] ${who}: ${m.text || `[${m.type}]`}`;
     }).join('\n');
-    Share.share({ message: body, title: `Chat ${name}` }).catch(() => {});
+    Share.share({ message: body, title: `${t('chtChatWord')} ${name}` }).catch(() => {});
   }, [messages, currentUserId, chat]);
 
   const togglePin = useCallback(async () => {
@@ -1010,16 +1099,22 @@ export default function ChatScreen() {
     const next = isPinned ? ids.filter(id => id !== chatId) : [...ids, chatId];
     await AsyncStorage.setItem('egchat_pinned_chats', JSON.stringify(next));
     setIsPinned(!isPinned);
-    toast.info(isPinned ? 'Chat desfijado' : 'Chat fijado');
+    toast.info(isPinned ? t('chtChatUnpinned') : t('chtChatPinned'));
   }, [chatId, isPinned]);
 
   const toggleMute = useCallback(async () => {
     if (!chatId) return;
     const next = !isMuted;
+    // La marca local manda in-app; la del servidor es la que corta el push.
     await AsyncStorage.setItem(`egchat_muted_${chatId}`, next ? '1' : '0');
     setIsMuted(next);
-    toast.info(next ? 'Chat silenciado' : 'Notificaciones activadas');
-  }, [chatId, isMuted]);
+    try {
+      await chatAPI.muteChat(chatId, next ? 100 * 365 * 24 * 60 : 0);
+    } catch {
+      toast.info(t('msgServerUnreachable'));
+    }
+    toast.info(next ? t('chtChatMuted') : t('chtNotifsEnabled'));
+  }, [chatId, isMuted, t]);
 
   const getReplyPreview = useCallback((msg: Message) => {
     if (!msg.reply_to) return undefined;
@@ -1027,16 +1122,16 @@ export default function ChatScreen() {
     if (!parent) return undefined;
     const other = chat?.participants?.find((p: any) => String(p.user_id) !== String(currentUserId));
     const fallbackName = chat?.type === 'group'
-      ? (chat?.name || 'Grupo')
-      : (getParticipantName(other) || 'Usuario');
+      ? (chat?.name || t('msgGroup'))
+      : (getParticipantName(other) || t('setUser'));
     // #6 — incluir thumbnail si el mensaje padre es imagen
     const imageUri =
       parent.type === 'image'
         ? (parent.imageUrl || parent.file_url || undefined)
         : undefined;
     return {
-      author: parent.sender_id === currentUserId ? 'Tú' : (parent.sender?.full_name || fallbackName),
-      text: parent.type === 'image' ? '📷 Foto' : (parent.text || 'Mensaje'),
+      author: parent.sender_id === currentUserId ? t('chtYou') : (parent.sender?.full_name || fallbackName),
+      text: parent.type === 'image' ? t('chtPhotoMessage') : (parent.text || t('msgMessage')),
       imageUri,
     };
   }, [messages, currentUserId, chat]);
@@ -1049,7 +1144,8 @@ export default function ChatScreen() {
     const shouldShow = distBottom > threshold;
     // Solo actualizar estado si realmente cambia — evita re-renders continuos al hacer scroll
     setShowScrollBottom(prev => prev === shouldShow ? prev : shouldShow);
-    if (contentOffset.y < 60 && hasMore && !loadingMore) loadMore();
+    // Cargar más mensajes cuando el usuario llega al tope superior (contentOffset.y cerca de 0)
+    if (contentOffset.y < 150 && hasMore && !loadingMore) loadMore();
   }, [hasMore, loadingMore, loadMore]);
 
   // ── Cerrar teclado/emojis/panels al tocar fuera del input ──────
@@ -1106,7 +1202,7 @@ export default function ChatScreen() {
     // Sincronizar con backend
     const result = await editMessage(editingMessage.id, newText);
     if (!result.success) {
-      toast.error('No se pudo editar', result.error || 'Error desconocido');
+      toast.error(t('chtCouldNotEdit'), result.error || t('chtUnknownError'));
       // Revertir
       setMessages(prev => applyEditLocally(prev, editingMessage.id, editingMessage.text || ''));
     }
@@ -1128,9 +1224,9 @@ export default function ChatScreen() {
       setShowAttach(false);
       await startLiveLocation(chatId, () => setLiveLocationActive(true));
       setLiveLocationActive(true);
-      toast.info('📍 Ubicación en vivo', 'Compartiendo tu posición en tiempo real');
+      toast.info(t('chtLiveLocationTitle'), t('chtLiveLocationSharing'));
     } catch (e: any) {
-      toast.error('Ubicación', e?.message || 'No se pudo iniciar');
+      toast.error(t('msgLocation'), e?.message || t('chtCouldNotStart'));
     }
   }, [chatId]);
 
@@ -1138,30 +1234,30 @@ export default function ChatScreen() {
     if (!chatId) return;
     stopLiveLocation(chatId);
     setLiveLocationActive(false);
-    toast.info('Ubicación detenida');
+    toast.info(t('chtLiveLocationStopped'));
   }, [chatId]);
 
   const handleDelete = useCallback(() => {
     setContextVisible(false);
     if (!contextMsg) return;
     const isTransfer = contextMsg.type === 'money' || contextMsg.text?.includes('💸');
-    const itemLabel = isTransfer ? 'transacción' : 'mensaje';
+    const itemLabel = isTransfer ? t('chtItemTransaction') : t('chtItemMessage');
     Alert.alert(
-      `Eliminar ${itemLabel}`,
-      `¿Eliminar este ${itemLabel} para todos?\n\nQuedará guardado en el historial durante 5 años antes de borrarse definitivamente.`,
+      `${t('delete')} ${itemLabel}`,
+      `${t('chtDeleteForAllAskHead')} ${itemLabel} ${t('chtDeleteForAllAskTail')}`,
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Eliminar para todos', style: 'destructive',
+          text: t('chtDeleteForEveryone'), style: 'destructive',
           onPress: async () => {
             // Optimistic: quitar de UI inmediatamente
             setMessages(prev => prev.filter(m => m.id !== contextMsg.id));
             try {
               await chatAPI.deleteMessage(contextMsg.id);
-              toast.success(`${itemLabel.charAt(0).toUpperCase() + itemLabel.slice(1)} eliminado para todos`);
+              toast.success(`${itemLabel.charAt(0).toUpperCase() + itemLabel.slice(1)} ${t('chtDeletedForAll')}`);
             } catch {
               // Rollback si falla
-              toast.error(`No se pudo eliminar el ${itemLabel}`);
+              toast.error(`${t('chtCouldNotDeleteThe')} ${itemLabel}`);
               setMessages(prev => {
                 // Reinsertar el mensaje en su posición cronológica
                 const exists = prev.some(m => m.id === contextMsg.id);
@@ -1181,10 +1277,10 @@ export default function ChatScreen() {
     setContextVisible(false);
     if (!contextMsg) return;
     const isTransfer = contextMsg.type === 'money' || contextMsg.text?.includes('💸');
-    const itemLabel = isTransfer ? 'transacción' : 'mensaje';
+    const itemLabel = isTransfer ? t('chtItemTransaction') : t('chtItemMessage');
     // Optimistic: quitar de UI inmediatamente
     setMessages(prev => prev.filter(m => m.id !== contextMsg.id));
-    toast.info(`${itemLabel.charAt(0).toUpperCase() + itemLabel.slice(1)} eliminado para ti`);
+    toast.info(`${itemLabel.charAt(0).toUpperCase() + itemLabel.slice(1)} ${t('chtDeletedForYou')}`);
     chatAPI.deleteMessageForMe(contextMsg.id).catch(() => {
       // Silencioso — el filtro local ya ocultó el mensaje; el servidor puede fallar sin impacto visible
     });
@@ -1202,30 +1298,40 @@ export default function ChatScreen() {
     const targetName =
       _otherParticipant?.full_name ||
       (_otherParticipant as any)?.users?.full_name ||
-      'este contacto';
+      t('chtThisContact');
     if (!targetUserId) {
-      toast.error('No se pudo identificar al contacto');
+      toast.error(t('chtCouldNotIdentifyContact'));
       return;
     }
     Alert.alert(
-      'Eliminar contacto',
-      `¿Quieres eliminar a ${targetName} de tus contactos?\n\nPodrás volver a agregarlo cuando quieras.`,
+      t('deleteContact'),
+      `${t('chtRemoveContactAskHead')} ${targetName} ${t('chtRemoveContactAskTail')}`,
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Eliminar contacto', style: 'destructive',
+          text: t('deleteContact'), style: 'destructive',
           onPress: async () => {
             const removed = await contactsAPI.removeByUserId(String(targetUserId));
             if (removed) {
-              toast.success(`${targetName} eliminado de contactos`);
+              toast.success(`${targetName} ${t('chtRemovedFromContacts')}`);
             } else {
-              toast.info(`${targetName} no estaba en tus contactos`);
+              toast.info(`${targetName} ${t('chtNotInContacts')}`);
             }
+            // Eliminar también el chat para que no aparezca en la lista
+            try {
+              await chatAPI.deleteChat(chatId);
+              // Limpiar caché local
+              const cachedList = await readCache<any[]>('chat_list').catch(() => null);
+              if (cachedList) {
+                await saveCache('chat_list', cachedList.filter((c: any) => c.id !== chatId));
+              }
+            } catch {}
+            router.replace('/(tabs)/mensajeria' as any);
           },
         },
       ]
     );
-  }, [chat, currentUserId]);
+  }, [chat, currentUserId, chatId]);
 
   // ── Descargar imagen / video / archivo ────────────────────────
   const handleDownloadMedia = useCallback(async () => {
@@ -1234,7 +1340,7 @@ export default function ChatScreen() {
 
     const url = (contextMsg as any).file_url || (contextMsg as any).imageUrl;
     if (!url) {
-      toast.error('No hay archivo para descargar');
+      toast.error(t('chtNoFileToDownload'));
       return;
     }
 
@@ -1248,16 +1354,16 @@ export default function ChatScreen() {
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        toast.success('Descarga iniciada');
+        toast.success(t('chtDownloadStarted'));
       } catch {
-        toast.error('No se pudo descargar');
+        toast.error(t('chtCouldNotDownload'));
       }
       return;
     }
 
     // En nativo: descargar a directorio temporal y compartir/guardar
     try {
-      toast.info('Descargando...');
+      toast.info(t('chtDownloading'));
       const fs = await import('expo-file-system/legacy');
       const FS = (fs as any).default ?? fs;
       const ext = url.split('?')[0].split('.').pop()?.toLowerCase() || 'bin';
@@ -1265,7 +1371,7 @@ export default function ChatScreen() {
       const destPath = `${FS.cacheDirectory}${fileName}`;
 
       const dlResult = await FS.downloadAsync(url, destPath);
-      if (dlResult.status !== 200) throw new Error('Error al descargar');
+      if (dlResult.status !== 200) throw new Error(t('chtDownloadError'));
 
       // Intentar guardar en galería si es imagen/video
       const isPhoto = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'mov', 'avi'].includes(ext);
@@ -1274,7 +1380,7 @@ export default function ChatScreen() {
           // Usar Sharing nativo si está disponible (no requiere dependencia extra)
           const Sharing = await import('expo-sharing').catch(() => null);
           if (Sharing && (await (Sharing as any).isAvailableAsync?.())) {
-            await (Sharing as any).shareAsync(destPath, { dialogTitle: 'Guardar archivo' });
+            await (Sharing as any).shareAsync(destPath, { dialogTitle: t('chtSaveFile') });
             return;
           }
         } catch { /* usar Share de RN */ }
@@ -1283,7 +1389,7 @@ export default function ChatScreen() {
       // Fallback: Share nativo
       await Share.share({ url: destPath, title: fileName });
     } catch (e: any) {
-      toast.error('No se pudo descargar', e?.message || '');
+      toast.error(t('chtCouldNotDownload'), e?.message || '');
     }
   }, [contextMsg]);
 
@@ -1356,7 +1462,7 @@ export default function ChatScreen() {
   const retryMessage = useCallback(async (message: Message) => {
     if (!chatId || message.status !== 'failed') return;
     if (!isOnline) {
-      toast.info('Sin conexión', 'Se reintentará cuando recuperes internet');
+      toast.info(t('chtOffline'), t('chtWillRetryWhenOnline'));
       return;
     }
 
@@ -1405,7 +1511,7 @@ export default function ChatScreen() {
       replaceOptimistic(message.id, sent);
     } catch {
       failOptimistic(message.id);
-      toast.error('Error', 'No se pudo reenviar el mensaje');
+      toast.error(t('error'), t('chtCouldNotForward'));
     } finally {
       retryingMessagesRef.current.delete(message.id);
     }
@@ -1451,7 +1557,7 @@ export default function ChatScreen() {
 
     if (!isOnline) {
       failOptimistic(tempId);
-      toast.info('Sin conexion', 'El archivo queda listo para reintentar');
+      toast.info(t('chtOffline'), t('chtFileReadyToRetry'));
       return;
     }
 
@@ -1466,7 +1572,7 @@ export default function ChatScreen() {
       replaceOptimistic(tempId, { ...sent, imageUrl: sent.file_url, file_url: sent.file_url });
     } catch {
       failOptimistic(tempId);
-      toast.error('Error', 'No se pudo enviar el archivo');
+      toast.error(t('error'), t('chtCouldNotSendFile'));
     }
   }, [chatId, currentUserId, pushOptimistic, replaceOptimistic, failOptimistic, isOnline]);
 
@@ -1491,7 +1597,7 @@ export default function ChatScreen() {
         return;
       }
       // Múltiples → subir en paralelo y enviar como álbum
-      toast.info('📷 Subiendo álbum...', `${assets.length} fotos`);
+      toast.info(t('chtUploadingAlbum'), `${assets.length} ${t('chtPhotosWord')}`);
       const tempId = createTempMessageId();
       pushOptimistic({
         id: tempId, text: `📷 Álbum (${assets.length} fotos)`, type: 'album',
@@ -1515,7 +1621,7 @@ export default function ChatScreen() {
         replaceOptimistic(tempId, { ...sent, album_urls: uploadedUrls });
       } catch {
         failOptimistic(tempId);
-        toast.error('Error', 'No se pudo enviar el álbum');
+        toast.error(t('error'), t('chtCouldNotSendAlbum'));
       }
       return;
     }
@@ -1543,14 +1649,14 @@ export default function ChatScreen() {
     if (action === 'location') {
       setShowAttach(false);
       // Preguntar: ubicación puntual o en vivo
-      Alert.alert('Compartir ubicación', '¿Cómo quieres compartirla?', [
+      Alert.alert(t('chtShareLocation'), t('chtHowShareLocation'), [
         {
-          text: 'Ubicación actual',
+          text: t('chtCurrentLocation'),
           onPress: async () => {
-            toast.info('GPS', 'Obteniendo tu ubicación...');
+            toast.info('GPS', t('chtGettingLocation'));
             const location = await getCurrentLocationLabel();
             if (!location) {
-              toast.error('Ubicación', 'No se pudo obtener tu ubicación');
+              toast.error(t('msgLocation'), t('chtCouldNotGetLocation'));
               return;
             }
             const { lat, lng, label } = location;
@@ -1570,10 +1676,10 @@ export default function ChatScreen() {
           },
         },
         {
-          text: liveLocationActive ? 'Detener ubicación en vivo' : 'Ubicación en vivo',
+          text: liveLocationActive ? t('chtStopLiveLocation') : t('chtLiveLocationOn'),
           onPress: liveLocationActive ? handleStopLiveLocation : handleStartLiveLocation,
         },
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
       ]);
       return;
     }
@@ -1632,7 +1738,7 @@ export default function ChatScreen() {
 
   const handleShareContact = useCallback(async (contact: any) => {
     if (!chatId) return;
-    const name = contact.full_name || contact.name || 'Contacto';
+    const name = contact.full_name || contact.name || t('msgContact');
     const phone = contact.phone || '';
     const avatarUrl = contact.avatar_url || '';
     // Formato: línea 0 = nombre, línea 1 = teléfono, línea 2 = avatar_url
@@ -1645,7 +1751,7 @@ export default function ChatScreen() {
     try {
       const sent = await chatAPI.sendMessage(chatId, { text: msgText, type: 'contact' });
       replaceOptimistic(tempId, sent);
-      toast.success('Contacto compartido');
+      toast.success(t('chtContactShared'));
     } catch {
       failOptimistic(tempId);
     }
@@ -1676,10 +1782,10 @@ export default function ChatScreen() {
             ),
           };
         });
-        toast.success('Foto actualizada', 'Todos los contactos la verán');
+        toast.success(t('chtPhotoUpdated'), t('chtAllContactsWillSee'));
       }
     } catch {
-      toast.error('Error', 'No se pudo actualizar la foto');
+      toast.error(t('error'), t('chtCouldNotUpdatePhoto'));
     } finally {
       setUploadingAvatar(false);
       setCropUri(null);
@@ -1687,9 +1793,9 @@ export default function ChatScreen() {
   }, [currentUserId]);
 
   const pickProfilePhoto = useCallback(() => {
-    Alert.alert('Foto de perfil', 'Elige una opción', [
+    Alert.alert(t('chtProfilePhoto'), t('chtChooseOption'), [
       {
-        text: 'Cámara',
+        text: t('chtCamera'),
         onPress: async () => {
           const { status } = await ImagePicker.requestCameraPermissionsAsync();
           if (status !== 'granted') return;
@@ -1698,7 +1804,7 @@ export default function ChatScreen() {
         },
       },
       {
-        text: 'Galería',
+        text: t('chtGallery'),
         onPress: async () => {
           const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
           if (status !== 'granted') return;
@@ -1709,14 +1815,14 @@ export default function ChatScreen() {
           if (!r.canceled && r.assets[0]) setCropUri(r.assets[0].uri);
         },
       },
-      { text: 'Cancelar', style: 'cancel' },
+      { text: t('cancel'), style: 'cancel' },
     ]);
   }, []);
 
   const isGroup = chat?.type === 'group';
   const otherParticipant = chat?.participants?.find((p: any) => String(p.user_id) !== String(currentUserId));
   const chatName = chat
-    ? isGroup ? (chat.name || 'Grupo') : (getParticipantName(otherParticipant) || 'Usuario')
+    ? isGroup ? (chat.name || t('msgGroup')) : (getParticipantName(otherParticipant) || t('setUser'))
     : '...';
   const chatAvatar = isGroup ? chat?.avatar_url : getParticipantAvatar(otherParticipant);
   const otherPhone = getParticipantPhone(otherParticipant);
@@ -1724,23 +1830,23 @@ export default function ChatScreen() {
 
   // Construir subtitle respetando last_seen_visibility del contacto
   const chatSubtitle = isGroup
-    ? `${chat?.participants?.length || 0} miembros`
+    ? `${chat?.participants?.length || 0} ${t('chtMembersWord')}`
     : (() => {
         if (otherUserPrivacy.visibility === 'nadie') {
           return ''; // El contacto eligió no mostrar su estado
         }
-        if (isOtherOnline) return 'En línea';
+        if (isOtherOnline) return t('online');
         if (otherUserPrivacy.lastSeen) {
           const diff = Date.now() - new Date(otherUserPrivacy.lastSeen).getTime();
           const mins = Math.floor(diff / 60000);
           const hours = Math.floor(diff / 3600000);
           const days = Math.floor(diff / 86400000);
-          if (mins < 1) return 'Visto hace un momento';
-          if (mins < 60) return `Visto hace ${mins} min`;
-          if (hours < 24) return `Visto hace ${hours}h`;
-          if (days === 1) return 'Visto ayer';
-          if (days < 7) return `Visto hace ${days} días`;
-          return `Visto el ${new Date(otherUserPrivacy.lastSeen).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}`;
+          if (mins < 1) return t('chtSeenJustNow');
+          if (mins < 60) return `${t('chtSeenAgo')} ${mins} min`;
+          if (hours < 24) return `${t('chtSeenAgo')} ${hours}h`;
+          if (days === 1) return t('chtSeenYesterday');
+          if (days < 7) return `${t('chtSeenAgo')} ${days} ${t('chtDaysWord')}`;
+          return `${t('chtSeenOn')} ${new Date(otherUserPrivacy.lastSeen).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}`;
         }
         return '';
       })();
@@ -1757,7 +1863,7 @@ export default function ChatScreen() {
     {
       section: 'main',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" strokeLinecap="round"/><Circle cx="12" cy="7" r="4"/></Svg>,
-      label: isGroup ? 'Info del grupo' : 'Ver perfil',
+      label: isGroup ? t('chtGroupInfo') : t('viewProfile'),
       color: IC,
       onPress: () => {
         setDrawerVisible(false);
@@ -1768,21 +1874,21 @@ export default function ChatScreen() {
     {
       section: 'main',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Circle cx="11" cy="11" r="8"/><Path d="M21 21l-4.35-4.35" strokeLinecap="round"/></Svg>,
-      label: 'Buscar en el chat',
+      label: t('searchInChat'),
       color: IC,
       onPress: () => { setDrawerVisible(false); setShowChatSearch(true); setChatSearchQuery(''); },
     },
     {
       section: 'main',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></Svg>,
-      label: 'Mensajes destacados',
+      label: t('starredMessages'),
       color: IC,
       onPress: () => { setDrawerVisible(false); setShowStarredModal(true); },
     },
     {
       section: 'main',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Line x1="12" y1="5" x2="12" y2="19" strokeLinecap="round"/><Line x1="5" y1="12" x2="19" y2="12" strokeLinecap="round"/><Circle cx="12" cy="12" r="10"/></Svg>,
-      label: isPinned ? 'Desfijar chat' : 'Fijar chat',
+      label: isPinned ? t('chtUnpinChat') : t('pinChat'),
       color: IC,
       onPress: () => { setDrawerVisible(false); togglePin(); },
     },
@@ -1790,7 +1896,7 @@ export default function ChatScreen() {
     {
       section: 'main',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Rect x="3" y="3" width="18" height="18" rx="2"/><Circle cx="8.5" cy="8.5" r="1.5"/><Polyline points="21 15 16 10 5 21"/></Svg>,
-      label: 'Archivos multimedia',
+      label: t('mediaFiles'),
       color: IC,
       onPress: () => { setDrawerVisible(false); setShowMediaGallery(true); },
     },
@@ -1798,55 +1904,55 @@ export default function ChatScreen() {
     {
       section: 'config',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#00C8A0" strokeWidth={1.8}><Circle cx="12" cy="12" r="10"/><Polyline points="12 6 12 12 16 14"/></Svg>,
-      label: ephemeralDuration > 0 ? `⏱ Mensajes temporales (activo)` : '⏱ Mensajes temporales',
+      label: ephemeralDuration > 0 ? t('chtEphemeralActive') : t('chtEphemeralLabel'),
       color: ephemeralDuration > 0 ? '#00C8A0' : IC,
       onPress: () => { setDrawerVisible(false); setShowEphemeralModal(true); },
     },
     {
       section: 'config',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" strokeLinecap="round"/><Path d="M13.73 21a2 2 0 0 1-3.46 0" strokeLinecap="round"/></Svg>,
-      label: isMuted ? 'Activar notificaciones' : 'Silenciar',
+      label: isMuted ? t('chtEnableNotifs') : t('mute'),
       color: IC,
       onPress: () => { setDrawerVisible(false); toggleMute(); },
     },
     {
       section: 'config',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={isIncognito ? '#8b5cf6' : IC} strokeWidth={1.8}><Path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" strokeLinecap="round"/><Path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" strokeLinecap="round"/><Line x1="1" y1="1" x2="23" y2="23" strokeLinecap="round"/></Svg>,
-      label: isIncognito ? 'Desactivar incógnito' : '🕵️ Modo incógnito',
+      label: isIncognito ? t('chtDisableIncognito') : t('chtIncognitoMode'),
       color: isIncognito ? '#8b5cf6' : IC,
       onPress: async () => {
         const next = !isIncognito;
         await setIncognitoMode(chatId, next);
         setIsIncognito(next);
         setDrawerVisible(false);
-        toast.info(next ? '🕵️ Incógnito activado' : 'Incógnito desactivado');
+        toast.info(next ? t('chtIncognitoOn') : t('chtIncognitoOff'));
       },
     },
     {
       section: 'config',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Rect x="3" y="3" width="18" height="18" rx="2"/><Line x1="3" y1="9" x2="21" y2="9" strokeLinecap="round"/><Line x1="9" y1="21" x2="9" y2="9" strokeLinecap="round"/></Svg>,
-      label: 'Fondo de pantalla',
+      label: t('wallpaper'),
       color: IC,
       onPress: () => { setDrawerVisible(false); setShowWallpaperModal(true); },
     },
     {
       section: 'config',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#00c8a0" strokeWidth={1.8}><Path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" strokeLinecap="round"/></Svg>,
-      label: 'Cifrado E2E',
+      label: t('e2eEncryption'),
       color: '#00c8a0',
-      onPress: () => Alert.alert('🔒 Cifrado E2E', 'Este chat está cifrado de extremo a extremo.'),
+      onPress: () => Alert.alert(t('chtE2eAlertTitle'), t('chtE2eAlertMsg')),
     },
     {
       section: 'config',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" strokeLinecap="round"/><Path d="M13.73 21a2 2 0 0 1-3.46 0" strokeLinecap="round"/></Svg>,
-      label: `🔔 Tono del chat`,
+      label: t('chtToneLabel'),
       color: IC,
       onPress: () => { setDrawerVisible(false); setShowToneModal(true); },
     },
     {
       section: 'config',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" strokeLinecap="round"/><Line x1="7" y1="7" x2="7.01" y2="7" strokeLinecap="round"/></Svg>,
-      label: '🏷️ Etiquetas',
+      label: t('chtLabelsLabel'),
       color: IC,
       onPress: () => { setDrawerVisible(false); setShowLabelsModal(true); },
     },
@@ -1854,42 +1960,42 @@ export default function ChatScreen() {
     {
       section: 'actions',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" strokeLinecap="round"/><Path d="M19 10v2a7 7 0 0 1-14 0v-2" strokeLinecap="round"/></Svg>,
-      label: '🎙 Walkie-talkie',
+      label: t('chtWalkieLabel'),
       color: IC,
       onPress: () => { setDrawerVisible(false); setShowPTT(true); },
     },
     {
       section: 'actions',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Line x1="22" y1="2" x2="11" y2="13" strokeLinecap="round"/><Polygon points="22 2 15 22 11 13 2 9 22 2"/></Svg>,
-      label: 'Enviar dinero',
+      label: t('sendMoney'),
       color: IC,
       onPress: () => { setDrawerVisible(false); setShowQuickTransfer(true); },
     },
     ...(isGroup ? [{
       section: 'actions' as const,
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" strokeLinecap="round"/><Circle cx="9" cy="7" r="4"/><Path d="M23 21v-2a4 4 0 0 0-3-3.87" strokeLinecap="round"/></Svg>,
-      label: '💰 Dividir pago',
+      label: t('chtSplitPayment'),
       color: IC,
       onPress: () => { setDrawerVisible(false); setShowGroupPayment(true); },
     }] : []),
     {
       section: 'actions',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Circle cx="18" cy="5" r="3"/><Circle cx="6" cy="12" r="3"/><Circle cx="18" cy="19" r="3"/><Line x1="8.59" y1="13.51" x2="15.42" y2="17.49" strokeLinecap="round"/><Line x1="15.41" y1="6.51" x2="8.59" y2="10.49" strokeLinecap="round"/></Svg>,
-      label: 'Compartir contacto',
+      label: t('shareContact'),
       color: IC,
       onPress: () => { setDrawerVisible(false); setShowContactPicker(true); },
     },
     {
       section: 'actions',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" strokeLinecap="round"/></Svg>,
-      label: 'Crear grupo con este contacto',
+      label: t('createGroupWith'),
       color: IC,
       onPress: () => { setDrawerVisible(false); router.push('/new-chat' as any); },
     },
     {
       section: 'actions',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" strokeLinecap="round"/><Polyline points="7 10 12 15 17 10"/><Line x1="12" y1="15" x2="12" y2="3" strokeLinecap="round"/></Svg>,
-      label: 'Exportar chat',
+      label: t('exportChat'),
       color: IC,
       onPress: () => { setDrawerVisible(false); exportChat(); },
     },
@@ -1897,42 +2003,96 @@ export default function ChatScreen() {
     {
       section: 'danger',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth={1.8}><Polyline points="3 6 5 6 21 6"/><Path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" strokeLinecap="round"/><Path d="M10 11v6" strokeLinecap="round"/><Path d="M14 11v6" strokeLinecap="round"/></Svg>,
-      label: 'Vaciar chat',
+      label: t('clearChat'),
       color: '#F59E0B',
       onPress: () =>
-        Alert.alert('Vaciar chat', '¿Eliminar todos los mensajes?', [
-          { text: 'Cancelar', style: 'cancel' },
-          { text: 'Vaciar', style: 'destructive', onPress: () => setMessages([]) },
+        Alert.alert(t('clearChat'), t('chtClearAllAsk'), [
+          { text: t('cancel'), style: 'cancel' },
+          { text: t('chtClearBtn'), style: 'destructive', onPress: () => setMessages([]) },
         ]),
     },
     {
       section: 'danger',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth={1.8}><Path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" strokeLinecap="round"/><Line x1="12" y1="9" x2="12" y2="13" strokeLinecap="round"/><Line x1="12" y1="17" x2="12.01" y2="17" strokeLinecap="round"/></Svg>,
-      label: 'Reportar',
+      label: t('report'),
       color: '#EF4444',
-      onPress: () => Alert.alert('Reportar', `"${chatName}" reportado.`),
+      onPress: () =>
+        Alert.alert(
+          t('chtReportTitle'),
+          `${t('chtReportAskHead')} "${chatName}" ${t('chtReportAskTail')}`,
+          [
+            { text: t('cancel'), style: 'cancel' },
+            {
+              text: t('report'),
+              style: 'destructive',
+              onPress: async () => {
+                try {
+                  const uid = otherParticipant?.user_id;
+                  if (uid) await reportAPI.reportUser(String(uid), 'comportamiento_inapropiado');
+                  Alert.alert(t('chtReportSent'), t('chtReportThanks'));
+                } catch {
+                  Alert.alert(t('error'), t('chtReportFailed'));
+                }
+              },
+            },
+          ]
+        ),
     },
     {
       section: 'danger',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth={1.8}><Circle cx="12" cy="12" r="10"/><Line x1="4.93" y1="4.93" x2="19.07" y2="19.07" strokeLinecap="round"/></Svg>,
-      label: 'Bloquear',
+      label: t('block'),
       color: '#EF4444',
       onPress: () =>
-        Alert.alert('Bloquear', `¿Bloquear a ${chatName}?`, [
-          { text: 'Cancelar', style: 'cancel' },
-          { text: 'Bloquear', style: 'destructive', onPress: () => router.back() },
-        ]),
+        Alert.alert(
+          t('chtBlockTitle'),
+          `${t('chtBlockAskHead')} ${chatName}${t('chtBlockAskTail')}`,
+          [
+            { text: t('cancel'), style: 'cancel' },
+            {
+              text: t('block'),
+              style: 'destructive',
+              onPress: async () => {
+                try {
+                  const uid = otherParticipant?.user_id;
+                  if (uid) await blockAPI.block(String(uid));
+                  router.back();
+                } catch {
+                  Alert.alert(t('error'), t('chtBlockFailed'));
+                }
+              },
+            },
+          ]
+        ),
     },
     {
       section: 'danger',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth={1.8}><Path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" strokeLinecap="round"/><Circle cx="9" cy="7" r="4"/><Line x1="23" y1="11" x2="17" y2="11" strokeLinecap="round"/></Svg>,
-      label: 'Eliminar contacto',
+      label: t('deleteContact'),
       color: '#EF4444',
       onPress: () =>
-        Alert.alert('Eliminar contacto', `¿Eliminar a ${chatName}?`, [
-          { text: 'Cancelar', style: 'cancel' },
-          { text: 'Eliminar', style: 'destructive', onPress: () => router.back() },
-        ]),
+        Alert.alert(
+          t('chtDeleteContactTitle'),
+          `${t('chtDeleteContactAskHead')} ${chatName} ${t('chtDeleteContactAskTail')}`,
+          [
+            { text: t('cancel'), style: 'cancel' },
+            {
+              text: t('chtDeleteForever'),
+              style: 'destructive',
+              onPress: async () => {
+                try {
+                  const uid = otherParticipant?.user_id;
+                  if (uid) {
+                    await contactsAPI.removeByUserId(String(uid));
+                  }
+                  router.back();
+                } catch {
+                  Alert.alert(t('error'), t('chtDeleteContactFailed'));
+                }
+              },
+            },
+          ]
+        ),
     },
   ];
 
@@ -1980,31 +2140,43 @@ export default function ChatScreen() {
   }, []);
 
   const handleDeleteSelected = useCallback(() => {
-    Alert.alert(
-      'Eliminar mensajes',
-      `¿Eliminar ${selectedIds.size} mensaje${selectedIds.size > 1 ? 's' : ''}?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar', style: 'destructive',
-          onPress: async () => {
-            const ids = Array.from(selectedIds);
-            await Promise.allSettled(ids.map(id => chatAPI.deleteMessage(id)));
-            setMessages(prev => prev.filter(m => !selectedIds.has(m.id)));
-            exitSelectMode();
-          },
-        },
-      ]
-    );
-  }, [selectedIds, exitSelectMode]);
+    const idsSnapshot = Array.from(selectedIds);
+    if (idsSnapshot.length === 0) return;
+    // Abrir modal de confirmación con las dos opciones
+    setDeleteConfirmIds(idsSnapshot);
+  }, [selectedIds]);
+
+  // ── Eliminar para mí (solo localmente + endpoint for-me) ────────
+  const handleDeleteForMeSelected = useCallback(async (ids: string[]) => {
+    const idsSet = new Set(ids);
+    setMessages(prev => prev.filter(m => !idsSet.has(m.id)));
+    exitSelectMode();
+    setDeleteConfirmIds(null);
+    Promise.allSettled(ids.map(id => chatAPI.deleteMessageForMe(id)));
+  }, [exitSelectMode]);
+
+  // ── Eliminar para todos (borra en el receptor también) ──────────
+  const handleDeleteForAllSelected = useCallback(async (ids: string[]) => {
+    const idsSet = new Set(ids);
+    setMessages(prev => prev.filter(m => !idsSet.has(m.id)));
+    exitSelectMode();
+    setDeleteConfirmIds(null);
+    Promise.allSettled(ids.map(id => chatAPI.deleteMessage(id)));
+  }, [exitSelectMode]);
 
   const handleForwardSelected = useCallback(() => {
     const msgs = messages.filter(m => selectedIds.has(m.id));
     if (msgs.length === 0) return;
     exitSelectMode();
-    // Reenviar el primero con el modal; si hay varios, los encola en globals para el modal
-    (global as any).__egchat_forward_msgs = msgs;
-    setForwardMsg(msgs[0]);
+    if (msgs.length === 1) {
+      // Un solo mensaje: flujo individual (compatible con modal original)
+      setForwardMsg(msgs[0]);
+      setForwardSelectedMsgs([]);
+    } else {
+      // Múltiples mensajes: pasar el array completo al modal
+      setForwardMsg(null);
+      setForwardSelectedMsgs(msgs);
+    }
     setShowForwardModal(true);
   }, [messages, selectedIds, exitSelectMode]);
 
@@ -2024,7 +2196,7 @@ export default function ChatScreen() {
         const amountNum  = parseFloat(
           amountLine.replace(/^💰\s*/, '').replace(/[^0-9.]/g, '')
         ) || 0;
-        const senderName = fromLine.replace(/^👤 Para:\s*/i, '').trim() || 'Usuario';
+        const senderName = fromLine.replace(/^👤 Para:\s*/i, '').trim() || t('setUser');
 
         setChatIncomingTransfer({
           transferId,
@@ -2064,6 +2236,7 @@ export default function ChatScreen() {
 
   // Acepta una transferencia pendiente — se resuelve el transferId del texto del mensaje
   // o buscando en el servidor como fallback para mensajes antiguos.
+  // Tras completar, actualiza el texto del mensaje para quitar los botones definitivamente.
   const handleTransferAccept = useCallback(async (transferId: string) => {
     let resolvedId = transferId;
     if (!resolvedId) {
@@ -2072,10 +2245,20 @@ export default function ChatScreen() {
       const incoming = (res.transfers || []).find(
         t => t.direction === 'incoming' && !t.isExpired,
       );
-      if (!incoming) throw new Error('No hay transferencias pendientes');
+      if (!incoming) throw new Error(t('chtNoPendingTransfers'));
       resolvedId = incoming.id;
     }
     await walletAPI.acceptTransfer(resolvedId);
+    // Reemplazar "⏳ Pendiente de aceptación" → "✅ Transferencia recibida"
+    // y persistir en BD para que al recargar el chat ya no aparezcan los botones
+    setMessages(prev => prev.map(m => {
+      if (m.text?.includes('⏳ Pendiente') && m.text?.includes(resolvedId)) {
+        const newText = m.text.replace('⏳ Pendiente de aceptación', '✅ Transferencia recibida');
+        editMessage(m.id, newText).catch(() => { /* silencioso — el estado local ya está actualizado */ });
+        return { ...m, text: newText };
+      }
+      return m;
+    }));
   }, []);
 
   const handleTransferCancel = useCallback(async (transferId: string) => {
@@ -2085,10 +2268,37 @@ export default function ChatScreen() {
       const incoming = (res.transfers || []).find(
         t => t.direction === 'incoming' && !t.isExpired,
       );
-      if (!incoming) throw new Error('No hay transferencias pendientes');
+      if (!incoming) throw new Error(t('chtNoPendingTransfers'));
       resolvedId = incoming.id;
     }
     await walletAPI.cancelTransfer(resolvedId);
+    // Reemplazar "⏳ Pendiente de aceptación" → "❌ Transferencia rechazada"
+    // y persistir en BD para que al recargar el chat ya no aparezcan los botones
+    setMessages(prev => prev.map(m => {
+      if (m.text?.includes('⏳ Pendiente') && m.text?.includes(resolvedId)) {
+        const newText = m.text.replace('⏳ Pendiente de aceptación', '❌ Transferencia rechazada');
+        editMessage(m.id, newText).catch(() => { /* silencioso — el estado local ya está actualizado */ });
+        return { ...m, text: newText };
+      }
+      return m;
+    }));
+  }, []);
+
+  // ── Escuchar evento global de transferencia resuelta (desde _layout.tsx) ──
+  // Cuando el IncomingTransferModal acepta/rechaza, actualiza el mensaje del chat
+  useEffect(() => {
+    const unsub = onTransferResolved(({ transferId, status }) => {
+      const newStatus = status === 'accepted' ? '✅ Transferencia recibida' : '❌ Transferencia rechazada';
+      setMessages(prev => prev.map(m => {
+        if (m.text?.includes('⏳ Pendiente') && m.text?.includes(transferId)) {
+          const newText = m.text.replace('⏳ Pendiente de aceptación', newStatus);
+          editMessage(m.id, newText).catch(() => {});
+          return { ...m, text: newText };
+        }
+        return m;
+      }));
+    });
+    return unsub;
   }, []);
 
   const renderItem = useCallback(({ item, index }: { item: Message; index: number }) => {
@@ -2107,11 +2317,11 @@ export default function ChatScreen() {
         onPress={isSelectMode ? () => toggleSelect(item.id) : undefined}
         style={isSelected ? styles.selectedRow : undefined}
       >
-        {showDate && <DateSeparator label={getDateLabel(item.created_at)} />}
+        {showDate && <DateSeparator label={t(getDateLabel(item.created_at))} />}
         {showUnreadSeparator && (
           <View style={styles.unreadSeparator}>
             <View style={styles.unreadLine} />
-            <Text style={styles.unreadLabel}>Mensajes nuevos</Text>
+            <Text style={styles.unreadLabel}>{t('chtNewMessages')}</Text>
             <View style={styles.unreadLine} />
           </View>
         )}
@@ -2242,7 +2452,7 @@ export default function ChatScreen() {
   if (!chatId || Array.isArray(chatId)) {
     return (
       <View style={styles.center}>
-        <Text style={{ color: Colors.textSecondary }}>Chat no encontrado</Text>
+        <Text style={{ color: Colors.textSecondary }}>{t('chtChatNotFound')}</Text>
       </View>
     );
   }
@@ -2256,7 +2466,7 @@ export default function ChatScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: C.bgPrimary }]} edges={['left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: C.bgPrimary }]} edges={Platform.OS === 'android' ? ['left', 'right', 'bottom'] : ['left', 'right']}>
       <ChatHeader
         chatName={chatName}
         chatAvatar={chatAvatar}
@@ -2310,7 +2520,7 @@ export default function ChatScreen() {
       {/* Badge incógnito */}
       {isIncognito && (
         <View style={styles.incognitoBadge}>
-          <Text style={styles.incognitoText}>🕵️ Modo incógnito</Text>
+          <Text style={styles.incognitoText}>{t('chtIncognitoMode')}</Text>
         </View>
       )}
 
@@ -2328,20 +2538,20 @@ export default function ChatScreen() {
               {
                 paddingBottom: 12,
                 flexGrow: 1,
-                justifyContent: 'flex-end',
+                // Sin justifyContent: 'flex-end' — permite scroll libre hacia arriba
               },
             ]}
-            showsVerticalScrollIndicator={false}
+            showsVerticalScrollIndicator={true}
             onScroll={handleScroll}
-            scrollEventThrottle={Platform.OS === 'android' ? 100 : 16}
+            scrollEventThrottle={Platform.OS === 'android' ? 32 : 16}
             onScrollBeginDrag={() => dismissPanels()}
             keyboardShouldPersistTaps="always"
-            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+            maintainVisibleContentPosition={{ minIndexForVisible: 0, autoscrollToTopThreshold: 100 }}
             // ── Optimizaciones de rendimiento ──────────────────────
-            initialNumToRender={Platform.OS === 'android' ? 12 : 15}
-            maxToRenderPerBatch={Platform.OS === 'android' ? 4 : 10}
-            updateCellsBatchingPeriod={Platform.OS === 'android' ? 120 : 80}
-            windowSize={Platform.OS === 'android' ? 4 : 7}
+            initialNumToRender={Platform.OS === 'android' ? 20 : 25}
+            maxToRenderPerBatch={Platform.OS === 'android' ? 10 : 15}
+            updateCellsBatchingPeriod={Platform.OS === 'android' ? 100 : 60}
+            windowSize={Platform.OS === 'android' ? 15 : 21}
             removeClippedSubviews={Platform.OS === 'android'}
             getItemLayout={undefined}
             // ────────────────────────────────────────────────────────
@@ -2355,7 +2565,7 @@ export default function ChatScreen() {
             ListEmptyComponent={
               <View style={styles.emptyChat}>
                 <Text style={styles.emptyChatIcon}>💬</Text>
-                <Text style={styles.emptyChatText}>Empieza la conversación</Text>
+                <Text style={styles.emptyChatText}>{t('chtStartConversation')}</Text>
               </View>
             }
           />
@@ -2363,7 +2573,7 @@ export default function ChatScreen() {
 
           {showScrollBottom && (
             <TouchableOpacity
-              style={styles.scrollBottomBtn}
+              style={[styles.scrollBottomBtn, { bottom: bottomDockHeight + effectiveDockOffset + 12 }]}
               onPress={() => {
                 flatListRef.current?.scrollToEnd({ animated: true });
                 setUnreadScrollCount(0);
@@ -2410,7 +2620,7 @@ export default function ChatScreen() {
             {replyTo && (
               <ReplyPreview
                 author={replyTo.sender_id === currentUserId ? 'Tú' : (replyTo.sender?.full_name || chatName)}
-                text={replyTo.text || 'Mensaje'}
+                text={replyTo.text || t('msgMessage')}
                 onCancel={() => setReplyTo(null)}
               />
             )}
@@ -2441,7 +2651,7 @@ export default function ChatScreen() {
                 <View style={styles.multiSelectCountWrap}>
                   <Text style={styles.multiSelectCountNum}>{selectedIds.size}</Text>
                   <Text style={styles.multiSelectCountLabel}>
-                    {selectedIds.size === 1 ? 'seleccionado' : 'seleccionados'}
+                    {selectedIds.size === 1 ? t('chtSelectedOne') : t('chtSelectedMany')}
                   </Text>
                 </View>
 
@@ -2457,7 +2667,7 @@ export default function ChatScreen() {
                       <Path d="M22 2L11 13" strokeLinecap="round" strokeLinejoin="round"/>
                       <Polyline points="22 2 15 22 11 13 2 9 22 2" strokeLinecap="round" strokeLinejoin="round"/>
                     </Svg>
-                    <Text style={styles.multiSelectBtnLabel}>Reenviar</Text>
+                    <Text style={styles.multiSelectBtnLabel}>{t('chtForward')}</Text>
                   </TouchableOpacity>
 
                   {/* Eliminar */}
@@ -2472,7 +2682,7 @@ export default function ChatScreen() {
                       <Path d="M10 11v6M14 11v6" strokeLinecap="round"/>
                       <Path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" strokeLinecap="round"/>
                     </Svg>
-                    <Text style={styles.multiSelectBtnLabelDanger}>Eliminar</Text>
+                    <Text style={styles.multiSelectBtnLabelDanger}>{t('delete')}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -2509,7 +2719,7 @@ export default function ChatScreen() {
               <View onLayout={e => setInputBarHeight(e.nativeEvent.layout.height)}>
                 {!canWrite ? (
                   <View style={styles.broadcastBlock}>
-                    <Text style={styles.broadcastBlockText}>📢 Solo los administradores pueden escribir</Text>
+                    <Text style={styles.broadcastBlockText}>{t('chtBroadcastOnlyAdmins')}</Text>
                   </View>
                 ) : (
                 <ChatInputBar
@@ -2566,7 +2776,7 @@ export default function ChatScreen() {
                   onStartRecording={async () => {
                     haptics.medium();
                     const ok = await startRecording();
-                    if (!ok) toast.error('Sin permiso', 'Activa el micrófono en ajustes');
+                    if (!ok) toast.error(t('chtNoPermission'), t('chtEnableMic'));
                   }}
                   onCancelRecording={cancelRecording}
                   onStopRecording={async () => {
@@ -2585,7 +2795,7 @@ export default function ChatScreen() {
                       replaceOptimistic(tempId, sent);
                     } catch {
                       failOptimistic(tempId);
-                      toast.error('Error', 'No se pudo enviar el audio');
+                      toast.error(t('error'), t('chtCouldNotSendAudio'));
                     }
                   }}
                 />
@@ -2697,17 +2907,17 @@ export default function ChatScreen() {
         onPin={() => {
           if (!contextMsg || !chatId) return;
           const senderName = contextMsg.sender_id === currentUserId
-            ? (myProfile.full_name || 'Yo')
+            ? (myProfile.full_name || t('chtMe'))
             : chatName;
           pinMessage(chatId, {
             id: contextMsg.id,
-            text: contextMsg.text || '📎 Adjunto',
+            text: contextMsg.text || t('chtAttachment'),
             senderName,
             pinnedAt: new Date().toISOString(),
           }).then(ok => {
             if (ok) {
               getPinnedMessages(chatId).then(setPinnedMessages);
-              toast.info('📌 Mensaje fijado');
+              toast.info(t('chtMessagePinned'));
             }
           });
         }}
@@ -2720,7 +2930,7 @@ export default function ChatScreen() {
         onSelect={async (d) => {
           setEphemeralDurationState(d);
           if (chatId) await setEphemeralDuration(chatId, d);
-          const label = d === 0 ? 'Mensajes temporales desactivados' : `Mensajes temporales: ${d >= 86400 ? `${d/86400}d` : d >= 3600 ? `${d/3600}h` : `${d}s`}`;
+          const label = d === 0 ? t('chtEphemeralOff') : `${t('chtEphemeralSet')}: ${d >= 86400 ? `${d/86400}d` : d >= 3600 ? `${d/3600}h` : `${d}s`}`;
           toast.info(label);
         }}
         onClose={() => setShowEphemeralModal(false)}
@@ -2734,6 +2944,9 @@ export default function ChatScreen() {
           currentUserId={currentUserId}
           onClose={() => setShowGroupInfo(false)}
           onLeft={() => { setShowGroupInfo(false); router.back(); }}
+          onAvatarUpdated={(url) => setChat((prev: any) => prev ? { ...prev, avatar_url: url } : prev)}
+          onAudioCall={() => { setShowGroupInfo(false); goToCall('audio'); }}
+          onVideoCall={() => { setShowGroupInfo(false); goToCall('video'); }}
         />
       )}
 
@@ -2777,7 +2990,7 @@ export default function ChatScreen() {
           messageId={receiptsMsgId || ''}
           chatParticipants={(chat?.participants || []).map((p: any) => ({
             user_id: p.user_id,
-            full_name: p.full_name || p.users?.full_name || 'Usuario',
+            full_name: p.full_name || p.users?.full_name || t('setUser'),
             avatar_url: p.avatar_url || p.users?.avatar_url,
           }))}
           currentUserId={currentUserId}
@@ -2811,7 +3024,7 @@ export default function ChatScreen() {
         onScheduled={() => {
           setShowScheduleModal(false);
           setText('');
-          toast.success('Programado ✓', 'El mensaje se enviará en la fecha indicada');
+          toast.success(t('chtScheduledTitle'), t('chtScheduledBody'));
         }}
       />
 
@@ -2835,9 +3048,10 @@ export default function ChatScreen() {
       <ForwardWithCommentModal
         visible={showForwardModal}
         message={forwardMsg}
+        messages={forwardSelectedMsgs.length > 0 ? forwardSelectedMsgs : undefined}
         currentUserId={currentUserId}
-        onClose={() => { setShowForwardModal(false); setForwardMsg(null); }}
-        onForwarded={() => { setShowForwardModal(false); setForwardMsg(null); }}
+        onClose={() => { setShowForwardModal(false); setForwardMsg(null); setForwardSelectedMsgs([]); }}
+        onForwarded={() => { setShowForwardModal(false); setForwardMsg(null); setForwardSelectedMsgs([]); }}
       />
 
       {/* PTT — Walkie-talkie */}
@@ -2876,7 +3090,7 @@ export default function ChatScreen() {
           chatId={chatId}
           members={(chat?.participants || []).map((p: any) => ({
             user_id: p.user_id,
-            full_name: p.full_name || p.users?.full_name || 'Usuario',
+            full_name: p.full_name || p.users?.full_name || t('setUser'),
             avatar_url: p.avatar_url || p.users?.avatar_url,
           }))}
           currentUserId={currentUserId}
@@ -2966,6 +3180,75 @@ export default function ChatScreen() {
         onDismiss={() => setChatIncomingTransfer(null)}
       />
 
+      {/* ── Modal: Eliminar para mí / para todos ── */}
+      <Modal
+        visible={!!deleteConfirmIds}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setDeleteConfirmIds(null)}
+      >
+        <Pressable style={mpStyles.overlay} onPress={() => setDeleteConfirmIds(null)}>
+          <Pressable style={mpStyles.sheet} onPress={e => e.stopPropagation()}>
+            {/* Handle */}
+            <TouchableOpacity onPress={() => setDeleteConfirmIds(null)} style={mpStyles.handleWrap} activeOpacity={0.7}>
+              <View style={mpStyles.handle} />
+            </TouchableOpacity>
+
+            <Text style={mpStyles.title}>
+              {`${t('delete')} ${(deleteConfirmIds?.length ?? 0)} ${(deleteConfirmIds?.length ?? 0) > 1 ? t('chtItemMessages') : t('chtItemMessage')}`}
+            </Text>
+
+            {/* Eliminar para mí */}
+            <TouchableOpacity
+              style={mpStyles.option}
+              onPress={() => deleteConfirmIds && handleDeleteForMeSelected(deleteConfirmIds)}
+              activeOpacity={0.75}
+            >
+              <View style={[mpStyles.optionIcon, { backgroundColor: '#f0f9ff' }]}>
+                <Svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                  <Path d="M17 7l-10 10M7 7h10v10" />
+                </Svg>
+              </View>
+              <View style={mpStyles.optionText}>
+                <Text style={mpStyles.optionLabel}>{t('chtDeleteForMe')}</Text>
+                <Text style={mpStyles.optionSub}>{t('chtDeleteForMeSub')}</Text>
+              </View>
+            </TouchableOpacity>
+
+            <View style={mpStyles.divider} />
+
+            {/* Eliminar para todos */}
+            <TouchableOpacity
+              style={mpStyles.option}
+              onPress={() => deleteConfirmIds && handleDeleteForAllSelected(deleteConfirmIds)}
+              activeOpacity={0.75}
+            >
+              <View style={[mpStyles.optionIcon, { backgroundColor: '#fff1f2' }]}>
+                <Svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                  <Polyline points="3 6 5 6 21 6" />
+                  <Path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                  <Path d="M10 11v6M14 11v6" />
+                  <Path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                </Svg>
+              </View>
+              <View style={mpStyles.optionText}>
+                <Text style={[mpStyles.optionLabel, { color: '#ef4444' }]}>{t('chtDeleteForEveryone')}</Text>
+                <Text style={mpStyles.optionSub}>{t('chtDeleteForAllSub')}</Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* Cancelar */}
+            <TouchableOpacity
+              style={mpStyles.cancelBtn}
+              onPress={() => setDeleteConfirmIds(null)}
+              activeOpacity={0.75}
+            >
+              <Text style={mpStyles.cancelText}>{t('cancel')}</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* ── Bottom-sheet selector Foto / Video ── */}
       <Modal
         visible={!!mediaPickerMode}
@@ -2981,7 +3264,7 @@ export default function ChatScreen() {
             </TouchableOpacity>
 
             <Text style={mpStyles.title}>
-              {mediaPickerMode === 'photo' ? 'Añadir foto' : 'Añadir video'}
+              {mediaPickerMode === 'photo' ? t('chtAddPhoto') : t('chtAddVideo')}
             </Text>
 
             {/* Opción Cámara */}
@@ -3007,9 +3290,9 @@ export default function ChatScreen() {
               </View>
               <View style={mpStyles.optionText}>
                 <Text style={mpStyles.optionLabel}>
-                  {mediaPickerMode === 'photo' ? 'Hacer una foto' : 'Grabar un video'}
+                  {mediaPickerMode === 'photo' ? t('chtTakePhoto') : t('chtRecordVideo')}
                 </Text>
-                <Text style={mpStyles.optionSub}>Abrir la cámara ahora</Text>
+                <Text style={mpStyles.optionSub}>{t('chtOpenCameraNow')}</Text>
               </View>
               <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth={2} strokeLinecap="round"><Path d="M9 18l6-6-6-6"/></Svg>
             </TouchableOpacity>
@@ -3039,8 +3322,8 @@ export default function ChatScreen() {
                 </Svg>
               </View>
               <View style={mpStyles.optionText}>
-                <Text style={mpStyles.optionLabel}>Elegir de la galería</Text>
-                <Text style={mpStyles.optionSub}>Seleccionar desde el dispositivo</Text>
+                <Text style={mpStyles.optionLabel}>{t('chtChooseGallery')}</Text>
+                <Text style={mpStyles.optionSub}>{t('chtSelectFromDevice')}</Text>
               </View>
               <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth={2} strokeLinecap="round"><Path d="M9 18l6-6-6-6"/></Svg>
             </TouchableOpacity>
@@ -3051,7 +3334,7 @@ export default function ChatScreen() {
               onPress={() => setMediaPickerMode(null)}
               activeOpacity={0.7}
             >
-              <Text style={mpStyles.cancelText}>Cancelar</Text>
+              <Text style={mpStyles.cancelText}>{t('cancel')}</Text>
             </TouchableOpacity>
           </Pressable>
         </Pressable>
@@ -3070,7 +3353,25 @@ export default function ChatScreen() {
           isGroup,
           type: isGroup ? 'group' : 'private',
         }}
+        targetUserId={otherParticipant?.user_id ? String(otherParticipant.user_id) : undefined}
         onClose={() => setShowProfile(false)}
+        onMuteToggle={() => {
+          const next = !isMuted;
+          setIsMuted(next);
+        }}
+        onDeleteContact={async () => {
+          // Eliminar el chat también para que no aparezca en la lista
+          try {
+            await chatAPI.deleteChat(chatId);
+            // Limpiar caché local para que mensajería no lo muestre en stale
+            const cachedList = await readCache<any[]>('chat_list').catch(() => null);
+            if (cachedList) {
+              await saveCache('chat_list', cachedList.filter((c: any) => c.id !== chatId));
+            }
+          } catch {}
+          setShowProfile(false);
+          router.replace('/(tabs)/mensajeria' as any);
+        }}
         onStartCall={(type) => {
           setShowProfile(false);
           router.push({
@@ -3157,7 +3458,7 @@ export default function ChatScreen() {
           transferExecutorRef.current = null;
         }}
         onSuccess={handleTransferPinSuccess}
-        title="🔒 Confirmar transferencia"
+        title={tr('xtConfirmarTransferencia')}
         subtitle={transferPinSubtitle}
         loading={transferPinLoading}
         error={transferPinError}
@@ -3176,7 +3477,7 @@ export default function ChatScreen() {
             pinSetupDoneRef.current = null;
           }
         }}
-        title="🔒 Configurar PIN de Pagos"
+        title={tr('xtConfigurarPINDePagos')}
       />
       {cropUri ? (
         <AvatarCropModal
@@ -3294,7 +3595,7 @@ const styles = StyleSheet.create({
   scrollBottomBtn: {
     position: 'absolute',
     right: 16,
-    bottom: 16,
+    // bottom se aplica inline, dinámico según el dock
     width: 40,
     height: 40,
     borderRadius: 20,

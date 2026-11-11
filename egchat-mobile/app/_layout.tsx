@@ -3,7 +3,18 @@ import { Stack, router, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { View, ActivityIndicator, StyleSheet, Alert, Platform, Text, TouchableOpacity, AppState, Modal, Animated } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Alert, Platform, Text, TextInput, TouchableOpacity, AppState, Modal, Animated } from 'react-native';
+
+// ── Bloquear font scaling del sistema en toda la app ─────────────
+// El usuario puede ajustar el tamaño dentro de la app, pero el
+// tamaño de fuente del sistema operativo no debe afectar la UI.
+// Esto evita que en iPhones/Androids con fuente "Grande" la app
+// se vea distorsionada o desbordada.
+if ((Text as any).defaultProps == null) (Text as any).defaultProps = {};
+(Text as any).defaultProps.allowFontScaling = false;
+if ((TextInput as any).defaultProps == null) (TextInput as any).defaultProps = {};
+(TextInput as any).defaultProps.allowFontScaling = false;
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as NavigationBar from 'expo-navigation-bar';
 import { Audio } from 'expo-av';
 import * as Notifications from 'expo-notifications';
@@ -14,10 +25,13 @@ import { Colors, ThemeProvider, useThemeContext } from '../src/theme';
 import { LanguageProvider, useLanguage } from '../src/context/LanguageContext';
 import { FontProvider } from '../src/context/FontContext';
 import { ActiveCallProvider } from '../src/context/ActiveCallContext';
+import { PaymentPinProvider } from '../src/context/PaymentPinContext';
+import { walletPIN } from '../src/services/walletPin';
 import { FloatingCallBar } from '../src/components/call/FloatingCallBar';
 import { useChatStream } from '../src/hooks/useChatStream';
 import { ToastContainer } from '../src/components/Toast';
 import { OfflineBanner } from '../src/components/ui';
+import { UpdateBanner } from '../src/components/UpdateBanner';
 import { trackUserPresence } from '../src/supabase';
 import SessionManager from '../src/sessionManager';
 import { NativeCallKit } from '../src/native/CallKit';
@@ -33,6 +47,8 @@ import {
 
 import { addNotification, markNotificationRead, fetchWeatherIfStale, initializeLocation } from '../src/store/appStore';
 import { IncomingTransferModal, type IncomingTransfer } from '../src/components/wallet/IncomingTransferModal';
+import { emitTransferResolved } from '../src/utils/transferEvents';
+import { t as tr } from '../src/translations';
 interface EBState { hasError: boolean; error?: string; }
 class RootErrorBoundary extends React.Component<{ children: React.ReactNode }, EBState> {
   constructor(props: any) { super(props); this.state = { hasError: false }; }
@@ -67,6 +83,15 @@ function handleDeepLink(url: string | null) {
   if (!url) return;
   try {
     const parsed = Linking.parse(url);
+
+    // Share Extension: egchat-share://open → abrir selector de chat con contenido pendiente
+    if (parsed.scheme === 'egchat-share') {
+      // El contenido ya fue guardado en App Group por la Share Extension.
+      // Navegar al selector de chat — ShareExtension.getSharedContent() lo leerá allí.
+      setTimeout(() => router.push('/share-picker' as any), 400);
+      return;
+    }
+
     const path = parsed.path || '';
     if (path.startsWith('qr-login/')) {
       const sessionId = path.replace('qr-login/', '');
@@ -132,7 +157,7 @@ function IncomingCallOverlay({
       <View style={ic.backdrop}>
         <View style={ic.card}>
           {/* Tipo de llamada */}
-          <Text style={ic.callType}>{isVideo ? 'Videollamada entrante' : 'Llamada de voz'}</Text>
+          <Text style={ic.callType}>{isVideo ? 'Videollamada entrante' : tr('chtVoiceCall')}</Text>
 
           {/* Avatar + nombre */}
           <EGAvatar src={callData.callerAvatar} name={callData.callerName} size={72} />
@@ -206,6 +231,8 @@ export default function RootLayout() {
   const lastHandledCallId = useRef<string | null>(null);
   const lastHandledCallTs = useRef<number>(0);
   const CALL_DEDUP_MS = 8000;
+  // Anti-duplicado para consumePendingCall en AppState (background → foreground)
+  const isProcessingCallRef = useRef<boolean>(false);
 
   /** Punto de entrada único para cualquier llamada entrante */
   const handleIncomingCall = useCallback((payload: IncomingCallPayload) => {
@@ -224,7 +251,10 @@ export default function RootLayout() {
       type: 'call',
       title: `📞 Llamada de ${payload.callerName}`,
       body: payload.callType === 'video' ? 'Videollamada entrante' : 'Llamada de voz entrante',
-      chatId: undefined,
+      chatId:       payload.chatId,
+      callId:       payload.callId,
+      targetUserId: payload.targetUserId,
+      callType:     payload.callType as 'audio' | 'video',
     });
 
     // Mostrar overlay (el overlay navega cuando el usuario acepta)
@@ -234,10 +264,16 @@ export default function RootLayout() {
   const pushTokenCleanup = useRef<(() => void) | null>(null);
   const pushCallCleanup  = useRef<(() => void) | null>(null);
   const presenceCleanup = useRef<(() => void) | null>(null);
+  // Ref que se establece inmediatamente al autenticar (sin el delay de 15s)
+  // para que el AppState listener pueda procesar llamadas pendientes al instante
+  const userIdRef = useRef<string | null>(null);
   const pathname = usePathname();
   const sessionManager = SessionManager.getInstance();
 
   const unauthorizedCooldown = useRef(false);
+  // Invitaciones a llamada de grupo ya avisadas: el SSE reconecta y no se
+  // quiere un Alert por cada reconexion ni dos seguidos de la misma sala.
+  const grupoInvitadoRef = useRef<Record<string, number>>({});
 
   // ── Modo inmersivo Android — oculta barra de navegación ──────────
   useEffect(() => {
@@ -253,6 +289,133 @@ export default function RootLayout() {
     });
     return () => sub.remove();
   }, []);
+
+  // ── Reenviar el answer que no llegó al servidor ──────────────────────
+  // iOS suspende la app justo después de contestar en CallKit; si el POST del
+  // answer se perdió, el llamante sigue sonando aunque aquí la llamada esté
+  // aceptada. Al volver a primer plano se reintenta una sola vez por ciclo.
+  useEffect(() => {
+    let mounted = true;
+    const flush = async () => {
+      if (!mounted) return;
+      await callManager.flushPendingAnswer().catch(() => {});
+      if (Platform.OS !== 'ios' || !userIdRef.current) return;
+      // El usuario contestó en la pantalla de CallKit con el JavaScript dormido.
+      try {
+        const answered = await NativeCallKit.consumePendingAnsweredCall();
+        if (!answered || !mounted) return;
+        const session = callManager.session;
+        if (session && session.callId === answered) return;
+        if (await callManager.adoptIncomingCall(answered)) await callManager.acceptCall();
+      } catch { /* la llamada ya caducó o no hay sesión que recuperar */ }
+    };
+    flush().catch(() => {});
+    const sub = AppState.addEventListener('change', state => {
+      if (state === 'active') flush().catch(() => {});
+    });
+    // Con arranque frío desde un VoIP push este efecto corre antes de autenticar
+    // y el AppState ya está 'active', así que no vuelve a dispararse: sin el
+    // reintento la respuesta contestada en CallKit se queda guardada y el
+    // llamante sigue sonando.
+    let attempts = 0;
+    const retry = setInterval(() => {
+      if (!mounted || ++attempts >= 15) { clearInterval(retry); return; }
+      if (!userIdRef.current) return;
+      clearInterval(retry);
+      flush().catch(() => {});
+    }, 4000);
+    return () => { mounted = false; sub.remove(); clearInterval(retry); };
+  }, []);
+
+  // ── Llamadas pendientes cuando la app vuelve del background (Android) ──
+  // Cuando el usuario acepta desde la notificación con la app en background
+  // (no cerrada), consumePendingCall() ya corrió en el init inicial y no se
+  // vuelve a llamar. Este efecto lo llama cada vez que la app vuelve al foreground.
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+
+    const sub = AppState.addEventListener('change', async (state) => {
+      if (state !== 'active') return;
+
+      // Anti-duplicado: no procesar si ya estamos en ello
+      if (isProcessingCallRef.current) return;
+      // Usar userIdRef (se establece inmediatamente al autenticar, sin el delay de 15s)
+      if (!userIdRef.current) return;
+
+      isProcessingCallRef.current = true;
+
+      try {
+        // Intentar consumir una llamada pendiente guardada por FCM/nativo
+        const pending = await consumePendingCall();
+        if (pending) {
+          callManager.registerIncoming({
+            callId:       pending.callId,
+            callerName:   pending.callerName,
+            callerAvatar: pending.callerAvatar || '',
+            callType:     pending.callType || 'audio',
+            offer:        pending.offer ?? undefined,
+          });
+          addNotification({
+            type: 'call',
+            title: `📞 Llamada entrante de ${pending.callerName}`,
+            body: pending.callType === 'video' ? 'Videollamada entrante' : 'Llamada de voz entrante',
+            chatId: undefined,
+          });
+          router.push({ pathname: '/call/[callId]', params: {
+            callId:       pending.callId,
+            targetName:   pending.callerName,
+            targetAvatar: pending.callerAvatar || '',
+            callType:     pending.callType || 'audio',
+            role:         'callee',
+            offer:        pending.offer ? JSON.stringify(pending.offer) : undefined,
+            autoAccept:   '1',
+          }} as any);
+        } else {
+          // No había pending call — comprobar si hay una acción pendiente del
+          // botón de notificación (el usuario pulsó "Aceptar" con la app en background)
+          const raw = await NativeCallKit.getAndClearPendingCallAction();
+          if (raw) {
+            try {
+              const { action } = JSON.parse(raw) as { action: string; callId: string };
+              if (action === 'answer') {
+                // Reintentar consumePendingCall — puede que llegara justo ahora
+                const stillPending = await consumePendingCall();
+                if (stillPending) {
+                  callManager.registerIncoming({
+                    callId:       stillPending.callId,
+                    callerName:   stillPending.callerName,
+                    callerAvatar: stillPending.callerAvatar || '',
+                    callType:     stillPending.callType || 'audio',
+                    offer:        stillPending.offer ?? undefined,
+                  });
+                  addNotification({
+                    type: 'call',
+                    title: `📞 Llamada entrante de ${stillPending.callerName}`,
+                    body: stillPending.callType === 'video' ? 'Videollamada entrante' : 'Llamada de voz entrante',
+                    chatId: undefined,
+                  });
+                  router.push({ pathname: '/call/[callId]', params: {
+                    callId:       stillPending.callId,
+                    targetName:   stillPending.callerName,
+                    targetAvatar: stillPending.callerAvatar || '',
+                    callType:     stillPending.callType || 'audio',
+                    role:         'callee',
+                    offer:        stillPending.offer ? JSON.stringify(stillPending.offer) : undefined,
+                    autoAccept:   '1',
+                  }} as any);
+                }
+              }
+            } catch { /* JSON inválido — ignorar */ }
+          }
+        }
+      } catch { /* silencioso */ } finally {
+        // Pequeño delay antes de liberar el lock para evitar doble disparo
+        setTimeout(() => { isProcessingCallRef.current = false; }, 300);
+      }
+    });
+
+    return () => sub.remove();
+  }, []); // sin dependencias — usa userIdRef que es un ref, no estado reactivo
 
   useEffect(() => {
     setUnauthorizedHandler(async () => {
@@ -295,11 +458,11 @@ export default function RootLayout() {
       const msg = event.message;
       addNotification({
         type: 'message',
-        title: msg.sender?.full_name || msg.senderName || 'Nuevo mensaje',
+        title: msg.sender?.full_name || msg.senderName || tr('xtNuevoMensaje'),
         body: msg.type === 'image' ? '📷 Foto' :
               msg.type === 'audio' ? '🎤 Audio' :
               msg.type === 'video' ? '🎬 Video' :
-              msg.text || 'Nuevo mensaje',
+              msg.text || tr('xtNuevoMensaje'),
         chatId: event.chatId,
       });
     }
@@ -307,7 +470,7 @@ export default function RootLayout() {
     // Transferencia recibida (legacy) → notificación en campanita
     if (event.type === 'transfer_received') {
       const amount = event.amount ?? 0;
-      const sender = event.senderName || 'Usuario';
+      const sender = event.senderName || tr('setUser');
       addNotification({
         type: 'message',
         title: '💸 Transferencia recibida',
@@ -321,7 +484,7 @@ export default function RootLayout() {
       setIncomingTransfer({
         transferId: event.transferId!,
         amount:     event.amount ?? 0,
-        senderName: event.senderName || 'Usuario',
+        senderName: event.senderName || tr('setUser'),
         concept:    event.concept ?? null,
         expiresAt:  event.expiresAt,
       });
@@ -381,11 +544,86 @@ export default function RootLayout() {
     }
     if (event.type === 'session_revoked') {
       handleSessionRevoked(event, () =>
-        Alert.alert('Sesión cerrada', 'Tu sesión fue cerrada desde otro dispositivo.',
+        Alert.alert(tr('setSessionClosed'), 'Tu sesión fue cerrada desde otro dispositivo.',
           [{ text: 'OK', onPress: () => router.replace('/welcome') }]),
       );
     }
-  }, [globalUserId]));
+    // Llamada aceptada por el receptor — notificar al caller inmediatamente
+    // sin esperar el siguiente ciclo de polling
+    if (event.type === 'call_answered' && event.callId) {
+      callManager.onCallAnsweredSSE(event.callId);
+    }
+    // Llamada terminada/rechazada por la otra parte
+    if (event.type === 'call_ended' && event.callId) {
+      callManager.onCallEndedSSE(event.callId);
+    }
+
+    // Alguien del grupo empezo una llamada grupal → ofrecer unirse.
+    // El roomId que llega ya es canonico: la app lo reenvia tal cual.
+    if (event.type === 'group_call_invited' && event.roomId) {
+      const sala = String(event.roomId);
+      if (pathname === '/group-call') return;
+      const ahora = Date.now();
+      if (ahora - (grupoInvitadoRef.current[sala] || 0) < 120000) return;
+      grupoInvitadoRef.current[sala] = ahora;
+      const quien = event.name || tr('chtGcAlguien');
+      Alert.alert(
+        tr('chtGcLlamadaGrupal'),
+        `${quien} ${tr('chtGcTeInvita')}`,
+        [
+          { text: tr('chtGcAhoraNo'), style: 'cancel' },
+          {
+            text: tr('chtGcUnirse'),
+            onPress: () => router.push({
+              pathname: '/group-call',
+              params: { groupId: sala, callType: event.callType === 'video' ? 'video' : 'audio' },
+            } as any),
+          },
+        ],
+      );
+    }
+  }, [globalUserId, pathname]));
+
+  // ── Polling de llamadas entrantes (fallback cuando VoIP push falla) ──────
+  // Cuando el token APNs es de sandbox y el servidor usa producción,
+  // el VoIP push no llega. Este polling detecta llamadas aunque la app esté abierta.
+  useEffect(() => {
+    if (!globalUserId || Platform.OS !== 'ios') return;
+    let lastCallId: string | null = null;
+
+    const checkIncoming = async () => {
+      try {
+        const { callAPI } = await import('../src/api');
+        const calls = await callAPI.incoming(globalUserId);
+        if (!Array.isArray(calls) || calls.length === 0) {
+          lastCallId = null;
+          return;
+        }
+        const call = calls[0];
+        const callId = call.callId || call.call_id;
+        if (!callId || callId === lastCallId) return;
+        // Evitar duplicados con VoIP push
+        if (callManager.session?.callId === callId) return;
+        if (callManager.isActive) return;
+        lastCallId = callId;
+        const rawOffer = call.offer;
+        let parsedOffer = rawOffer;
+        if (typeof rawOffer === 'string') {
+          try { parsedOffer = JSON.parse(rawOffer); } catch { parsedOffer = undefined; }
+        }
+        handleIncomingCall({
+          callId,
+          callerName:   call.callerName || call.caller_name || tr('setUser'),
+          callerAvatar: call.callerAvatar || call.caller_avatar || '',
+          callType:     call.type || call.callType || 'audio',
+          offer:        parsedOffer,
+        });
+      } catch { /* silencioso */ }
+    };
+
+    const interval = setInterval(checkIncoming, 2000);
+    return () => clearInterval(interval);
+  }, [globalUserId, handleIncomingCall]);
 
   useEffect(() => {
     let mounted = true;
@@ -445,7 +683,9 @@ export default function RootLayout() {
         const cachedUser = await loadCachedSessionUser();
         if (cachedUser?.id && mounted) {
           setChecking(false);
-          if (isAuthRoute) {
+          // No redirigir a tabs si el usuario está intencionalmente añadiendo cuenta
+          const addingAccount = await AsyncStorage.getItem('egchat_adding_account').catch(() => null);
+          if (isAuthRoute && addingAccount !== '1') {
             router.replace('/(tabs)');
           }
         }
@@ -477,7 +717,9 @@ export default function RootLayout() {
 
         if (mounted) {
           setChecking(false);
-          if (isAuthRoute || (isRootPath(pathname) && !isWelcomePath(pathname))) {
+          // No redirigir a tabs si el usuario está intencionalmente añadiendo cuenta
+          const addingAccount = await AsyncStorage.getItem('egchat_adding_account').catch(() => null);
+          if ((isAuthRoute && addingAccount !== '1') || (isRootPath(pathname) && !isWelcomePath(pathname))) {
             router.replace('/(tabs)');
           }
         }
@@ -486,7 +728,110 @@ export default function RootLayout() {
         try {
           if (!me?.id || !mounted) return;
 
+          // Si el PIN de la cuenta se borró en el servidor, la copia de este
+          // teléfono se va con él: nadie sigue entrando con el PIN viejo.
+          walletPIN.syncWithServer().catch(() => {});
+
+          // ── Android: escuchar llamadas entrantes via broadcast FCM ────────
+          // Cuando el FCM llega con la app abierta, el FirebaseMessagingService
+          // nativo emite un broadcast que capturamos aquí para mostrar el overlay.
+          if (Platform.OS === 'android') {
+            try {
+              const { NativeModules, NativeEventEmitter } = require('react-native');
+              if (NativeModules.EGChatCallModule) {
+                const callEmitter = new NativeEventEmitter(NativeModules.EGChatCallModule);
+                const callSub = callEmitter.addListener('EGChatIncomingCall', (callData: any) => {
+                  const rawOffer = callData?.offer;
+                  let parsedOffer = rawOffer;
+                  if (typeof rawOffer === 'string' && rawOffer.length > 0) {
+                    try { parsedOffer = JSON.parse(rawOffer); } catch { parsedOffer = undefined; }
+                  }
+                  handleIncomingCall({
+                    callId:       callData.callId,
+                    callerName:   callData.callerName || 'EGCHAT',
+                    callerAvatar: callData.callerAvatar || '',
+                    callType:     callData.callType || 'audio',
+                    offer:        parsedOffer,
+                  });
+                });
+                // Guardar cleanup
+                const prevCleanup = presenceCleanup.current;
+                presenceCleanup.current = () => { prevCleanup?.(); callSub.remove(); };
+              }
+            } catch (e) {
+              console.warn('[Android] Error registrando listener de llamadas:', e);
+            }
+          }
+
           // ── iOS VoIP PushKit — registrar listener INMEDIATAMENTE ──────────
+          if (Platform.OS === 'ios') {
+            try {
+              // Escuchar cuando el usuario acepta desde la pantalla nativa de CallKit
+              // Esto ocurre cuando la app estaba cerrada y CallKit muestra la UI del sistema
+              const unsubCallKitAnswer = NativeCallKit.onAnswer((answeredCallId) => {
+                const navigateAccepted = (session: NonNullable<typeof callManager.session>) => {
+                  router.push({ pathname: '/call/[callId]', params: {
+                    callId:       session.callId,
+                    targetName:   session.targetName || '',
+                    targetAvatar: session.targetAvatar || '',
+                    callType:     session.callType || 'audio',
+                    role:         'callee',
+                    offer:        session.offer ? JSON.stringify(session.offer) : undefined,
+                    autoAccept:   '1',
+                  }} as any);
+                };
+                // Reintentar hasta que la sesión esté disponible. Con la app
+                // arrancando en frío (PushKit → JS), la sesión puede tardar
+                // varios segundos: 8×300ms (2.4s) no alcanzaba y la llamada
+                // quedaba sonando sin navegar a la pantalla.
+                const tryNavigate = async (retries = 16) => {
+                  const session = callManager.session;
+                  if (session && (!answeredCallId || session.callId === answeredCallId)) {
+                    navigateAccepted(session);
+                    return;
+                  }
+                  if (session && answeredCallId && session.callId !== answeredCallId) {
+                    // Se contestó en CallKit una llamada distinta de la que la
+                    // app tiene en memoria: usar la del usuario.
+                    if (await callManager.adoptIncomingCall(answeredCallId)) {
+                      const adopted = callManager.session;
+                      if (adopted) navigateAccepted(adopted);
+                    }
+                    return;
+                  }
+                  if (retries > 0) {
+                    setTimeout(() => { tryNavigate(retries - 1).catch(() => {}); }, 500);
+                    return;
+                  }
+                  // Sin sesión tras ~8s: recuperarla del servidor antes de rendirse.
+                  // Si esto fallara, la llamada quedaría colgada para siempre.
+                  if (answeredCallId) {
+                    if (await callManager.adoptIncomingCall(answeredCallId)) {
+                      const adopted = callManager.session;
+                      if (adopted) navigateAccepted(adopted);
+                    }
+                  }
+                };
+                tryNavigate().catch(() => {});
+              });
+              const unsubCallKitReject = NativeCallKit.onReject((_callId) => {
+                callManager.rejectCall().catch(() => {});
+              });
+              const unsubCallKitEnd = NativeCallKit.onEnd((_callId) => {
+                if (callManager.session) callManager.endCall().catch(() => {});
+              });
+              // Guardar cleanup
+              const prevCleanupVoip = presenceCleanup.current;
+              presenceCleanup.current = () => {
+                prevCleanupVoip?.();
+                unsubCallKitAnswer();
+                unsubCallKitReject();
+                unsubCallKitEnd();
+              };
+            } catch (e) {
+              console.warn('[iOS] Error registrando listeners CallKit:', e);
+            }
+          }
           // PushKit despierta la app en background antes de que el JS esté listo.
           // El módulo nativo encola el evento y lo entrega en cuanto hay un listener.
           // DEBE registrarse aquí, sin ningún delay, para no perder llamadas con
@@ -495,15 +840,62 @@ export default function RootLayout() {
             try {
               const enableVoip = process.env.EXPO_PUBLIC_ENABLE_VOIP !== '0';
               if (enableVoip) {
+                // FIX: registrar onTokenUpdated AQUÍ junto al register(),
+                // no en el bloque tardío de callListenerTimer. Si el token llega
+                // antes de que ese timer se ejecute, se perdía y el servidor no
+                // tenía el token VoIP → nunca enviaba VoIP push → no había CallKit UI.
+                pushTokenCleanup.current = PushKit.onTokenUpdated(async (voipToken) => {
+                  try {
+                    const { syncVoIPTokenWithServer } = await import('../src/notifications');
+                    await syncVoIPTokenWithServer(voipToken);
+                    if (__DEV__) console.log('[PushKit] Token VoIP sincronizado con servidor:', voipToken.slice(-8));
+                  } catch (e) {
+                    console.warn('[PushKit] Error sincronizando token VoIP:', e);
+                  }
+                });
                 PushKit.register();
+                // El token puede haberse generado durante el arranque nativo,
+                // antes de que el listener JS existiera. Sincronizarlo también
+                // por lectura directa para no perder llamadas en background.
+                // Intentar inmediatamente y también con delay por si el token tarda.
+                const syncCachedVoipToken = async () => {
+                  const cachedVoipToken = await PushKit.getCurrentVoIPToken();
+                  if (cachedVoipToken) {
+                    const { syncVoIPTokenWithServer } = await import('../src/notifications');
+                    await syncVoIPTokenWithServer(cachedVoipToken);
+                    console.log('[PushKit] Token VoIP cacheado sincronizado:', cachedVoipToken.slice(-8));
+                  } else {
+                    console.log('[PushKit] No hay token VoIP cacheado aún');
+                  }
+                };
+                syncCachedVoipToken().catch(() => {});
+                // Reintentar a los 3s y 8s por si el token tarda en generarse
+                setTimeout(() => syncCachedVoipToken().catch(() => {}), 3000);
+                setTimeout(() => syncCachedVoipToken().catch(() => {}), 8000);
                 pushCallCleanup.current = PushKit.onIncomingCall((callData) => {
+                  // Si es un aviso de fin/respuesta (no una llamada entrante), se
+                  // despacha al handler correspondiente y se para aquí.
+                  const notifType = (callData as any).notificationType;
+                  if (notifType === 'call_answered' || notifType === 'call_ended') {
+                    const endedCallId = callData.callId;
+                    if (!endedCallId) return;
+                    console.log(`[PushKit] VoIP ${notifType} recibido para callId:`, endedCallId);
+                    if (notifType === 'call_answered') callManager.onCallAnsweredSSE(endedCallId);
+                    else callManager.onCallEndedSSE(endedCallId);
+                    return;
+                  }
                   // Punto de entrada único — no duplicar con router.push aquí
+                  const rawOffer = (callData as any).offer;
+                  let parsedOffer = rawOffer;
+                  if (typeof rawOffer === 'string') {
+                    try { parsedOffer = JSON.parse(rawOffer); } catch { parsedOffer = undefined; }
+                  }
                   handleIncomingCall({
                     callId:       callData.callId,
                     callerName:   callData.callerName,
                     callerAvatar: (callData as any).callerAvatar || '',
                     callType:     callData.callType || 'audio',
-                    offer:        callData.offer,
+                    offer:        parsedOffer,
                   });
                 });
               }
@@ -515,7 +907,7 @@ export default function RootLayout() {
           // ── Llamada pendiente (app estaba cerrada cuando llegó la llamada) ──
           // Se comprueba con pequeño retry para asegurar que el router ya está montado.
           if (Platform.OS === 'android') {
-            const navigatePendingCall = async (retries = 5) => {
+            const navigatePendingCall = async (retries = 8) => {
               for (let i = 0; i < retries; i++) {
                 try {
                   const pending = await consumePendingCall();
@@ -542,11 +934,12 @@ export default function RootLayout() {
                     callType:    pending.callType || 'audio',
                     role:        'callee',
                     offer:       pending.offer ? JSON.stringify(pending.offer) : undefined,
+                    autoAccept:  pending.action === 'answer' ? '1' : undefined,
                   }} as any);
                   return;
                 } catch {
-                  // router no listo aún — esperar 400ms y reintentar
-                  await new Promise(r => setTimeout(r, 400));
+                  // router no listo aún — esperar 600ms y reintentar (dispositivos lentos)
+                  await new Promise(r => setTimeout(r, 600));
                 }
               }
             };
@@ -591,6 +984,7 @@ export default function RootLayout() {
                       callType:     stillPending.callType || 'audio',
                       role:         'callee',
                       offer:        stillPending.offer ? JSON.stringify(stillPending.offer) : undefined,
+                      autoAccept:   '1',
                     }} as any);
                   }
                   // Si ya expiró, no hacer nada — la llamada terminó
@@ -606,6 +1000,9 @@ export default function RootLayout() {
           // lista con la sesión/cache local, así que estos servicios se inician
           // después de que el usuario pueda navegar con fluidez.
           const androidBackgroundDelay = Platform.OS === 'android' ? 15000 : 0;
+          // Establecer userIdRef INMEDIATAMENTE para que el AppState listener
+          // procese llamadas pendientes sin esperar el delay de 15s
+          userIdRef.current = String(me.id);
           const realtimeStartTimer = setTimeout(() => {
             if (mounted) setGlobalUserId(String(me.id));
           }, androidBackgroundDelay);
@@ -667,14 +1064,11 @@ export default function RootLayout() {
 
                 if (enableVoip) {
                   try {
-                    // iOS: PushKit ya fue registrado inmediatamente al autenticarse
-                    // (ver bloque "iOS VoIP PushKit — registrar listener INMEDIATAMENTE" arriba).
-                    // Aquí solo registramos el token updater, que no es crítico para recibir llamadas.
+                    // iOS: PushKit y su listener ya están activos inmediatamente
+                    // al autenticarse. No volver a asignarlo aquí: reemplazarlo
+                    // haría posible perder el token que llega durante el arranque.
                     if (Platform.OS === 'ios') {
-                      pushTokenCleanup.current = PushKit.onTokenUpdated(async (voipToken) => {
-                        const { syncVoIPTokenWithServer } = await import('../src/notifications');
-                        await syncVoIPTokenWithServer(voipToken);
-                      });
+                      // El registro temprano mantiene el listener de iOS.
                     } else {
                       // Android / otras plataformas: registrar todo aquí
                       PushKit.register();
@@ -689,13 +1083,28 @@ export default function RootLayout() {
                       });
 
                       pushCallCleanup.current = PushKit.onIncomingCall((callData) => {
+                        // Aviso de fin/respuesta: este dispositivo no debe abrir una
+                        // llamada nueva, solo callar el timbre que tenga puesto.
+                        const notifType2 = (callData as any).notificationType;
+                        if (notifType2 === 'call_answered' || notifType2 === 'call_ended') {
+                          const endedCallId = callData.callId;
+                          if (!endedCallId) return;
+                          if (notifType2 === 'call_answered') callManager.onCallAnsweredSSE(endedCallId);
+                          else callManager.onCallEndedSSE(endedCallId);
+                          return;
+                        }
                         // Punto de entrada único — sin router.push
+                        const rawOffer2 = (callData as any).offer;
+                        let parsedOffer2 = rawOffer2;
+                        if (typeof rawOffer2 === 'string') {
+                          try { parsedOffer2 = JSON.parse(rawOffer2); } catch { parsedOffer2 = undefined; }
+                        }
                         handleIncomingCall({
                           callId:       callData.callId,
                           callerName:   callData.callerName,
                           callerAvatar: (callData as any).callerAvatar || '',
                           callType:     callData.callType || 'audio',
-                          offer:        callData.offer,
+                          offer:        parsedOffer2,
                         });
                       });
                     }
@@ -720,7 +1129,7 @@ export default function RootLayout() {
                       callId:       callData.callId,
                       callerName:   callData.callerName,
                       callerAvatar: callData.callerAvatar || '',
-                      callType:     callData.callType || 'audio',
+                      callType:     (callData.callType || 'audio') as 'audio' | 'video',
                       offer:        callData.offer,
                     });
                   },
@@ -734,12 +1143,12 @@ export default function RootLayout() {
                   ?? await Notifications.getLastNotificationResponseAsync().catch(() => null);
                 if (lastResp) {
                   const data = lastResp.notification.request.content.data as any;
-                  setTimeout(() => {
+                  // Esperar a que el router esté completamente montado
+                  const navigateFromNotif = () => {
                     if (data?.notificationType === 'incoming_call' && data?.callId) {
-                      // Tap en notificación de llamada → usar punto de entrada único
                       handleIncomingCall({
                         callId:       data.callId,
-                        callerName:   data.callerName || 'Usuario',
+                        callerName:   data.callerName || tr('setUser'),
                         callerAvatar: data.callerAvatar || '',
                         callType:     data.callType || 'audio',
                         offer:        data.offer,
@@ -751,7 +1160,10 @@ export default function RootLayout() {
                     } else if (data?.type === 'reaction' && data?.chatId) {
                       router.push(`/chat/${data.chatId}` as any);
                     }
-                  }, 500);
+                  };
+                  // Intentar varias veces para asegurar que el router esté listo
+                  setTimeout(navigateFromNotif, 800);
+                  setTimeout(navigateFromNotif, 1500);
                 }
               } catch (e) {
                 console.warn('[Notifications init error]', e);
@@ -823,11 +1235,21 @@ export default function RootLayout() {
   // ── Cuando welcome termina y navega al login, verificar auth ────
   // El init() ya terminó con return en pathname='/', este efecto
   // se dispara cuando el pathname cambia a una ruta de auth.
+  // EXCEPCIÓN: si el path incluye el parámetro mode=add_account,
+  // el usuario está añadiendo una cuenta nueva y NO debemos redirigir.
   useEffect(() => {
     if (!isAuthPath(pathname)) return;
     // Si el usuario ya tiene sesión válida, mandarlo a tabs
+    // pero SOLO si llegamos aquí desde el flujo normal (welcome → login),
+    // no cuando el usuario navega intencionalmente para añadir cuenta.
+    // El flag addingAccount se establece en AccountSwitcher.
     (async () => {
       try {
+        // Verificar si es una navegación intencional (añadir cuenta)
+        const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+        const addingAccount = await AsyncStorage.getItem('egchat_adding_account').catch(() => null);
+        if (addingAccount === '1') return; // No redirigir — usuario añadiendo cuenta
+
         const isAuth = await authAPI.isAuthenticated();
         if (isAuth) {
           const me = await authAPI.me().catch(() => null);
@@ -845,6 +1267,7 @@ export default function RootLayout() {
           <FontProvider>
           <ActiveCallProvider>
           <ThemeProvider>
+            <PaymentPinProvider>
             <LocalizedAppContent>
             <StatusBarController />
             <Stack screenOptions={{ headerShown: false }}>
@@ -898,6 +1321,7 @@ export default function RootLayout() {
             )}
             <ToastContainer />
             <OfflineBanner />
+            <UpdateBanner />
             <FloatingCallBar />
             {/* ── Overlay llamada entrante (app abierta) ── */}
             {incomingCall && (
@@ -906,8 +1330,10 @@ export default function RootLayout() {
                 onAccept={() => {
                   const c = incomingCall;
                   setIncomingCall(null);
-                  // El CallManager ya tiene la sesión registrada via handleIncomingCall().
-                  // Solo navegamos — [callId].tsx llama a callManager.acceptCall() al montar.
+                  // El usuario ya pulsó "Aceptar" en este overlay: la pantalla
+                  // de llamada debe contestar sola. Sin autoAccept se mostraba
+                  // otra vez el botón de aceptar y el caller seguía timbrando
+                  // mientras el callee creía haber contestado.
                   router.push({ pathname: '/call/[callId]', params: {
                     callId:      c.callId,
                     targetName:  c.callerName,
@@ -915,6 +1341,7 @@ export default function RootLayout() {
                     callType:    c.callType || 'audio',
                     role:        'callee',
                     offer:       c.offer ? JSON.stringify(c.offer) : undefined,
+                    autoAccept:  '1',
                   }} as any);
                 }}
                 onReject={() => {
@@ -927,6 +1354,10 @@ export default function RootLayout() {
             <IncomingTransferModal
               transfer={incomingTransfer}
               onAccepted={(newBalance) => {
+                // Notificar al chat para que actualice el texto del mensaje pendiente
+                if (incomingTransfer?.transferId) {
+                  emitTransferResolved(incomingTransfer.transferId, 'accepted');
+                }
                 setGlobalWalletBalance(newBalance);
                 setIncomingTransfer(null);
                 addNotification({
@@ -936,10 +1367,17 @@ export default function RootLayout() {
                   chatId: undefined,
                 });
               }}
-              onCancelled={() => setIncomingTransfer(null)}
+              onCancelled={() => {
+                // Notificar al chat para que actualice el texto del mensaje pendiente
+                if (incomingTransfer?.transferId) {
+                  emitTransferResolved(incomingTransfer.transferId, 'cancelled');
+                }
+                setIncomingTransfer(null);
+              }}
               onDismiss={() => setIncomingTransfer(null)}
             />
             </LocalizedAppContent>
+            </PaymentPinProvider>
           </ThemeProvider>
           </ActiveCallProvider>
           </FontProvider>

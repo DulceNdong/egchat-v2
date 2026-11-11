@@ -15,6 +15,7 @@ import { chatAPI, contactsAPI } from '../src/api';
 import { EGAvatar } from '../src/components/ui';
 import { toast } from '../src/components/Toast';
 import { useThemeContext } from '../src/theme/ThemeContext';
+import { useTranslation } from '../src/context/LanguageContext';
 import { Colors } from '../src/theme/colors';
 import { DarkColors } from '../src/theme/darkMode';
 
@@ -28,7 +29,7 @@ interface Contact {
   users?: { full_name?: string; avatar_url?: string };
 }
 
-function getName(c: Contact) { return c.full_name || c.users?.full_name || c.phone || 'Usuario'; }
+function getName(c: Contact, fallbackName: string) { return c.full_name || c.users?.full_name || c.phone || fallbackName; }
 function getAvatar(c: Contact) { return c.avatar_url || c.users?.avatar_url || undefined; }
 function getUserId(c: Contact) { return c.contact_user_id || c.user_id || c.id; }
 
@@ -43,13 +44,15 @@ export default function BroadcastScreen() {
   const [progress, setProgress] = useState({ sent: 0, total: 0 });
   const insets = useSafeAreaInsets();
   const { isDark } = useThemeContext();
+  const { t } = useTranslation();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
+  const fallbackName = t('setUser');
 
   useEffect(() => {
     setLoading(true);
     contactsAPI.getAll()
       .then(data => setContacts(Array.isArray(data) ? data : []))
-      .catch(() => toast.error('No se pudieron cargar los contactos'))
+      .catch(() => toast.error(t('chtBcNoCargarContactos')))
       .finally(() => setLoading(false));
   }, []);
 
@@ -64,12 +67,12 @@ export default function BroadcastScreen() {
 
   const filtered = contacts.filter(c => {
     const q = search.toLowerCase();
-    return !q || getName(c).toLowerCase().includes(q) || (c.phone || '').includes(q);
+    return !q || getName(c, fallbackName).toLowerCase().includes(q) || (c.phone || '').includes(q);
   });
 
   const handleSend = useCallback(async () => {
-    if (!message.trim()) { toast.error('Escribe el mensaje'); return; }
-    if (selected.length === 0) { toast.error('Selecciona al menos 1 contacto'); return; }
+    if (!message.trim()) { toast.error(t('chtBcEscribeMensaje')); return; }
+    if (selected.length === 0) { toast.error(t('chtBcSelecciona1Contacto')); return; }
 
     setSending(true);
     setProgress({ sent: 0, total: selected.length });
@@ -95,9 +98,9 @@ export default function BroadcastScreen() {
 
     setSending(false);
     if (failedCount === 0) {
-      toast.success('Difusión enviada', `${sentCount} mensajes enviados`);
+      toast.success(t('chtBcDifusionEnviada'), `${sentCount} ${t('chtBcMensajesEnviados')}`);
     } else {
-      toast.info(`${sentCount} enviados, ${failedCount} fallidos`);
+      toast.info(`${sentCount} ${t('chtBcEnviados')} ${failedCount} ${t('chtBcFallidos')}`);
     }
     router.back();
   }, [message, selected]);
@@ -117,11 +120,11 @@ export default function BroadcastScreen() {
           </Svg>
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={s.headerTitle}>Lista de difusión</Text>
+          <Text style={s.headerTitle}>{t('chtBcListaDifusion')}</Text>
           <Text style={s.headerSub}>
             {step === 1
-              ? `${selected.length} seleccionado${selected.length !== 1 ? 's' : ''}`
-              : 'Redactar mensaje'
+              ? `${selected.length} ${t(selected.length !== 1 ? 'chtBcSeleccionados' : 'chtBcSeleccionado')}`
+              : t('chtBcRedactarMensaje')
             }
           </Text>
         </View>
@@ -130,7 +133,7 @@ export default function BroadcastScreen() {
             onPress={() => selected.length > 0 && setStep(2)}
             style={[s.headerBtnText, selected.length === 0 && { opacity: 0.4 }]}
           >
-            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Siguiente</Text>
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>{t('chtBcSiguiente')}</Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity onPress={handleSend} style={s.headerBtn} disabled={sending}>
@@ -158,8 +161,8 @@ export default function BroadcastScreen() {
               showsHorizontalScrollIndicator={false}
               renderItem={({ item }) => (
                 <TouchableOpacity style={s.chip} onPress={() => toggleSelect(item)}>
-                  <EGAvatar src={getAvatar(item)} name={getName(item)} size={38} />
-                  <Text style={[s.chipName, { color: C.textPrimary }]} numberOfLines={1}>{getName(item)}</Text>
+                  <EGAvatar src={getAvatar(item)} name={getName(item, fallbackName)} size={38} />
+                  <Text style={[s.chipName, { color: C.textPrimary }]} numberOfLines={1}>{getName(item, fallbackName)}</Text>
                   <View style={s.chipX}><Text style={s.chipXText}>×</Text></View>
                 </TouchableOpacity>
               )}
@@ -173,7 +176,7 @@ export default function BroadcastScreen() {
             </Svg>
             <TextInput
               style={[s.searchInput, { color: C.textPrimary }]}
-              placeholder="Buscar contactos..."
+              placeholder={t('chtBcBuscarContactos')}
               placeholderTextColor={C.textTertiary}
               value={search}
               onChangeText={setSearch}
@@ -195,9 +198,9 @@ export default function BroadcastScreen() {
                       onPress={() => toggleSelect(item)}
                       activeOpacity={0.7}
                     >
-                      <EGAvatar src={getAvatar(item)} name={getName(item)} size={46} />
+                      <EGAvatar src={getAvatar(item)} name={getName(item, fallbackName)} size={46} />
                       <View style={{ flex: 1, marginLeft: 12 }}>
-                        <Text style={[s.contactName, { color: C.textPrimary }]}>{getName(item)}</Text>
+                        <Text style={[s.contactName, { color: C.textPrimary }]}>{getName(item, fallbackName)}</Text>
                         {item.phone && <Text style={[s.contactPhone, { color: C.textTertiary }]}>{item.phone}</Text>}
                       </View>
                       <View style={[s.checkbox, sel && s.checkboxSel]}>
@@ -212,7 +215,7 @@ export default function BroadcastScreen() {
                 }}
                 ListEmptyComponent={
                   <Text style={[s.empty, { color: C.textTertiary }]}>
-                    {search ? 'Sin resultados' : 'No tienes contactos aún'}
+                    {search ? t('noResults') : t('chtBcNoTienesContactos')}
                   </Text>
                 }
               />
@@ -228,13 +231,13 @@ export default function BroadcastScreen() {
                 <Path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
               </Svg>
               <Text style={[s.infoText, { color: C.textTertiary }]}>
-                El mensaje se enviará a {selected.length} contacto{selected.length !== 1 ? 's' : ''} en chats individuales
+                {`${t('chtBcMensajeSeEnviaraA')} ${selected.length} ${t(selected.length !== 1 ? 'chtBcContactosEnChats' : 'chtBcContactoEnChats')}`}
               </Text>
             </View>
 
             <TextInput
               style={[s.msgInput, { color: C.textPrimary, backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}
-              placeholder="Escribe tu mensaje de difusión..."
+              placeholder={t('chtBcEscribeDifusion')}
               placeholderTextColor={C.textTertiary}
               value={message}
               onChangeText={setMessage}
@@ -245,15 +248,15 @@ export default function BroadcastScreen() {
             <Text style={[s.charCount, { color: C.textTertiary }]}>{message.length}/1000</Text>
 
             {/* Preview de destinatarios */}
-            <Text style={[s.recipientsLabel, { color: C.textTertiary }]}>DESTINATARIOS</Text>
+            <Text style={[s.recipientsLabel, { color: C.textTertiary }]}>{t('chtBcDestinatarios')}</Text>
             <FlatList
               data={selected}
               keyExtractor={c => getUserId(c)}
               contentContainerStyle={{ paddingBottom: insets.bottom + 20, flexGrow: 1, backgroundColor: C.bgPrimary }}
               renderItem={({ item }) => (
                 <View style={[s.recipientRow, { borderBottomColor: C.borderLight }]}>
-                  <EGAvatar src={getAvatar(item)} name={getName(item)} size={40} />
-                  <Text style={[s.recipientName, { color: C.textPrimary }]}>{getName(item)}</Text>
+                  <EGAvatar src={getAvatar(item)} name={getName(item, fallbackName)} size={40} />
+                  <Text style={[s.recipientName, { color: C.textPrimary }]}>{getName(item, fallbackName)}</Text>
                 </View>
               )}
             />
@@ -267,7 +270,7 @@ export default function BroadcastScreen() {
           <View style={s.sendingBox}>
             <ActivityIndicator color="#00C8A0" size="large" />
             <Text style={s.sendingText}>
-              Enviando {progress.sent}/{progress.total}...
+              {`${t('chtBcEnviando')} ${progress.sent}/${progress.total}...`}
             </Text>
             <View style={s.progressBar}>
               <View style={[s.progressFill, {

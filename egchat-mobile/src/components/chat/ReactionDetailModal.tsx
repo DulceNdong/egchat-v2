@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { EGAvatar } from '../ui';
 import { getMessageReactions, type ReactionsMap } from '../../services/messageReactions';
+import { t as tr } from '../../translations';
 
 interface ReactionDetailModalProps {
   visible: boolean;
@@ -68,7 +69,7 @@ export function ReactionDetailModal({
           {loading ? (
             <ActivityIndicator color="#00b4e6" style={{ marginVertical: 24 }} />
           ) : emojis.length === 0 ? (
-            <Text style={[s.empty, { color: subColor }]}>Sin reacciones todavía</Text>
+            <Text style={[s.empty, { color: subColor }]}>{tr('xtSinReaccionesTodavia')}</Text>
           ) : (
             <>
               <View style={s.tabs}>
@@ -105,7 +106,7 @@ export function ReactionDetailModal({
                 keyExtractor={(item, i) => `${item.uid}_${item.emoji}_${i}`}
                 style={s.list}
                 showsVerticalScrollIndicator={false}
-                ListEmptyComponent={<Text style={[s.empty, { color: subColor }]}>No hay datos de usuarios disponibles</Text>}
+                ListEmptyComponent={<Text style={[s.empty, { color: subColor }]}>{tr('xtNoHayDatosDeUsuariosDisponibles')}</Text>}
                 renderItem={({ item }) => {
                   const user = resolveUser?.(item.uid);
                   const name = item.uid === currentUserId ? 'Tú' : user?.full_name || item.uid.slice(0, 8) + '...';

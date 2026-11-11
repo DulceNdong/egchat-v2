@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, TextInput,
+  StyleProp, ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -8,6 +9,7 @@ import Svg, { Polyline, Circle, Line } from 'react-native-svg';
 import { Colors, Spacing } from '../../theme';
 import { useThemeContext } from '../../theme/ThemeContext';
 import { DarkColors } from '../../theme/darkMode';
+import { t as tr } from '../../translations';
 
 const Chevron = ({ color = '#c7c7cc' }: { color?: string }) => (
   <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round">
@@ -48,7 +50,7 @@ export function SettingsLayout({
           <Svg width={11} height={18} viewBox="0 0 10 18" fill="none" stroke={Colors.accent} strokeWidth={2.5} strokeLinecap="round">
             <Polyline points="9 1 1 9 9 17" />
           </Svg>
-          <Text style={styles.backText}>Volver</Text>
+          <Text style={styles.backText}>{tr('djhBack')}</Text>
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: C.textPrimary }]}>{title}</Text>
         <View style={{ width: 72 }} />
@@ -66,10 +68,10 @@ export function SettingsSection({ label }: { label: string }) {
   );
 }
 
-export function SettingsCard({ children }: { children: React.ReactNode }) {
+export function SettingsCard({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
   const { isDark } = useThemeContext();
   return (
-    <View style={[styles.card, { backgroundColor: isDark ? '#161b22' : '#ffffff' }]}>
+    <View style={[styles.card, { backgroundColor: isDark ? '#161b22' : '#ffffff' }, style]}>
       {children}
     </View>
   );
@@ -152,10 +154,86 @@ export function SettingsToggleRow({
   );
 }
 
+export function VisibilityRow({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: { id: string; label: string }[];
+  onChange: (v: string) => void;
+}) {
+  const { isDark } = useThemeContext();
+  const C = isDark ? (DarkColors as unknown as typeof Colors) : Colors;
+  const selected = options.find(o => o.id === value);
+
+  return (
+    <View style={visStyles.root}>
+      <Text style={[visStyles.label, { color: C.textPrimary }]}>{label}</Text>
+      <View style={visStyles.pills}>
+        {options.map(opt => {
+          const active = opt.id === value;
+          return (
+            <TouchableOpacity
+              key={opt.id}
+              onPress={() => onChange(opt.id)}
+              activeOpacity={0.75}
+              style={[
+                visStyles.pill,
+                {
+                  backgroundColor: active ? Colors.accent : isDark ? '#21262d' : '#f2f2f7',
+                  borderColor: active ? Colors.accent : isDark ? '#30363d' : '#d1d5db',
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  visStyles.pillText,
+                  { color: active ? '#fff' : isDark ? '#8b949e' : '#6b7280' },
+                ]}
+              >
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+const visStyles = StyleSheet.create({
+  root: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  label: {
+    fontSize: 15,
+    marginBottom: 10,
+  },
+  pills: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  pill: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  pillText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+});
+
 export function SettingsSearch({
   value,
   onChangeText,
-  placeholder = 'Buscar',
+  placeholder = tr('search'),
 }: {
   value: string;
   onChangeText: (t: string) => void;

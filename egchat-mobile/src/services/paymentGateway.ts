@@ -21,6 +21,7 @@
  */
 
 import { getToken, getApiBase } from '../api';
+import { t as tr } from '../translations';
 
 export type PaymentGateway =
   | 'stripe'
@@ -139,12 +140,12 @@ export async function pollPaymentStatus(
       return { ok: true, newBalance: result.balance, transactionId: result.transactionId };
     }
     if (result.status === 'failed' || result.status === 'cancelled') {
-      return { ok: false, error: 'Pago cancelado o fallido' };
+      return { ok: false, error: tr('xtPagoCanceladoOFallido') };
     }
     // Aún pendiente — esperar
     await new Promise(r => setTimeout(r, intervalMs));
   }
-  return { ok: false, error: 'Tiempo de espera agotado' };
+  return { ok: false, error: tr('xtTiempoDeEsperaAgotado') };
 }
 
 // ── Retiro ────────────────────────────────────────────────────────
@@ -221,7 +222,7 @@ export const GATEWAY_INFO: Record<PaymentGateway, {
     icon: '💳',
     color: '#635BFF',
     fee: '2.9% + 30 XAF',
-    time: 'Inmediato',
+    get time() { return tr('walImmediate'); },
     available: true,
   },
   orange_money: {
@@ -229,7 +230,7 @@ export const GATEWAY_INFO: Record<PaymentGateway, {
     icon: '🟠',
     color: '#FF6600',
     fee: '1%',
-    time: 'Inmediato (USSD)',
+    get time() { return tr('xtInmediatoUSSD'); },
     available: true,
   },
   mtn_mobile: {
@@ -237,39 +238,39 @@ export const GATEWAY_INFO: Record<PaymentGateway, {
     icon: '🟡',
     color: '#FFCC00',
     fee: '1%',
-    time: 'Inmediato (USSD)',
+    get time() { return tr('xtInmediatoUSSD'); },
     available: true,
   },
   bank_transfer: {
-    label: 'Transferencia bancaria',
+    get label() { return tr('walBankTransfer'); },
     icon: '🏦',
     color: '#1B3A6B',
-    fee: 'Sin comisión',
-    time: '1-2 días hábiles',
+    get fee() { return tr('xtSinComision'); },
+    get time() { return tr('xt12DiasHabiles'); },
     available: true,
   },
   cash_agent: {
-    label: 'Efectivo en agente',
+    get label() { return tr('xtEfectivoEnAgente'); },
     icon: '🏪',
     color: '#4C1D95',
-    fee: 'Sin comisión',
-    time: 'Inmediato',
+    get fee() { return tr('xtSinComision'); },
+    get time() { return tr('walImmediate'); },
     available: true,
   },
   recharge_code: {
-    label: 'Código de recarga',
+    get label() { return tr('walRechargeCode'); },
     icon: '🎟️',
     color: '#92400E',
-    fee: 'Sin comisión',
-    time: 'Inmediato',
+    get fee() { return tr('xtSinComision'); },
+    get time() { return tr('walImmediate'); },
     available: true,
   },
   egchat_transfer: {
-    label: 'Transferencia EGChat',
+    get label() { return tr('xtTransferenciaEGChat'); },
     icon: '⚡',
     color: '#00c8a0',
-    fee: 'Sin comisión',
-    time: 'Inmediato',
+    get fee() { return tr('xtSinComision'); },
+    get time() { return tr('walImmediate'); },
     available: true,
   },
 };
@@ -283,7 +284,7 @@ export function formatGatewayFee(gateway: PaymentGateway, amount: number): strin
     const fee = Math.round(amount * 0.01);
     return `${fee.toLocaleString('es-ES')} XAF`;
   }
-  return 'Sin comisión';
+  return tr('xtSinComision');
 }
 
 export function getNetAmount(gateway: PaymentGateway, amount: number): number {

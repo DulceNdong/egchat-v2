@@ -15,6 +15,7 @@ import { router, useFocusEffect } from 'expo-router';
 import Svg, { Path, Circle, Line } from 'react-native-svg';
 import { Image } from 'expo-image';
 import { apiFetch } from '../src/api';
+import { t as tr } from '../src/translations';
 
 interface DjangueItem {
   id: string;
@@ -36,16 +37,16 @@ interface DjangueItem {
 }
 
 const FREQ_LABELS: Record<string, string> = {
-  daily: 'Diario',
-  weekly: 'Semanal',
-  monthly: 'Mensual',
-  annual: 'Anual',
+  get daily() { return tr('setDaily'); },
+  get weekly() { return tr('setWeekly'); },
+  get monthly() { return tr('setMonthly'); },
+  get annual() { return tr('xtAnual'); },
 };
 
 const ROLE_LABELS: Record<string, string> = {
-  owner: 'Administrador',
-  secretary: 'Secretario',
-  member: 'Integrante',
+  get owner() { return tr('xtAdministrador'); },
+  get secretary() { return tr('xtSecretario'); },
+  get member() { return tr('xtIntegrante'); },
 };
 
 const fmt = (n: number, c = 'XAF') => `${Number(n).toLocaleString('fr-FR')} ${c}`;
@@ -93,17 +94,17 @@ function DjangueCard({ djangue, onPress }: { djangue: DjangueItem; onPress: () =
         {/* Info Grid */}
         <View style={s.infoGrid}>
           <View style={s.infoBox}>
-            <Text style={s.infoLabel}>Frecuencia</Text>
+            <Text style={s.infoLabel}>{tr('setFrequency')}</Text>
             <Text style={s.infoValue}>{FREQ_LABELS[djangue.frequency]}</Text>
           </View>
           
           <View style={s.infoBox}>
-            <Text style={s.infoLabel}>Cuota</Text>
+            <Text style={s.infoLabel}>{tr('djhQuotaLabel')}</Text>
             <Text style={s.infoValue}>{fmt(djangue.quota_amount, djangue.currency)}</Text>
           </View>
           
           <View style={s.infoBox}>
-            <Text style={s.infoLabel}>Turno</Text>
+            <Text style={s.infoLabel}>{tr('djhTurnLabel')}</Text>
             <Text style={s.infoValue}>{djangue.current_turn}/{djangue.total_turns}</Text>
           </View>
         </View>
@@ -115,7 +116,7 @@ function DjangueCard({ djangue, onPress }: { djangue: DjangueItem; onPress: () =
               <Circle cx={12} cy={12} r={10} stroke="#f59e0b" strokeWidth={2} />
               <Path d="M12 6v6l4 2" stroke="#f59e0b" strokeWidth={2} strokeLinecap="round" />
             </Svg>
-            <Text style={s.myTurnText}>¡Es tu turno!</Text>
+            <Text style={s.myTurnText}>{tr('djnYourTurn')}</Text>
           </View>
         )}
         
@@ -125,7 +126,7 @@ function DjangueCard({ djangue, onPress }: { djangue: DjangueItem; onPress: () =
               <Circle cx={12} cy={12} r={10} stroke="#ef4444" strokeWidth={2} />
               <Path d="M12 8v4M12 16h.01" stroke="#ef4444" strokeWidth={2} strokeLinecap="round" />
             </Svg>
-            <Text style={s.pendingText}>Pendiente de pago</Text>
+            <Text style={s.pendingText}>{tr('xtPendienteDePago')}</Text>
           </View>
         )}
         
@@ -135,7 +136,7 @@ function DjangueCard({ djangue, onPress }: { djangue: DjangueItem; onPress: () =
               <Circle cx={12} cy={12} r={10} stroke="#10b981" strokeWidth={2} />
               <Path d="M9 12l2 2 4-4" stroke="#10b981" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
             </Svg>
-            <Text style={s.paidText}>Al día</Text>
+            <Text style={s.paidText}>{tr('xtAlDia')}</Text>
           </View>
         )}
       </View>
@@ -160,7 +161,7 @@ export default function DjangueListScreen() {
       setAdminDjangues(response.admin || []);
       setMemberDjangues(response.member || []);
     } catch (e: any) {
-      setError(e.message || 'Error al cargar djangues');
+      setError(e.message || tr('xtErrorAlCargarDjangues'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -181,7 +182,7 @@ export default function DjangueListScreen() {
             <Path d="M12 19l-7-7 7-7" />
           </Svg>
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Mis Djangues</Text>
+        <Text style={s.headerTitle}>{tr('xtMisDjangues')}</Text>
         <TouchableOpacity
           onPress={() => router.push('/djangue-admin-create')}
           style={s.iconBtn} hitSlop={12}
@@ -237,15 +238,15 @@ export default function DjangueListScreen() {
           </Text>
           <Text style={s.emptySub}>
             {activeTab === 'admin'
-              ? 'Crea tu primer djangue para empezar'
-              : 'Únete a un djangue para comenzar a ahorrar'}
+              ? tr('xtCreaTuPrimerDjangueParaEmpezar')
+              : tr('xtUneteAUnDjangueParaComenzarAAhorrar')}
           </Text>
           {activeTab === 'admin' && (
             <TouchableOpacity
               style={s.createBtn}
               onPress={() => router.push('/djangue-admin-create')}
             >
-              <Text style={s.createBtnTxt}>Crear Djangue</Text>
+              <Text style={s.createBtnTxt}>{tr('xtCrearDjangue')}</Text>
             </TouchableOpacity>
           )}
         </View>

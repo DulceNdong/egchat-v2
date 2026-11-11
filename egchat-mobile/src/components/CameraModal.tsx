@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
+import { t as tr } from '../translations';
 
 interface CameraModalProps {
   visible: boolean;
@@ -35,7 +36,7 @@ export const CameraModal: React.FC<CameraModalProps> = ({
         onPhotoTaken(photo.uri, chatId);
       }
     } catch {
-      Alert.alert('Error', 'No se pudo tomar la foto');
+      Alert.alert(tr('error'), 'No se pudo tomar la foto');
     } finally {
       setCapturing(false);
     }
@@ -59,7 +60,7 @@ export const CameraModal: React.FC<CameraModalProps> = ({
       <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
         <SafeAreaView style={styles.permissionContainer}>
           <Text style={styles.permissionIcon}>📷</Text>
-          <Text style={styles.permissionTitle}>Acceso a la cámara</Text>
+          <Text style={styles.permissionTitle}>{tr('xtAccesoALaCamara')}</Text>
           <Text style={styles.permissionSub}>
             EGCHAT necesita acceso a la cámara para tomar fotos
           </Text>
@@ -67,10 +68,10 @@ export const CameraModal: React.FC<CameraModalProps> = ({
             <Text style={styles.btnPrimaryText}>Permitir acceso</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.btnGallery} onPress={handleGallery}>
-            <Text style={styles.btnGalleryText}>Elegir de la galería</Text>
+            <Text style={styles.btnGalleryText}>{tr('chtChooseGallery')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.btnCancel} onPress={onClose}>
-            <Text style={styles.btnCancelText}>Cancelar</Text>
+            <Text style={styles.btnCancelText}>{tr('cancel')}</Text>
           </TouchableOpacity>
         </SafeAreaView>
       </Modal>
@@ -85,7 +86,7 @@ export const CameraModal: React.FC<CameraModalProps> = ({
           <TouchableOpacity onPress={onClose} style={styles.headerBtn}>
             <Text style={styles.headerBtnText}>←</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Cámara</Text>
+          <Text style={styles.headerTitle}>{tr('chtCamera')}</Text>
           <TouchableOpacity
             onPress={() => setFacing(f => f === 'back' ? 'front' : 'back')}
             style={styles.headerBtn}

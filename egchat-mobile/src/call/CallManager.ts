@@ -33,11 +33,12 @@
 // ══════════════════════════════════════════════════════════════════
 
 import { Platform, AppState, AppStateStatus } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import type { NetInfoState } from '@react-native-community/netinfo';
 import { Audio } from 'expo-av';
 import { Camera } from 'expo-camera';
-import { callAPI } from '../api';
+import { callAPI, contactsAPI } from '../api';
 import { saveCallMessage } from './callHistory';
 import SessionManager from '../sessionManager';
 import { stopRingtone, stopDialingTone, startRingtone, startDialingTone } from '../hooks/useSounds';
@@ -56,6 +57,7 @@ import type {
   CallStateObserver,
   IncomingCallPayload,
 } from './types';
+import { t as tr } from '../translations';
 
 // ── WebRTC nativo (react-native-webrtc) ───────────────────────────
 type NativeWebRTC = {
@@ -118,6 +120,7 @@ const TURN_FALLBACK = (() => {
 
 // ── Timeouts ──────────────────────────────────────────────────────
 const CALL_TIMEOUT_MS           = 90_000;  // 90s sin respuesta → missed
+const POST_ANSWER_CONNECT_MS    = 30_000;  // 30s con answer aplicado sin ICE conectado → failed
 const ICE_DISCONNECTED_BASE_MS  =  2_000;  // base backoff (×2^intento, jitter ±20%)
 const ICE_RESTART_TIMEOUT_MS    = 20_000;  // 20s para que el restart tenga éxito (cubre 4G lento)
 const RECONNECT_MAX             = 4;       // 4 intentos antes de declarar failed
@@ -125,6 +128,12 @@ const POLL_FAST_IOS             =  900;    // ms
 const POLL_FAST_ANDROID         = 1_400;
 const POLL_SLOW_IOS             = 2_000;
 const POLL_SLOW_ANDROID         = 3_000;
+
+// El answer es lo que apaga el timbre del llamante. Si el POST no llega (sin
+// red, iOS suspende la app justo al contestar), el otro teléfono sigue
+// sonando minutos aunque aquí la llamada ya esté aceptada.
+const PENDING_ANSWER_KEY        = 'egchat:pending-answer:v1';
+const PENDING_ANSWER_TTL_MS     = 5 * 60_000;
 
 // ── Estado de la PeerConnection (espejo del W3C) ───────────────────
 type PCState = 'none' | 'new' | 'connecting' | 'connected' | 'disconnected' | 'failed' | 'closed';
@@ -155,6 +164,7 @@ export class CallManager {
   private _videoTrackRef: any | null = null;
   // FIX 4: flag para distinguir pausa de sistema (background iOS) vs. usuario
   private _videoPausedBySystem = false;
+  private _isAcceptingLocally = false;
 
   // ── Estado de la PeerConnection (espejo) ──────────────────────
   private _pcState: PCState = 'none';
@@ -176,12 +186,16 @@ export class CallManager {
   private _iceOffsetCaller = 0;
   private _iceOffsetCallee = 0;
   private _answerApplied   = false;
-  private _appliedOfferVersion = 0;   // detectar restart offer del caller (callee)
+  private _appliedOfferSdp: string | null = null;  // SDP del offer ya aplicado
+  // Este dispositivo fue el que aceptó. Sin esta marca, un segundo teléfono del
+  // mismo usuario recibe el aviso de "contestada" y se conectaba una segunda vez.
+  private _answeredHere    = false;
 
   // ── Timers ────────────────────────────────────────────────────
   private _pollingTimer:      ReturnType<typeof setInterval> | null = null;
   private _durationTimer:     ReturnType<typeof setInterval> | null = null;
   private _callTimeoutTimer:  ReturnType<typeof setTimeout>  | null = null;
+  private _connectWatchdog:   ReturnType<typeof setTimeout>  | null = null;
   private _reconnectTimer:    ReturnType<typeof setTimeout>  | null = null;
   private _iceRestartTimer:   ReturnType<typeof setTimeout>  | null = null;
   private _pollPhase:         'fast' | 'slow' = 'fast';
@@ -297,8 +311,8 @@ export class CallManager {
 
     if (!await this._ensurePermissions(callType)) {
       throw new Error(callType === 'video'
-        ? 'Permisos de cámara o micrófono denegados. Actívalos en Ajustes.'
-        : 'Permiso de micrófono denegado. Actívalo en Ajustes.');
+        ? tr('xtPermisosDeCamaraOMicrofonoDenegadosActivalosEnAjus')
+        : tr('xtPermisoDeMicrofonoDenegadoActivaloEnAjustes'));
     }
 
     const iceServers = await this._getIceServers();
@@ -313,8 +327,6 @@ export class CallManager {
     const offer = await pc.createOffer({});
     await pc.setLocalDescription(offer);
     this._setPcState('connecting');
-
-    callAPI.sendVoipPush({ targetUserId, callId, callType, offer: pc.localDescription }).catch(() => {});
 
     // ── C2: Glare detection ───────────────────────────────────────────
     // Si B también llamó a A justo antes, ambos estarían en 'calling'.
@@ -361,6 +373,9 @@ export class CallManager {
 
     await callAPI.offer({ callId, offer: pc.localDescription, targetUserId, type: callType });
 
+    // /api/call/offer persiste la oferta y entrega la llamada una sola vez.
+    // Reenviarla desde aquí creaba dos avisos y dos timbres en el receptor.
+
     this._setCommState('calling');
     startDialingTone().catch(() => {});
     this._startCallTimeout();
@@ -372,8 +387,8 @@ export class CallManager {
   // ══════════════════════════════════════════════════════════════
   // REGISTRAR LLAMADA ENTRANTE
   // ══════════════════════════════════════════════════════════════
-  registerIncoming(payload: IncomingCallPayload): void {
-    if (this.isActive) {
+  registerIncoming(payload: IncomingCallPayload, opts?: { force?: boolean }): void {
+    if (this.isActive && !opts?.force) {
       console.warn('[CallManager] Llamada entrante ignorada — ya hay una activa');
       return;
     }
@@ -396,94 +411,173 @@ export class CallManager {
     this._setCommState('ringing');
     this._setUIState('full');
     startRingtone().catch(() => {});
+    // Iniciar poll de cancelación: detecta si el caller cuelga antes de que
+    // el callee abra la app o acepte — para el timbre y limpia el estado.
+    this._startPoll('callee', 'fast');
+    // El watchdog de 90s solo se armaba para el llamante. Si el poll no puede
+    // leer la sesión (red caída, fila ya caducada en el servidor), el teléfono
+    // que recibe seguía timbrando sin límite.
+    this._startCallTimeout();
+    this._subscribeRealtime();
+  }
+
+  /**
+   * Recuperar una llamada que el usuario ya aceptó en la pantalla de CallKit
+   * pero que la app no tenía en memoria (evento VoIP perdido o app arrancada
+   * después). Sin esto la llamada queda en el aire: iOS muestra la llamada
+   * conectada y el llamante sigue sonando hasta que caduca.
+   */
+  async adoptIncomingCall(callId: string): Promise<boolean> {
+    if (!callId) return false;
+    if (['connected', 'connecting', 'reconnecting'].includes(this._commState)) return false;
+    const s = await callAPI.get(callId).catch(() => null);
+    if (!s || s.ended || s.answer) return false;
+
+    let callerName = '';
+    let callerAvatar = '';
+    try {
+      const contacts = await contactsAPI.getAll();
+      const hit = (contacts || []).find(
+        (c: any) => String(c?.contact_user_id ?? c?.user?.id ?? '') === String(s.callerId),
+      );
+      callerName = hit?.user?.full_name ?? hit?.user?.name ?? hit?.nickname ?? '';
+      callerAvatar = hit?.user?.avatar_url ?? hit?.avatar_url ?? '';
+    } catch { /* solo afecta al nombre que se muestra */ }
+
+    this.registerIncoming({
+      callId,
+      callType: s.type === 'video' ? 'video' : 'audio',
+      callerName,
+      callerAvatar,
+      targetUserId: s.callerId,
+      offer: s.offer as object,
+    }, { force: true });
+    return true;
   }
 
   // ══════════════════════════════════════════════════════════════
   // ACEPTAR LLAMADA (Callee)
   // ══════════════════════════════════════════════════════════════
   async acceptCall(): Promise<void> {
-    if (this._commState !== 'ringing' || !this._session) {
-      console.warn('[CallManager] acceptCall: estado incorrecto', this._commState);
+    if (!this._session) {
+      console.warn('[CallManager] acceptCall: sin sesión de llamada');
       return;
     }
-
-    // M3 fix: guard contra doble-aceptación desde dos dispositivos del mismo usuario.
-    // Intentar reclamar la llamada de forma atómica en el servidor.
-    // Si ya fue aceptada por otro dispositivo, el servidor devuelve alreadyAccepted.
-    try {
-      const result = await callAPI.claimCall?.(this._session.callId);
-      if (result?.alreadyAccepted) {
+    if (this._commState !== 'ringing') {
+      console.warn('[CallManager] acceptCall: estado interno', this._commState);
+      // El estado interno puede llegar sucio (CallKit contesta con la app
+      // suspendida y el poll aún no había marcado 'ringing'). Si el servidor
+      // dice que la llamada sigue viva hay que aceptar igualmente: si no, el
+      // llamante se queda sonando una llamada que ya fue atendida.
+      const live = await callAPI.get(this._session.callId).catch(() => null);
+      if (live && !live.ended && !live.answer && ['new', 'calling', 'ringing'].includes(live.status)) {
+        this._setCommState('ringing');
+      } else {
+        // La UI puede seguir abierta aunque la llamada ya haya terminado o se
+        // haya aceptado en otro dispositivo: el timbre debe parar igualmente.
         this._stopRingOnce();
-        this._setCommState('ended');
-        this._finalCleanup();
-        setTimeout(() => { this._setCommState('idle'); this._session = null; this._notify(); }, 400);
         return;
       }
-    } catch { /* endpoint opcional — no bloquear si no existe */ }
-
-    this._setCommState('accepted');
-    this._stopRingOnce();
-
-    const { callId, callType, offer: rawOffer } = this._session;
-
-    if (!HAS_NATIVE_MEDIA) {
-      this._isSignalingOnly = true;
-      await callAPI.answer({ callId, answer: { type: 'answer', sdp: 'egchat-expo-go-answer' } });
-      this._setCommState('connected');
-      this._onCallConnected();
-      return;
     }
+    this._isAcceptingLocally = true;
 
-    if (!await this._ensurePermissions(callType)) {
-      await this.endCall();
-      throw new Error('Permisos denegados. Actívalos en Ajustes.');
-    }
+    try {
+      // M3 fix: guard contra doble-aceptación desde dos dispositivos del mismo usuario.
+      // Intentar reclamar la llamada de forma atómica en el servidor.
+      // Si ya fue aceptada por otro dispositivo, el servidor devuelve alreadyAccepted.
+      try {
+        const result = await callAPI.claimCall?.(this._session.callId);
+        if (result?.alreadyAccepted) {
+          this._stopRingOnce();
+          // 'rejected' cierra la pantalla sin escribir historial: la llamada no
+          // se perdió, la contestó otra máquina de este mismo usuario.
+          this._setCommState('rejected');
+          this._finalCleanup();
+          setTimeout(() => { this._setCommState('idle'); this._session = null; this._notify(); }, 400);
+          return;
+        }
+      } catch { /* endpoint opcional — no bloquear si no existe */ }
 
-    let offer: any = rawOffer;
-    if (!this._isValidSdp(offer)) offer = await this._fetchOfferWithRetry(callId);
-    if (!this._isValidSdp(offer)) { await this.endCall(); throw new Error('No se pudo obtener los datos de la llamada.'); }
+      // FIX: la sesión debe leerse ANTES de avisar a CallKit. Antes se usaba
+      // `callId` en la línea de answerCall y el `const` se declaraba después,
+      // provocando un ReferenceError que el catch silenciaba: CallKit nunca
+      // recibía la aceptación y seguía mostrando/timbrando la llamada.
+      const { callId, callType, offer: rawOffer } = this._session;
 
-    const iceServers = await this._getIceServers();
+      this._setCommState('accepted');
+      this._answeredHere = true;
+      this._stopRingOnce();
+      // Notificar a CallKit nativo que la llamada fue aceptada — sin esto
+      // iOS sigue mostrando la UI de llamada entrante y el tono continúa
+      try { NativeCallKit.answerCall(callId); } catch { /* */ }
+      // Descartar la notificación de llamada entrante en Android
+      try { NativeCallKit.dismissIncomingCall(); } catch { /* */ }
 
-    // Guardia contra tracks duplicados: si ya hay un stream con tracks vivos,
-    // reutilizarlo en lugar de crear uno nuevo (protege contra doble-tap en "Aceptar").
-    let stream: any;
-    if (
-      this._localStream &&
-      this._localStream.getTracks?.().some((t: any) => t.readyState === 'live')
-    ) {
-      stream = this._localStream;
-    } else {
-      // Limpiar el stream anterior si sus tracks ya están muertos
-      if (this._localStream) {
-        try {
-          this._localStream.getTracks?.().forEach((t: any) => { t.stop(); t.enabled = false; });
-        } catch { /* */ }
-        this._localStream = null;
+      if (!HAS_NATIVE_MEDIA) {
+        this._isSignalingOnly = true;
+        await this._sendAnswer(callId, { type: 'answer', sdp: 'egchat-expo-go-answer' });
+        this._setCommState('connected');
+        this._onCallConnected();
+        return;
       }
-      stream = await this._getUserMedia(callType);
+
+      if (!await this._ensurePermissions(callType)) {
+        await this.endCall();
+        throw new Error(tr('xtPermisosDenegadosActivalosEnAjustes'));
+      }
+
+      let offer: any = rawOffer;
+      if (!this._isValidSdp(offer)) offer = await this._fetchOfferWithRetry(callId);
+      if (!this._isValidSdp(offer)) { await this.endCall(); throw new Error(tr('xtNoSePudoObtenerLosDatosDeLaLlamada')); }
+
+      const iceServers = await this._getIceServers();
+
+      // Guardia contra tracks duplicados: si ya hay un stream con tracks vivos,
+      // reutilizarlo en lugar de crear uno nuevo (protege contra doble-tap en "Aceptar").
+      let stream: any;
+      if (
+        this._localStream &&
+        this._localStream.getTracks?.().some((t: any) => t.readyState === 'live')
+      ) {
+        stream = this._localStream;
+      } else {
+        // Limpiar el stream anterior si sus tracks ya están muertos
+        if (this._localStream) {
+          try {
+            this._localStream.getTracks?.().forEach((t: any) => { t.stop(); t.enabled = false; });
+          } catch { /* */ }
+          this._localStream = null;
+        }
+        stream = await this._getUserMedia(callType);
+      }
+      this._localStream = stream;
+      this._notify();
+
+      const pc = await this._createPC(iceServers);
+      this._addTracks(pc, stream);
+      pc.onicecandidate = (e: any) => this._onLocalIceCandidate(e, 'callee');
+
+      // setRemoteDescription → luego vaciar la cola ICE
+      await pc.setRemoteDescription(new NativeRTC!.RTCSessionDescription(offer));
+      this._remoteDescSet = true;
+      this._appliedOfferSdp = this._sdpKey(offer);
+      await this._drainIceQueue();
+
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      this._setPcState('connecting');
+      await this._sendAnswer(callId, pc.localDescription);
+
+      this._setCommState('connecting');
+      // El answer ya está en el servidor: si ICE no conecta, cerrar en 30s
+      // en vez de dejar la pantalla en "Conectando..." indefinidamente.
+      this._armConnectWatchdog();
+      this._startPoll('callee', 'fast');
+      this._subscribeAppState();
+      this._subscribeRealtime();
+    } finally {
+      this._isAcceptingLocally = false;
     }
-    this._localStream = stream;
-    this._notify();
-
-    const pc = await this._createPC(iceServers);
-    this._addTracks(pc, stream);
-    pc.onicecandidate = (e: any) => this._onLocalIceCandidate(e, 'callee');
-
-    // setRemoteDescription → luego vaciar la cola ICE
-    await pc.setRemoteDescription(new NativeRTC!.RTCSessionDescription(offer));
-    this._remoteDescSet = true;
-    await this._drainIceQueue();
-
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-    this._setPcState('connecting');
-    await callAPI.answer({ callId, answer: pc.localDescription });
-
-    this._setCommState('connecting');
-    this._startPoll('callee', 'fast');
-    this._subscribeAppState();
-    this._subscribeRealtime();
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -545,8 +639,11 @@ export class CallManager {
                    : this._commState === 'missed'  ? 'missed'
                    : 'normal';
       try { await callAPI.end(session.callId, reason); } catch { /* */ }
-      // Guardar historial en chat
-      if (session.chatId) {
+      // Guardar historial en chat. Solo lo escribe el llamante: el chip viaja por
+      // el mismo hilo para los dos, así que si también escribiera el contestado
+      // (o los varios teléfonos de uno y otro) el chat se llenaba de "Appel vocal"
+      // repetidos de la misma llamada.
+      if (session.chatId && session.role === 'caller') {
         const myId     = session.myUserId ?? '';
         const callerId = session.role === 'caller' ? myId : session.targetUserId;
         const calleeId = session.role === 'caller' ? session.targetUserId : myId;
@@ -694,6 +791,146 @@ export class CallManager {
   }
 
   setUIState(state: CallUIState): void { this._setUIState(state); }
+
+  /** SSE: el callee aceptó la llamada — forzar poll inmediato para aplicar el answer */
+  onCallAnsweredSSE(callId: string): void {
+    if (!this._session || this._session.callId !== callId) return;
+    if (this._answerApplied) return;
+    // El servidor emite a los dos usuarios, así que esto también lo dispara la
+    // propia máquina que contestó: su eco se ignora.
+    if (this._session.role === 'callee') {
+      if (this._answeredHere) return;
+      // Contestó otro dispositivo del mismo usuario. Conectarse una segunda vez
+      // duplicaría la llamada; lo suyo es callar el timbre.
+      // Cierre SOLO local: callAPI.end() mataría desde aquí la conversación viva
+      // y saveCallMessage() escribiría una burbuja más en el chat. 'rejected' es
+      // el único estado terminal que desmonta la pantalla sin historial.
+      console.log('[CallManager] call_answered en dispositivo que no contestó — cerrando timbre');
+      LiveActivity.endCall();
+      this._setCommState('rejected');
+      this._finalCleanup();
+      // Soltar la sesión: si queda viva, un call_ended posterior dispararía
+      // endCall() sobre una llamada que en este momento está conectada en el
+      // otro dispositivo.
+      this._session = null;
+      this._setCommState('idle');
+      return;
+    }
+    console.log('[CallManager] SSE call_answered — forzando poll inmediato');
+    // Parar el tono de llamada inmediatamente — el callee ya aceptó
+    stopDialingTone();
+    this._stopCallTimeout();
+    // En modo señalización (web) _forcePoll no puede aplicar el answer porque no
+    // hay PeerConnection: se da la llamada por conectada directamente para que el
+    // llamante deje de sonar al instante.
+    if (this._isSignalingOnly) {
+      this._answerApplied = true;
+      this._setCommState('connected');
+      this._onCallConnected();
+      return;
+    }
+    // Disparar un poll inmediato sin esperar el timer
+    this._forcePoll();
+  }
+
+  /** SSE: la otra parte terminó/rechazó la llamada */
+  onCallEndedSSE(callId: string): void {
+    if (!this._session || this._session.callId !== callId) return;
+    // Este teléfono nunca llegó a entrar en la conversación (el aviso de fin le
+    // llega por push, despierta el JS y puede encontrar la sesión aún en
+    // ringing). Cerrar aquí haría POST /end sobre una llamada viva en otra
+    // máquina y escribiría una burbuja duplicada: solo callar el timbre.
+    if (this._session.role === 'callee' && !this._connectedOnce) {
+      console.log('[CallManager] call_ended sin conexión previa en esta máquina — timbre parado');
+      LiveActivity.endCall();
+      this._setCommState('rejected');
+      this._finalCleanup();
+      this._session = null;
+      this._setCommState('idle');
+      return;
+    }
+    console.log('[CallManager] SSE call_ended — terminando llamada');
+    this.endCall();
+  }
+
+  /**
+   * POST /api/call/answer con reintentos. Si ninguno llega, el answer queda
+   * guardado en AsyncStorage y se reenvía con flushPendingAnswer() — así el
+   * llamante deja de sonar aunque la app se fuera a background o perdiera red
+   * justo en el momento de contestar.
+   */
+  private async _sendAnswer(callId: string, answer: any): Promise<void> {
+    for (const delay of [0, 1200, 3000, 6000]) {
+      if (delay) await new Promise(r => setTimeout(r, delay));
+      try {
+        await callAPI.answer({ callId, answer });
+        AsyncStorage.removeItem(PENDING_ANSWER_KEY).catch(() => {});
+        return;
+      } catch (e: any) {
+        console.warn('[CallManager] answer POST falló:', e?.message);
+      }
+    }
+    try {
+      await AsyncStorage.setItem(PENDING_ANSWER_KEY, JSON.stringify({ callId, answer, ts: Date.now() }));
+    } catch { /* sin almacenamiento local no se puede reintentar */ }
+  }
+
+  /** Reenvía un answer que se quedó pendiente (app cerrada o sin red al contestar). */
+  async flushPendingAnswer(): Promise<void> {
+    let raw: string | null = null;
+    try { raw = await AsyncStorage.getItem(PENDING_ANSWER_KEY); } catch { return; }
+    if (!raw) return;
+    try {
+      const { callId, answer, ts } = JSON.parse(raw);
+      if (!callId || !answer || Date.now() - (ts || 0) > PENDING_ANSWER_TTL_MS) {
+        await AsyncStorage.removeItem(PENDING_ANSWER_KEY);
+        return;
+      }
+      const s = await callAPI.get(callId).catch(() => null);
+      if (!s || s.answer || s.ended) {
+        await AsyncStorage.removeItem(PENDING_ANSWER_KEY);
+        return;
+      }
+      await callAPI.answer({ callId, answer });
+      await AsyncStorage.removeItem(PENDING_ANSWER_KEY);
+      console.log('[CallManager] answer pendiente reenviado para', callId);
+    } catch { /* se reintenta en el siguiente retorno a primer plano */ }
+  }
+
+  private _forcePoll(): void {
+    if (!this._session || !NativeRTC) return;
+    const role = this._session.role;
+    callAPI.get(this._session.callId).then(async (s) => {
+      if (!s || s.ended) { this.endCall(); return; }
+      if (role === 'caller' && !this._answerApplied && s.answer) {
+        const sigState = this._pc?.signalingState;
+        console.log(`[CallManager] _forcePoll: sigState=${sigState}, hasAnswer=${!!s.answer}`);
+        // Parar el tono siempre que haya answer — independientemente del signalingState
+        stopDialingTone();
+        this._stopCallTimeout();
+        if (sigState === 'have-local-offer' || (sigState === 'stable' && !this._connectedOnce)) {
+          try {
+            await this._pc.setRemoteDescription(
+              new NativeRTC!.RTCSessionDescription(s.answer)
+            );
+            this._remoteDescSet  = true;
+            this._answerApplied  = true;
+            this._setCommState('connecting');
+            this._armConnectWatchdog();
+            await this._drainIceQueue();
+            console.log('[CallManager] _forcePoll: answer aplicado correctamente');
+          } catch (e: any) {
+            console.warn('[CallManager] _forcePoll: error aplicando answer:', e?.message);
+          }
+        } else {
+          this._armConnectWatchdog();
+          console.warn(`[CallManager] _forcePoll: sigState=${sigState}, tono parado pero answer pendiente`);
+        }
+      }
+    }).catch((e) => {
+      console.warn('[CallManager] _forcePoll error:', e);
+    });
+  }
 
   // ══════════════════════════════════════════════════════════════
   // PRIVADOS — PeerConnection
@@ -908,7 +1145,7 @@ export class CallManager {
   // FIX 2 — usa _isFrontCamera para el facingMode correcto.
   // FIX 6 — resolución adaptativa 720p ideal con fallback a 480p.
   private async _getUserMedia(type: 'audio' | 'video'): Promise<any> {
-    if (!NativeRTC) throw new Error('react-native-webrtc no disponible');
+    if (!NativeRTC) throw new Error(tr('xtReactNativeWebrtcNoDisponible'));
 
     const facing = this._isFrontCamera ? 'user' : 'environment';
 
@@ -975,10 +1212,18 @@ export class CallManager {
     );
   }
 
+  /** Clave para detectar si el offer del servidor es distinto al ya aplicado. */
+  private _sdpKey(desc: any): string {
+    try {
+      if (!desc) return '';
+      return typeof desc === 'string' ? desc : String(desc.sdp || '');
+    } catch { return ''; }
+  }
+
   private async _fetchOfferWithRetry(callId: string): Promise<any> {
     // B4 fix: reducido de 20×3s (60s) a 6×3s (18s) con log en último intento.
     for (let i = 0; i < 6; i++) {
-      if (i > 0) await new Promise(r => setTimeout(r, 3000));
+      if (i > 0) await new Promise(r => setTimeout(r, 1500));
       try {
         const s = await callAPI.get(callId);
         if (this._isValidSdp(s?.offer)) return s.offer;
@@ -994,20 +1239,21 @@ export class CallManager {
 
   /** Inicia el ciclo de polling.
    *  FIX B+H — Usa propiedades de clase (_iceOffsetCaller, _iceOffsetCallee,
-   *  _answerApplied, _appliedOfferVersion) en vez de variables locales del
+   *  _answerApplied, _appliedOfferSdp) en vez de variables locales del
    *  closure, lo que permite resetearlas desde _scheduleIceRestart() cuando
    *  hay un ICE restart y se necesita procesar candidatos desde 0.
    *
    *  FIX B — El callee detecta un nuevo offer (ICE restart del caller)
-   *  cuando s.offerVersion > _appliedOfferVersion y responde con un nuevo
-   *  answer, completando el handshake simétrico. */
+   *  cuando el SDP del offer cambia y responde con un nuevo answer,
+   *  completando el handshake simétrico. */
   private _startPoll(role: 'caller' | 'callee', phase: 'fast' | 'slow'): void {
     this._stopPolling();
     this._pollPhase = phase;
 
-    // Sincronizar propiedades de clase con el estado actual
-    // (al reiniciar el poll en fase slow, _answerApplied ya es true)
-    if (phase === 'slow' && role === 'caller') this._answerApplied = true;
+    // NO marcar _answerApplied al pasar a fase lenta: si el callee contesta
+    // después de ~31s (cold start de Render, desbloqueo del teléfono, CallKit),
+    // el caller daba el answer por aplicado, dejaba de mirarlo y seguía
+    // timbrando hasta el timeout de 90s.
 
     const INTERVAL = phase === 'fast'
       ? (Platform.OS === 'android' ? POLL_FAST_ANDROID : POLL_FAST_IOS)
@@ -1032,17 +1278,66 @@ export class CallManager {
 
         // ── Caller: Answer inicial + ICE del callee ──────────────
         if (role === 'caller') {
-          if (!this._answerApplied && s.answer &&
-              this._pc?.signalingState === 'have-local-offer') {
-            await this._pc.setRemoteDescription(
-              new NativeRTC!.RTCSessionDescription(s.answer),
-            );
-            this._remoteDescSet    = true;
-            this._answerApplied    = true;
-            this._iceRestartPending = false; // respuesta recibida — limpiar flag
-            this._setCommState('connecting');
-            this._stopCallTimeout();
-            await this._drainIceQueue();
+          if (!this._answerApplied && s.answer) {
+            // Modo señalización (web o builds sin WebRTC nativo): no existe
+            // this._pc ni NativeRTC, así que aplicar el answer por esa vía es
+            // imposible. El callee ya aceptó si hay answer en el servidor: hay
+            // que dar la llamada por conectada, si no el llamante se queda
+            // "llamando" hasta el timeout de 90s (2026-11-02, web seguía sonando).
+            if (this._isSignalingOnly) {
+              stopDialingTone();
+              this._stopCallTimeout();
+              this._answerApplied = true;
+              this._setCommState('connected');
+              this._onCallConnected();
+              return;
+            }
+            const sigState = this._pc?.signalingState;
+            console.log(`[CallManager] poll caller: sigState=${sigState}, answerApplied=${this._answerApplied}, hasAnswer=${!!s.answer}`);
+            if (sigState === 'have-local-offer') {
+              try {
+                // Parar el tono inmediatamente — el callee aceptó
+                stopDialingTone();
+                this._stopCallTimeout();
+                await this._pc.setRemoteDescription(
+                  new NativeRTC!.RTCSessionDescription(s.answer),
+                );
+                this._remoteDescSet    = true;
+                this._answerApplied    = true;
+                this._iceRestartPending = false;
+                this._setCommState('connecting');
+                this._armConnectWatchdog();
+                await this._drainIceQueue();
+                console.log('[CallManager] poll: answer aplicado correctamente');
+              } catch (e: any) {
+                console.warn('[CallManager] poll: error setRemoteDescription:', e?.message);
+              }
+            } else if (sigState === 'stable' && !this._connectedOnce) {
+              // En algunos dispositivos RN WebRTC el signalingState ya es stable
+              // después de setLocalDescription — intentar aplicar igualmente
+              console.warn('[CallManager] poll: sigState=stable sin connectedOnce, forzando answer');
+              try {
+                stopDialingTone();
+                this._stopCallTimeout();
+                await this._pc.setRemoteDescription(
+                  new NativeRTC!.RTCSessionDescription(s.answer),
+                );
+                this._remoteDescSet = true;
+                this._answerApplied = true;
+                this._setCommState('connecting');
+                this._armConnectWatchdog();
+                await this._drainIceQueue();
+              } catch (e: any) {
+                console.warn('[CallManager] poll stable fallback error:', e?.message);
+              }
+            } else {
+              // Parar el tono aunque no podamos aplicar el answer todavía
+              // — el callee claramente aceptó si hay answer en el servidor
+              stopDialingTone();
+              this._stopCallTimeout();
+              this._armConnectWatchdog();
+              console.warn(`[CallManager] poll: tiene answer pero sigState=${sigState}, no se puede aplicar aún`);
+            }
           }
           if (this._answerApplied && s.calleeCandidates) {
             const newCands = s.calleeCandidates.slice(this._iceOffsetCallee);
@@ -1057,24 +1352,26 @@ export class CallManager {
 
         // ── Callee: ICE del caller + detección de restart offer ──
         if (role === 'callee') {
-          // FIX B — Detectar nuevo offer del caller (ICE restart)
-          // s.offerVersion aumenta cada vez que el caller envía un offer nuevo.
-          // Si la versión del servidor supera la aplicada localmente, procesar.
-          const serverOfferVersion: number = s.offerVersion ?? 1;
+          // FIX B — Detectar nuevo offer del caller (ICE restart) comparando
+          // el SDP con el último aplicado. La comparación por `version` fallaba:
+          // el backend expone `version` (no `offerVersion`) y además no la
+          // incrementa al renegociar, así que el callee reaplicaba el offer
+          // inicial en cuanto conectaba, provocando un renegotiation espurio.
+          const incomingOfferSdp = this._sdpKey(s.offer);
           if (
             this._pc &&
             this._isValidSdp(s.offer) &&
-            serverOfferVersion > this._appliedOfferVersion &&
+            incomingOfferSdp !== this._appliedOfferSdp &&
             // Solo procesar si ya establecimos la conexión inicialmente
             this._connectedOnce
           ) {
-            if (__DEV__) console.log(`[CallManager] Callee: nuevo offer v${serverOfferVersion} (restart)`);
+            if (__DEV__) console.log('[CallManager] Callee: nuevo offer (restart)');
             try {
               await this._pc.setRemoteDescription(
                 new NativeRTC!.RTCSessionDescription(s.offer),
               );
               this._remoteDescSet        = true;
-              this._appliedOfferVersion  = serverOfferVersion;
+              this._appliedOfferSdp      = incomingOfferSdp;
               // Resetear offsets para los nuevos candidatos post-restart
               this._iceOffsetCaller      = 0;
               this._iceOffsetCallee      = 0;
@@ -1101,7 +1398,17 @@ export class CallManager {
           }
         }
 
-      } catch { /* red caída — retry en siguiente ciclo */ }
+      } catch (e: any) {
+        // 404 ≠ red caída. El API borra la sesión al caducar (expires_at = NOW()+5min),
+        // así que GET /api/call/:id responde 404 y el timbre se quedaba sonando para
+        // siempre porque el branch «!s → endCall()» nunca llegaba a ejecutarse.
+        if (e?.status === 404) {
+          if (this._commState === 'ringing' || this._commState === 'calling') this._setCommState('missed');
+          this.endCall();
+          return;
+        }
+        /* red caída — retry en siguiente ciclo */
+      }
     }, INTERVAL);
   }
 
@@ -1122,7 +1429,13 @@ export class CallManager {
           this._onCallConnected();
           this._stopPolling();
         }
-      } catch { /* */ }
+      } catch (e: any) {
+        if (e?.status === 404) {
+          if (this._commState === 'ringing' || this._commState === 'calling') this._setCommState('missed');
+          this.endCall();
+          return;
+        }
+      }
     }, 2000);
   }
 
@@ -1254,6 +1567,27 @@ export class CallManager {
 
   private _stopCallTimeout(): void {
     if (this._callTimeoutTimer) { clearTimeout(this._callTimeoutTimer); this._callTimeoutTimer = null; }
+  }
+
+  /** Vigila que la llamada conecte de verdad después de aceptar/contestar.
+   *  Sin esto, si el answer llega pero ICE nunca conecta, el caller puede
+   *  quedarse en "Llamando.../Conectando..." hasta el timeout de 90s. */
+  private _armConnectWatchdog(): void {
+    // Idempotente: el poll llama aquí en cada vuelta mientras el answer no se
+    // pueda aplicar; rearmar reiniciaría el contador y el watchdog nunca
+    // llegaría a dispararse.
+    if (this._connectWatchdog) return;
+    this._connectWatchdog = setTimeout(() => {
+      this._connectWatchdog = null;
+      if (!this._session || this._connectedOnce || this._isEnding) return;
+      console.warn('[CallManager] answer aplicado pero ICE sin conectar en 30s — terminando llamada');
+      this._setCommState('failed');
+      this.endCall().catch(() => {});
+    }, POST_ANSWER_CONNECT_MS);
+  }
+
+  private _clearConnectWatchdog(): void {
+    if (this._connectWatchdog) { clearTimeout(this._connectWatchdog); this._connectWatchdog = null; }
   }
 
   private _startDurationTimer(): void {
@@ -1573,7 +1907,7 @@ export class CallManager {
       this._session.callId,
 
       // onStatusChange: sincronizar estado con la fuente de verdad
-      (remoteStatus: CallStatus) => {
+      (remoteStatus: CallStatus, answerFromBroadcast?: any) => {
         if (!this._session) return;
 
         // Si ya estamos en un estado terminal, ignorar
@@ -1581,12 +1915,52 @@ export class CallManager {
 
         switch (remoteStatus) {
           case 'accepted':
+            // Caller: el callee aceptó → parar tono y aplicar answer
+            if (this._session.role === 'caller' &&
+                (this._commState === 'calling') &&
+                !this._answerApplied) {
+              console.log('[CallManager] Realtime accepted → caller para tono', answerFromBroadcast ? 'con answer directo' : 'forzando poll');
+              stopDialingTone();
+              this._stopCallTimeout();
+              
+              // Si el Broadcast incluye el answer, aplicarlo directamente
+              if (answerFromBroadcast && this._pc && NativeRTC) {
+                const sigState = this._pc.signalingState;
+                if (sigState === 'have-local-offer' || (sigState === 'stable' && !this._connectedOnce)) {
+                  console.log('[CallManager] Aplicando answer desde Broadcast');
+                  this._pc.setRemoteDescription(
+                    new NativeRTC.RTCSessionDescription(answerFromBroadcast)
+                  ).then(() => {
+                    this._remoteDescSet  = true;
+                    this._answerApplied  = true;
+                    this._setCommState('connecting');
+                    this._armConnectWatchdog();
+                    return this._drainIceQueue();
+                  }).then(() => {
+                    console.log('[CallManager] Answer desde Broadcast aplicado correctamente');
+                  }).catch((e: any) => {
+                    console.warn('[CallManager] Error aplicando answer desde Broadcast:', e?.message);
+                    // Fallback: forzar poll
+                    this._forcePoll();
+                  });
+                } else {
+                  console.warn(`[CallManager] sigState=${sigState}, usando fallback poll`);
+                  this._forcePoll();
+                }
+              } else {
+                // Fallback: polling tradicional
+                this._forcePoll();
+              }
+            }
             // Otro dispositivo del callee aceptó → si somos callee y estamos
             // en ringing, cancelar localmente sin llamar al servidor de nuevo
             if (this._session.role === 'callee' &&
-                (this._commState === 'ringing' || this._commState === 'accepted')) {
+                (this._commState === 'ringing' || this._commState === 'accepted') &&
+                !this._isAcceptingLocally) {   // guard: no interrumpir nuestra propia aceptación
               this._stopRingOnce();
-              this._setCommState('ended');
+              // Igual que en SSE: cerrar sin historial, la llamada está viva en
+              // el otro dispositivo y un 'ended' aquí pintaría una perdida falsa.
+              this._setCommState('rejected');
               this._finalCleanup();
               setTimeout(() => { this._setCommState('idle'); this._session = null; this._notify(); }, 400);
             }
@@ -1640,6 +2014,7 @@ export class CallManager {
     stopDialingTone();
     this._stopRingOnce();
     this._stopCallTimeout();
+    this._clearConnectWatchdog();
     this._startDurationTimer();
 
     const session = this._session;
@@ -1676,7 +2051,15 @@ export class CallManager {
 
   /** Limpieza completa de recursos — no deja nada activo */
   private _finalCleanup(): void {
-    // 0. Restaurar AudioSession ANTES de cerrar todo lo demás.
+    // 0. Detener timbre y tono de marcación en TODOS los paths terminales.
+    //    Los handlers de Realtime (rejected/ended/missed) y el resto de
+    //    caminos que llegan aquí sin pasar por endCall dejaban el audio
+    //    sonando indefinidamente aunque la sesión ya estuviera cerrada.
+    void stopDialingTone();
+    this._stopRingOnce();
+    this._clearConnectWatchdog();
+
+    // 0b. Restaurar AudioSession ANTES de cerrar todo lo demás.
     //    Cubre paths que no pasan por endCall: rejectCall, cancelCall,
     //    timeouts, Realtime onEnded y PC connectionstate=closed.
     this._restoreAudioSession().catch(() => {});
@@ -1745,18 +2128,21 @@ export class CallManager {
     this._iceOffsetCaller      = 0;
     this._iceOffsetCallee      = 0;
     this._answerApplied        = false;
-    this._appliedOfferVersion  = 0;
+    this._answeredHere         = false;
+    this._appliedOfferSdp      = null;
     this._lastNetConnected     = null;
+    this._isAcceptingLocally   = false;
 
     this._notify();
   }
 
   private _reset(): void {
     this._finalCleanup();
-    this._session        = null;
-    this._isEnding       = false;
-    this._ringStopped    = false;
-    this._isSignalingOnly = !HAS_NATIVE_MEDIA;
+    this._session          = null;
+    this._isEnding         = false;
+    this._ringStopped      = false;
+    this._isAcceptingLocally = false;
+    this._isSignalingOnly  = !HAS_NATIVE_MEDIA;
     this._setPcState('none');
     this._setUIState('hidden');
   }

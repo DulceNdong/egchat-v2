@@ -12,6 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Svg, { Path, Circle, G } from 'react-native-svg';
+import { t as tr } from '../src/translations';
 
 const { width, height } = Dimensions.get('window');
 
@@ -40,7 +41,7 @@ export default function DjangueHomeScreen() {
             </View>
             <Text style={s.brandName}>EGChat</Text>
             <View style={s.divider} />
-            <Text style={s.productName}>Mi Djangue</Text>
+            <Text style={s.productName}>{tr('xtMiDjangue')}</Text>
           </View>
 
           {/* Ilustración Central */}
@@ -84,7 +85,7 @@ export default function DjangueHomeScreen() {
 
           {/* Título y Descripción */}
           <View style={s.textContainer}>
-            <Text style={s.title}>Ahorra en Grupo</Text>
+            <Text style={s.title}>{tr('xtAhorraEnGrupo')}</Text>
             <Text style={s.subtitle}>
               El sistema tradicional de ahorro rotativo,{'\n'}
               ahora en tu móvil
@@ -118,7 +119,7 @@ export default function DjangueHomeScreen() {
                     strokeLinejoin="round"
                   />
                 </Svg>
-                <Text style={s.primaryButtonText}>Mis Djangues</Text>
+                <Text style={s.primaryButtonText}>{tr('xtMisDjangues')}</Text>
               </LinearGradient>
             </TouchableOpacity>
 
@@ -136,7 +137,7 @@ export default function DjangueHomeScreen() {
                   strokeLinecap="round"
                 />
               </Svg>
-              <Text style={s.secondaryButtonText}>Crear Nuevo Djangue</Text>
+              <Text style={s.secondaryButtonText}>{tr('xtCrearNuevoDjangue')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -161,7 +162,7 @@ export default function DjangueHomeScreen() {
                   opacity={0.7}
                 />
               </Svg>
-              <Text style={s.featureText}>Seguro y Confiable</Text>
+              <Text style={s.featureText}>{tr('xtSeguroYConfiable')}</Text>
             </View>
             <View style={s.featureRow}>
               <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
@@ -190,7 +191,7 @@ export default function DjangueHomeScreen() {
                   opacity={0.7}
                 />
               </Svg>
-              <Text style={s.featureText}>Fácil para Todos</Text>
+              <Text style={s.featureText}>{tr('djnEasyForAll')}</Text>
             </View>
           </View>
         </SafeAreaView>

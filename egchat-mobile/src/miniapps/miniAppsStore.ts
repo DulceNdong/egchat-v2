@@ -7,6 +7,7 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getToken, getApiBase } from '../api';
+import { t as tr } from '../translations';
 
 export type MiniAppPermission = 'location' | 'payment' | 'share' | 'qr' | 'camera' | 'contacts' | 'storage';
 export type MiniAppCategory   = 'transport' | 'shopping' | 'finance' | 'services' | 'entertainment' | 'government' | 'utilities';
@@ -31,7 +32,7 @@ export const MINI_APPS: MiniApp[] = [
   {
     id: 'djangue',
     name: 'Mi Djangue',
-    description: 'Caja de ahorro grupal por turnos',
+    get description() { return tr('xtCajaDeAhorroGrupalPorTurnos'); },
     icon: 'djangue', accentColor: '#6366f1',
     url: '',
     category: 'finance',
@@ -41,7 +42,7 @@ export const MINI_APPS: MiniApp[] = [
   {
     id: 'mitaxi',
     name: 'MiTaxi GQ',
-    description: 'Pide un taxi con GPS en tiempo real',
+    get description() { return tr('xtPideUnTaxiConGPSEnTiempoReal'); },
     icon: 'taxi', accentColor: '#f59e0b',
     url: 'https://egchat-v2.vercel.app/mitaxi',
     category: 'transport',
@@ -51,7 +52,7 @@ export const MINI_APPS: MiniApp[] = [
   {
     id: 'cemac',
     name: 'CEMAC Pay',
-    description: 'Transferencias zona CEMAC al instante',
+    get description() { return tr('xtTransferenciasZonaCEMACAlInstante'); },
     icon: 'bank', accentColor: '#10b981',
     url: 'https://egchat-v2.vercel.app/cemac',
     category: 'finance',
@@ -61,7 +62,7 @@ export const MINI_APPS: MiniApp[] = [
   {
     id: 'supermercado',
     name: 'Supermercado',
-    description: 'Compra online con entrega a domicilio',
+    get description() { return tr('xtCompraOnlineConEntregaADomicilio'); },
     icon: 'cart', accentColor: '#ec4899',
     url: 'https://egchat-v2.vercel.app/supermercados',
     category: 'shopping',
@@ -71,7 +72,7 @@ export const MINI_APPS: MiniApp[] = [
   {
     id: 'servicios_gov',
     name: 'Servicios Gov',
-    description: 'Trámites: agua, luz, impuestos',
+    get description() { return tr('xtTramitesAguaLuzImpuestos'); },
     icon: 'government', accentColor: '#6366f1',
     url: 'https://egchat-v2.vercel.app/servicios-diarios',
     category: 'government',
@@ -81,7 +82,7 @@ export const MINI_APPS: MiniApp[] = [
   {
     id: 'seguros',
     name: 'Seguros GQ',
-    description: 'Seguros de salud, vida y vehículo',
+    get description() { return tr('xtSegurosDeSaludVidaYVehiculo'); },
     icon: 'shield', accentColor: '#3b82f6',
     url: 'https://egchat-v2.vercel.app/seguros-salud',
     category: 'services',
@@ -91,7 +92,7 @@ export const MINI_APPS: MiniApp[] = [
   {
     id: 'apuestas',
     name: 'Apuestas GQ',
-    description: 'Apuestas deportivas y loterías',
+    get description() { return tr('xtApuestasDeportivasYLoterias'); },
     icon: 'trophy', accentColor: '#8b5cf6',
     url: 'https://egchat-v2.vercel.app/apuestas',
     category: 'entertainment',
@@ -101,7 +102,7 @@ export const MINI_APPS: MiniApp[] = [
   {
     id: 'ocio',
     name: 'Ocio & Eventos',
-    description: 'Eventos y actividades en Guinea Ecuatorial',
+    get description() { return tr('xtEventosYActividadesEnGuineaEcuatorial'); },
     icon: 'star', accentColor: '#f97316',
     url: 'https://egchat-v2.vercel.app/ocio',
     category: 'entertainment',
@@ -111,7 +112,7 @@ export const MINI_APPS: MiniApp[] = [
   {
     id: 'barcos',
     name: 'Mi Barco',
-    description: 'Reserva de pasajes marítimos',
+    get description() { return tr('xtReservaDePasajesMaritimos'); },
     icon: 'anchor', accentColor: '#0284c7',
     url: 'https://egchat-v2.vercel.app/barcos',
     category: 'transport',
@@ -212,11 +213,11 @@ export function searchMiniApps(query: string): MiniApp[] {
 
 // Texto descriptivo de cada permiso (para la pantalla de consentimiento)
 export const PERMISSION_LABELS: Record<MiniAppPermission, { icon: string; label: string; desc: string }> = {
-  location:  { icon: '📍', label: 'Ubicación',          desc: 'Acceder a tu ubicación GPS para mostrar servicios cercanos' },
-  payment:   { icon: '💳', label: 'Pagos EGChat',        desc: 'Realizar pagos con tu wallet de EGChat' },
-  share:     { icon: '💬', label: 'Compartir en chat',   desc: 'Enviar contenido a tus chats de EGChat' },
-  qr:        { icon: '📷', label: 'Escáner QR',          desc: 'Usar la cámara para escanear códigos QR' },
-  camera:    { icon: '📸', label: 'Cámara',              desc: 'Acceder a la cámara y galería de fotos' },
-  contacts:  { icon: '👥', label: 'Contactos',           desc: 'Ver tu lista de contactos de EGChat' },
-  storage:   { icon: '💾', label: 'Almacenamiento local',desc: 'Guardar datos en este dispositivo (solo para esta app)' },
+  location:  { icon: '📍', get label() { return tr('liaAttachLocation'); },          get desc() { return tr('xtAccederATuUbicacionGPSParaMostrarServiciosCe'); } },
+  payment:   { icon: '💳', get label() { return tr('xtPagosEGChat'); },        get desc() { return tr('xtRealizarPagosConTuWalletDeEGChat'); } },
+  share:     { icon: '💬', get label() { return tr('xtCompartirEnChat'); },   get desc() { return tr('xtEnviarContenidoATusChatsDeEGChat'); } },
+  qr:        { icon: '📷', get label() { return tr('setQrScanner'); },          get desc() { return tr('xtUsarLaCamaraParaEscanearCodigosQR'); } },
+  camera:    { icon: '📸', get label() { return tr('chtCamera'); },              get desc() { return tr('xtAccederALaCamaraYGaleriaDeFotos'); } },
+  contacts:  { icon: '👥', get label() { return tr('contacts'); },           get desc() { return tr('xtVerTuListaDeContactosDeEGChat'); } },
+  storage:   { icon: '💾', get label() { return tr('xtAlmacenamientoLocal'); },get desc() { return tr('xtGuardarDatosEnEsteDispositivoSoloParaEstaApp'); } },
 };

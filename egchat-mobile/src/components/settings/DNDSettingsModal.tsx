@@ -11,12 +11,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   getDNDSettings, saveDNDSettings, isDNDActive, formatTime,
-  DAY_NAMES, type DNDSettings,
+  dayNames, type DNDSettings,
 } from '../../services/doNotDisturb';
 import { toast } from '../Toast';
 import { useThemeContext } from '../../theme/ThemeContext';
 import { Colors } from '../../theme/colors';
 import { DarkColors } from '../../theme/darkMode';
+import { t as tr } from '../../translations';
 
 // Selector de hora simple en rueda
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -108,9 +109,9 @@ export function DNDSettingsModal({ visible, onClose }: Props) {
               <Line x1="19" y1="12" x2="5" y2="12"/><Path d="M12 19l-7-7 7-7"/>
             </Svg>
           </TouchableOpacity>
-          <Text style={s.headerTitle}>No molestar</Text>
+          <Text style={s.headerTitle}>{tr('doNotDisturb')}</Text>
           <TouchableOpacity onPress={handleSave} style={s.saveBtn}>
-            <Text style={s.saveBtnText}>Guardar</Text>
+            <Text style={s.saveBtnText}>{tr('chtSaveAction')}</Text>
           </TouchableOpacity>
         </LinearGradient>
 
@@ -118,11 +119,11 @@ export function DNDSettingsModal({ visible, onClose }: Props) {
           {/* Toggle principal */}
           <View style={[s.card, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
             <View style={{ flex: 1 }}>
-              <Text style={[s.cardTitle, { color: C.textPrimary }]}>No molestar</Text>
+              <Text style={[s.cardTitle, { color: C.textPrimary }]}>{tr('doNotDisturb')}</Text>
               <Text style={[s.cardSub, { color: C.textTertiary }]}>
                 {settings.enabled
-                  ? isDNDActive(settings) ? '🔇 Activo ahora' : `Activo de ${formatTime(settings.startHour, settings.startMin)} a ${formatTime(settings.endHour, settings.endMin)}`
-                  : 'Desactivado'}
+                  ? isDNDActive(settings) ? '🔇 ' + tr('activeNow') : tr('dndActiveFrom') + formatTime(settings.startHour, settings.startMin) + tr('dndActiveTo') + formatTime(settings.endHour, settings.endMin)
+                  : tr('disabled')}
               </Text>
             </View>
             <Switch
@@ -136,26 +137,26 @@ export function DNDSettingsModal({ visible, onClose }: Props) {
           {settings.enabled && (
             <>
               {/* Horario */}
-              <Text style={[s.sectionLabel, { color: C.textTertiary }]}>HORARIO</Text>
+              <Text style={[s.sectionLabel, { color: C.textTertiary }]}>{tr('dndHorario')}</Text>
               <View style={[s.card, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
                 <View style={{ flexDirection: 'row', gap: 16, paddingVertical: 8 }}>
                   <TimePicker
-                    label="DESDE" hour={settings.startHour} min={settings.startMin} C={C}
+                    label={tr('dndDesde')} hour={settings.startHour} min={settings.startMin} C={C}
                     onChange={(h, m) => setSettings(p => ({ ...p, startHour: h, startMin: m }))}
                   />
                   <View style={{ width: 1, backgroundColor: C.borderLight }} />
                   <TimePicker
-                    label="HASTA" hour={settings.endHour} min={settings.endMin} C={C}
+                    label={tr('dndHasta')} hour={settings.endHour} min={settings.endMin} C={C}
                     onChange={(h, m) => setSettings(p => ({ ...p, endHour: h, endMin: m }))}
                   />
                 </View>
               </View>
 
               {/* Días */}
-              <Text style={[s.sectionLabel, { color: C.textTertiary }]}>DÍAS</Text>
+              <Text style={[s.sectionLabel, { color: C.textTertiary }]}>{tr('dndDias')}</Text>
               <View style={[s.card, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
                 <View style={s.daysRow}>
-                  {DAY_NAMES.map((name, i) => {
+                  {dayNames().map((name, i) => {
                     const active = settings.days.includes(i);
                     return (
                       <TouchableOpacity
@@ -171,12 +172,12 @@ export function DNDSettingsModal({ visible, onClose }: Props) {
               </View>
 
               {/* Permitir llamadas */}
-              <Text style={[s.sectionLabel, { color: C.textTertiary }]}>EXCEPCIONES</Text>
+              <Text style={[s.sectionLabel, { color: C.textTertiary }]}>{tr('dndExcepciones')}</Text>
               <View style={[s.card, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
                 <View style={s.rowBetween}>
                   <View style={{ flex: 1 }}>
-                    <Text style={[s.cardTitle, { color: C.textPrimary }]}>Permitir llamadas</Text>
-                    <Text style={[s.cardSub, { color: C.textTertiary }]}>Las llamadas entrantes no se silencian</Text>
+                    <Text style={[s.cardTitle, { color: C.textPrimary }]}>{tr('dndAllowCalls')}</Text>
+                    <Text style={[s.cardSub, { color: C.textTertiary }]}>{tr('xtLasLlamadasEntrantesNoSeSilencian')}</Text>
                   </View>
                   <Switch
                     value={settings.allowCalls}

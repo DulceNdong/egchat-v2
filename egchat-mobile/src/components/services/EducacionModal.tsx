@@ -1,35 +1,46 @@
 // Módulo Educación — directorio centros escolares (paridad captura web)
+//
+// La matricula no se cobra aqui: no hay tarifa en service_tariffs ni canal con
+// el centro. La solicitud queda registrada en el servidor y se muestra su
+// referencia; antes la pantalla restaba saldo de un estado local y anunciaba
+// "Pago registrado" sin que saliera un franco del monedero.
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Linking, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { serviciosAPI } from '../../api';
+import { toast } from '../Toast';
 import {
   EDU_SCHOOLS, EDU_CITIES, EDU_TYPE_FILTERS, School,
 } from '../../data/serviciosPublicos';
 import { FinancialModuleShell, FilterChips } from './FinancialModuleUI';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
-import { PayMethodPicker } from './PublicModuleUI';
+import { t as tr } from '../../translations';
 
-interface Props { visible: boolean; onClose: () => void; userBalance?: number; }
+interface Props { visible: boolean; onClose: () => void; }
 
 type Screen = 'home' | 'detail' | 'pay' | 'success';
 
 const TYPE_LABEL: Record<School['type'], string> = {
-  publica: 'Pública', privada: 'Privada', profesional: 'Profesional',
+  get publica() { return tr('xtPublica'); },
+  get privada() { return tr('xtPrivada'); },
+  get profesional() { return tr('xtProfesional'); },
 };
 
-export const EducacionModal: React.FC<Props> = ({ visible, onClose, userBalance = 100000 }) => {
+export const EducacionModal: React.FC<Props> = ({ visible, onClose }) => {
   const [screen, setScreen] = useState<Screen>('home');
   const [city, setCity] = useState<string>('Malabo');
   const [typeFilter, setTypeFilter] = useState('todos');
   const [selected, setSelected] = useState<School | null>(null);
-  const [form, setForm] = useState({ student: '', ref: '', amount: '25000', payMethod: '' });
-  const [balance, setBalance] = useState(userBalance);
+  const [form, setForm] = useState({ student: '', ref: '', curso: '' });
+  const [sending, setSending] = useState(false);
+  const [solicitud, setSolicitud] = useState('');
+  const [extId, setExtId] = useState('');
 
-  useEffect(() => { if (visible) setBalance(userBalance); }, [visible, userBalance]);
   useEffect(() => {
     if (!visible) {
       setScreen('home'); setCity('Malabo'); setTypeFilter('todos');
-      setSelected(null); setForm({ student: '', ref: '', amount: '25000', payMethod: '' });
+      setSelected(null); setForm({ student: '', ref: '', curso: '' });
+      setSolicitud(''); setSending(false); setExtId('');
     }
   }, [visible]);
 
@@ -44,15 +55,38 @@ export const EducacionModal: React.FC<Props> = ({ visible, onClose, userBalance 
     else onClose();
   };
 
-  const amount = parseInt(form.amount, 10) || 0;
+  const enviarSolicitud = async () => {
+    if (!selected || sending) return;
+    // Una referencia por matricula: reintentar tras un corte de red no crea una
+    // segunda solicitud para el mismo estudiante.
+    const ref = extId || `EDU-${selected.id}-${Date.now()}`;
+    if (!extId) setExtId(ref);
+    setSending(true);
+    try {
+      const res = await serviciosAPI.solicitud({
+        provider: 'educacion',
+        tipo: 'matricula',
+        referencia: selected.id,
+        datos: { centro: selected.name, estudiante: form.student, matricula: form.ref, curso: form.curso },
+        external_id: ref,
+      });
+      // La referencia la da el servidor: sin ella no hay solicitud registrada.
+      setSolicitud(res.solicitudId);
+      setScreen('success');
+    } catch (e: any) {
+      toast.error(e?.message || 'No se pudo registrar la solicitud de matricula.');
+    } finally {
+      setSending(false);
+    }
+  };
 
   const fixedTop = screen === 'home' ? (
     <LinearGradient colors={['#4C1D95', '#6B5BD6']} style={s.banner}>
       <View style={s.bannerRow}>
         <View style={s.bannerIcon}><Text style={{ fontSize: 26 }}>🎓</Text></View>
         <View style={{ flex: 1 }}>
-          <Text style={s.bannerTitle}>Educación</Text>
-          <Text style={s.bannerSub}>Centros educativos · Guinea Ecuatorial</Text>
+          <Text style={s.bannerTitle}>{tr('xtEducacion')}</Text>
+          <Text style={s.bannerSub}>{tr('xtCentrosEducativosGuineaEcuatorial')}</Text>
         </View>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.cityScroll} contentContainerStyle={s.cityRow}>
@@ -84,7 +118,7 @@ export const EducacionModal: React.FC<Props> = ({ visible, onClose, userBalance 
         <View>
           <View style={s.sectionHead}>
             <Text style={s.sectionIcon}>🏫</Text>
-            <Text style={s.sectionTitle}>Centros Escolares</Text>
+            <Text style={s.sectionTitle}>{tr('xtCentrosEscolares')}</Text>
           </View>
           <FilterChips
             options={EDU_TYPE_FILTERS.map(f => ({ id: f.id, label: f.label }))}
@@ -126,7 +160,7 @@ export const EducacionModal: React.FC<Props> = ({ visible, onClose, userBalance 
             <Text style={s.detailSub}>{selected.city} · {selected.level}</Text>
           </LinearGradient>
           <View style={s.infoCard}>
-            {([['Tipo', TYPE_LABEL[selected.type]], ['Modalidad', selected.modality], ['Plazas', `${selected.plazas}`], ['Teléfono', selected.phone]] as const).map(([l, v]) => (
+            {([[tr('kyType'), TYPE_LABEL[selected.type]], [tr('xtModalidad'), selected.modality], [tr('xtPlazas'), `${selected.plazas}`], [tr('phone'), selected.phone]] as const).map(([l, v]) => (
               <View key={l} style={s.infoRow}>
                 <Text style={s.infoLbl}>{l}</Text>
                 <Text style={s.infoVal}>{v}</Text>
@@ -134,25 +168,28 @@ export const EducacionModal: React.FC<Props> = ({ visible, onClose, userBalance 
             ))}
           </View>
           <TouchableOpacity style={s.callBtn} onPress={() => Linking.openURL(`tel:${selected.phone}`)}>
-            <Text style={s.callBtnText}>📞 Llamar al centro</Text>
+            <Text style={s.callBtnText}>{tr('xtLlamarAlCentro')}</Text>
           </TouchableOpacity>
-          <PrimaryButton label="Pagar matrícula" onPress={() => setScreen('pay')} color="#6B5BD6" />
+          <PrimaryButton label={tr('xtPagarMatricula')} onPress={() => setScreen('pay')} color="#6B5BD6" />
         </View>
       )}
 
       {screen === 'pay' && selected && (
         <View>
           <LinearGradient colors={['#4C1D95', '#6B5BD6']} style={s.detailBanner}>
-            <Text style={s.detailTitle}>Pago — {selected.name}</Text>
+            <Text style={s.detailTitle}>Matrícula — {selected.name}</Text>
           </LinearGradient>
-          <FormField placeholder="Nombre del estudiante" value={form.student} onChangeText={v => setForm(p => ({ ...p, student: v }))} />
-          <FormField placeholder="Número de referencia / matrícula" value={form.ref} onChangeText={v => setForm(p => ({ ...p, ref: v }))} />
-          <FormField placeholder="Importe a pagar (XAF)" value={form.amount} onChangeText={v => setForm(p => ({ ...p, amount: v }))} keyboardType="numeric" />
-          <PayMethodPicker value={form.payMethod} onChange={v => setForm(p => ({ ...p, payMethod: v }))} accent="#6B5BD6" />
+          <Text style={s.aviso}>
+            Se envía la solicitud al centro. El importe de la matrícula lo confirma el
+            centro y el pago se hace después, nunca desde esta pantalla.
+          </Text>
+          <FormField placeholder={tr('xtNombreDelEstudiante')} value={form.student} onChangeText={v => setForm(p => ({ ...p, student: v }))} />
+          <FormField placeholder={tr('svcRefEnrollment')} value={form.ref} onChangeText={v => setForm(p => ({ ...p, ref: v }))} />
+          <FormField placeholder="Curso / nivel" value={form.curso} onChangeText={v => setForm(p => ({ ...p, curso: v }))} />
           <PrimaryButton
-            label={`Pagar ${amount > 0 ? amount.toLocaleString() + ' XAF' : ''}`}
-            onPress={() => { setBalance(b => b - amount); setScreen('success'); }}
-            disabled={!form.student || !form.payMethod || amount > balance}
+            label={sending ? 'Enviando…' : 'Enviar solicitud de matricula'}
+            onPress={enviarSolicitud}
+            disabled={!form.student || sending}
             color="#6B5BD6"
           />
         </View>
@@ -160,10 +197,15 @@ export const EducacionModal: React.FC<Props> = ({ visible, onClose, userBalance 
 
       {screen === 'success' && selected && (
         <View style={s.success}>
-          <Text style={{ fontSize: 48 }}>✅</Text>
-          <Text style={s.successTitle}>Pago registrado</Text>
-          <Text style={s.successSub}>{selected.name} — {amount.toLocaleString()} XAF</Text>
-          <PrimaryButton label="Cerrar" onPress={onClose} color="#6B5BD6" />
+          <Text style={{ fontSize: 48 }}>📨</Text>
+          <Text style={s.successTitle}>Solicitud registrada</Text>
+          <Text style={s.successSub}>{selected.name}</Text>
+          <View style={s.refBox}>
+            <Text style={s.refLbl}>Referencia</Text>
+            <Text style={s.refVal}>{solicitud}</Text>
+          </View>
+          <Text style={s.aviso}>No se ha cobrado nada todavia. El centro confirmara la matricula y su importe.</Text>
+          <PrimaryButton label={tr('close')} onPress={onClose} color="#6B5BD6" />
         </View>
       )}
     </FinancialModuleShell>
@@ -207,5 +249,9 @@ const s = StyleSheet.create({
   callBtnText: { color: '#1485EE', fontWeight: '700', fontSize: 13 },
   success: { alignItems: 'center', paddingVertical: 40, gap: 8 },
   successTitle: { fontSize: 18, fontWeight: '800', color: '#1A2B4A' },
-  successSub: { fontSize: 13, color: '#8A9BB5', marginBottom: 16 },
+  successSub: { fontSize: 13, color: '#8A9BB5', marginBottom: 4 },
+  aviso: { fontSize: 12, color: '#6B7280', lineHeight: 17, marginBottom: 12, textAlign: 'center' },
+  refBox: { alignSelf: 'stretch', backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 12, alignItems: 'center' },
+  refLbl: { fontSize: 11, color: '#9CA3AF' },
+  refVal: { fontSize: 14, fontWeight: '800', color: '#1A2B4A', marginTop: 2 },
 });

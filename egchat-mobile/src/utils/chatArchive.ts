@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 
 const ARCHIVED_KEY = 'egchat_archived_chats';
 const ARCHIVE_PWD_KEY = 'egchat_archive_pwd';
@@ -31,9 +32,26 @@ export async function saveArchivedChats(chats: ArchivedChat[]): Promise<void> {
 }
 
 export async function getArchivePassword(): Promise<string> {
-  return (await AsyncStorage.getItem(ARCHIVE_PWD_KEY)) || '';
+  try {
+    const stored = await SecureStore.getItemAsync(ARCHIVE_PWD_KEY);
+    if (stored) return stored;
+    const legacy = await AsyncStorage.getItem(ARCHIVE_PWD_KEY);
+    if (legacy) {
+      await SecureStore.setItemAsync(ARCHIVE_PWD_KEY, legacy);
+      await AsyncStorage.removeItem(ARCHIVE_PWD_KEY);
+      return legacy;
+    }
+    return '';
+  } catch {
+    return '';
+  }
 }
 
 export async function setArchivePassword(pwd: string): Promise<void> {
-  await AsyncStorage.setItem(ARCHIVE_PWD_KEY, pwd);
+  if (pwd) {
+    await SecureStore.setItemAsync(ARCHIVE_PWD_KEY, pwd);
+  } else {
+    await SecureStore.deleteItemAsync(ARCHIVE_PWD_KEY);
+  }
+  await AsyncStorage.removeItem(ARCHIVE_PWD_KEY);
 }

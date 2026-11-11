@@ -13,7 +13,7 @@ import { authAPI, clearToken } from '../../src/api';
 import { mergePersistentAvatar, onProfileUpdated } from '../../src/utils/profileEvents';
 import SessionManager from '../../src/sessionManager';
 import { AccountSwitcher } from '../../src/components/AccountSwitcher';
-import { NotificationsPanel, HamburgerMenu, WeatherModal } from '../../src/components/HeaderPanels';
+import { NotificationsPanel, HamburgerMenu, WeatherModal, handleNotifNavigation } from '../../src/components/HeaderPanels';
 import { EGChatHeader } from '../../src/components/EGChatHeader';
 import { useAppStore } from '../../src/store/useAppStore';
 import { markAllRead, clearAllNotifications, removeNotification, markNotificationRead } from '../../src/store/appStore';
@@ -23,67 +23,73 @@ import { Colors, Spacing } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useLanguage } from '../../src/context/LanguageContext';
+import { t as tr } from '../../src/translations';
 
 type MenuItem = { label: string; route: string; value?: string };
 
-const ALL_ROWS: MenuItem[] = [
-  { label: 'Perfil', route: '/ajustes/perfil' },
-  { label: 'Seguridad de la cuenta', route: '/ajustes/seguridad' },
-  { label: 'Mi información y autorizaciones', route: '/ajustes/privacidad' },
-  { label: 'Notificaciones', route: '/ajustes/notificaciones' },
-  { label: 'Interfaz y pantalla', route: '/ajustes/interfaz' },
-  { label: 'Permisos de amigos', route: '/ajustes/permisos-amigos' },
-  { label: 'Almacenamiento', route: '/ajustes/almacenamiento' },
-  { label: 'Sonidos y notificaciones', route: '/ajustes/sonidos' },
-  { label: 'Chat', route: '/ajustes/chat' },
-  { label: 'Llamadas de voz y video', route: '/ajustes/llamadas' },
-  { label: 'Administrar historial de chat', route: '/ajustes/historial-chat' },
-  { label: 'Otras funciones', route: '/ajustes/otras-funciones' },
-  { label: 'Registro de actividad', route: '/ajustes/actividad' },
-  { label: 'Comentarios', route: '/ajustes/comentarios' },
-  { label: 'Acerca de EGCHAT', route: '/ajustes/acerca', value: 'v2.5.5' },
-];
+function getAllRows(t: (k: string) => string): MenuItem[] {
+  return [
+    { label: t('profile'), route: '/ajustes/perfil' },
+    { label: t('accountSecurity'), route: '/ajustes/seguridad' },
+    { label: t('myInfo'), route: '/ajustes/privacidad' },
+    { label: t('notifications'), route: '/ajustes/notificaciones' },
+    { label: t('interfaceDisplay'), route: '/ajustes/interfaz' },
+    { label: t('friendPermissions'), route: '/ajustes/permisos-amigos' },
+    { label: t('storage'), route: '/ajustes/almacenamiento' },
+    { label: t('sounds'), route: '/ajustes/sonidos' },
+    { label: t('chat'), route: '/ajustes/chat' },
+    { label: t('calls'), route: '/ajustes/llamadas' },
+    { label: t('chatHistory'), route: '/ajustes/historial-chat' },
+    { label: t('otherFeatures'), route: '/ajustes/otras-funciones' },
+    { label: t('activityLog'), route: '/ajustes/actividad' },
+    { label: t('comments'), route: '/ajustes/comentarios' },
+    { label: t('aboutEGChat'), route: '/ajustes/acerca', value: 'v2.5.5' },
+  ];
+}
 
-const SECTIONS: { title: string; items: MenuItem[] }[] = [
-  {
-    title: 'Cuenta',
-    items: [
-      { label: 'Seguridad de la cuenta', route: '/ajustes/seguridad' },
-      { label: 'Mi información y autorizaciones', route: '/ajustes/privacidad' },
-      { label: 'Actualizar documentos KYC', route: '/kyc/step-2' },
-      { label: 'Dispositivos conectados', route: '/ajustes/dispositivos' },
-    ],
-  },
-  {
-    title: 'General',
-    items: [
-      { label: 'Idioma de la app / Language', route: '/ajustes/idioma' },
-      { label: 'Notificaciones', route: '/ajustes/notificaciones' },
-      { label: 'Interfaz y pantalla', route: '/ajustes/interfaz' },
-      { label: 'Permisos de amigos', route: '/ajustes/permisos-amigos' },
-      { label: 'Almacenamiento', route: '/ajustes/almacenamiento' },
-      { label: 'Sonidos y notificaciones', route: '/ajustes/sonidos' },
-    ],
-  },
-  {
-    title: 'Funciones',
-    items: [
-      { label: 'Chat', route: '/ajustes/chat' },
-      { label: 'Llamadas de voz y video', route: '/ajustes/llamadas' },
-      { label: 'Historial de llamadas', route: '/call-history' },
-      { label: 'Administrar historial de chat', route: '/ajustes/historial-chat' },
-      { label: 'Otras funciones', route: '/ajustes/otras-funciones' },
-    ],
-  },
-  {
-    title: 'Ayuda e información',
-    items: [
-      { label: 'Registro de actividad', route: '/ajustes/actividad' },
-      { label: 'Comentarios', route: '/ajustes/comentarios' },
-      { label: 'Acerca de EGCHAT', route: '/ajustes/acerca', value: 'v2.5.5' },
-    ],
-  },
-];
+function getSections(t: (k: string) => string): { title: string; items: MenuItem[] }[] {
+  return [
+    {
+      title: t('accountSection'),
+      items: [
+        { label: t('accountSecurity'), route: '/ajustes/seguridad' },
+        { label: t('myInfo'), route: '/ajustes/privacidad' },
+        { label: t('updateKYC'), route: '/kyc/step-2' },
+        { label: t('connectedDevices'), route: '/ajustes/dispositivos' },
+      ],
+    },
+    {
+      title: t('generalSection'),
+      items: [
+        { label: t('langTitle'), route: '/ajustes/idioma' },
+        { label: t('notifications'), route: '/ajustes/notificaciones' },
+        { label: t('interfaceDisplay'), route: '/ajustes/interfaz' },
+        { label: t('friendPermissions'), route: '/ajustes/permisos-amigos' },
+        { label: t('storage'), route: '/ajustes/almacenamiento' },
+        { label: t('sounds'), route: '/ajustes/sonidos' },
+      ],
+    },
+    {
+      title: t('featuresSection'),
+      items: [
+        { label: t('chat'), route: '/ajustes/chat' },
+        { label: t('calls'), route: '/ajustes/llamadas' },
+        { label: t('history'), route: '/call-history' },
+        { label: t('chatHistory'), route: '/ajustes/historial-chat' },
+        { label: t('otherFeatures'), route: '/ajustes/otras-funciones' },
+      ],
+    },
+    {
+      title: t('helpSection'),
+      items: [
+        { label: t('activityLog'), route: '/ajustes/actividad' },
+        { label: t('comments'), route: '/ajustes/comentarios' },
+        { label: t('aboutEGChat'), route: '/ajustes/acerca', value: 'v2.5.5' },
+      ],
+    },
+  ];
+}
 
 const IconGear = () => (
   <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#0d0d0d" strokeWidth={1.5} strokeLinecap="round">
@@ -122,7 +128,11 @@ function AjustesScreenInner() {
   const [showAccountSwitcher, setShowAccountSwitcher] = useState(false);
   const { weather, notifications } = useAppStore();
   const { isDark } = useThemeContext();
+  const { language, translate: t } = useLanguage();
   const C = isDark ? (DarkColors as unknown as typeof Colors) : Colors;
+
+  const ALL_ROWS = getAllRows(t);
+  const SECTIONS = getSections(t);
 
   useEffect(() => {
     const loadUser = async () => {
@@ -191,13 +201,13 @@ function AjustesScreenInner() {
     };
 
     if (typeof window !== 'undefined') {
-      if (window.confirm('¿Cerrar sesión en EGChat?')) {
+      if (window.confirm(t('logoutConfirm'))) {
         doLogout();
       }
     } else {
-      Alert.alert('Cerrar sesión', '¿Estás seguro?', [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Cerrar sesión', style: 'destructive', onPress: doLogout },
+      Alert.alert(t('logout'), t('logoutConfirmQ'), [
+        { text: t('cancel'), style: 'cancel' },
+        { text: t('logout'), style: 'destructive', onPress: doLogout },
       ]);
     }
   }, []);
@@ -237,7 +247,7 @@ function AjustesScreenInner() {
       <View style={[styles.bar, { backgroundColor: C.bgPrimary }]}>
         <View style={styles.barTitle}>
           <IconGear />
-          <Text style={[styles.barText, { color: C.textPrimary }]}>Configuración</Text>
+          <Text style={[styles.barText, { color: C.textPrimary }]}>{t('configuration')}</Text>
         </View>
         <TouchableOpacity
           style={[styles.closeBtn, { backgroundColor: isDark ? C.bgTertiary : 'rgba(243,244,246,0.85)', borderColor: C.borderLight }]}
@@ -250,11 +260,11 @@ function AjustesScreenInner() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-        <SettingsSearch value={search} onChangeText={setSearch} placeholder="Buscar" />
+        <SettingsSearch value={search} onChangeText={setSearch} placeholder={t('searchSettings')} />
 
         {filtered ? (
           filtered.length === 0 ? (
-            <Text style={{ textAlign: 'center', padding: 32, color: C.textTertiary }}>Sin resultados</Text>
+            <Text style={{ textAlign: 'center', padding: 32, color: C.textTertiary }}>{tr('noResults')}</Text>
           ) : (
             renderMenuCard(filtered)
           )
@@ -275,7 +285,7 @@ function AjustesScreenInner() {
                 )}
               </LinearGradient>
               <View style={styles.heroInfo}>
-                <Text style={[styles.heroName, { color: C.textPrimary }]}>{user?.full_name || 'Toca para añadir tu nombre'}</Text>
+                <Text style={[styles.heroName, { color: C.textPrimary }]}>{user?.full_name || t('ajtTapAddName')}</Text>
                 <Text style={[styles.heroSub, { color: C.textTertiary }]}>
                   {user?.id ? `ID: ${user.id.slice(0, 12).toUpperCase()}` : (user?.phone || '')}
                 </Text>
@@ -309,7 +319,7 @@ function AjustesScreenInner() {
                 <Path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
                 <Path d="M16 3.13a4 4 0 0 1 0 7.75"/>
               </Svg>
-              <Text style={[styles.switchAccountText, { color: C.textTertiary }]}>Cambiar cuenta</Text>
+              <Text style={[styles.switchAccountText, { color: C.textTertiary }]}>{t('switchAccount')}</Text>
               <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={C.textTertiary} strokeWidth={2} strokeLinecap="round">
                 <Path d="M9 18l6-6-6-6"/>
               </Svg>
@@ -331,13 +341,13 @@ function AjustesScreenInner() {
             <View style={{ height: 16 }} />
             <SettingsCard>
               <TouchableOpacity style={styles.actionBtn} onPress={() => setShowAccountSwitcher(true)}>
-                <Text style={styles.actionGreen}>Cambiar de cuenta</Text>
+                <Text style={styles.actionGreen}>{tr('xtCambiarDeCuenta')}</Text>
               </TouchableOpacity>
             </SettingsCard>
             <View style={{ height: 12 }} />
             <SettingsCard>
               <TouchableOpacity style={styles.actionBtn} onPress={logout}>
-                <Text style={styles.actionRed}>Cerrar sesión</Text>
+                <Text style={styles.actionRed}>{t('logout')}</Text>
               </TouchableOpacity>
             </SettingsCard>
           </>
@@ -353,7 +363,7 @@ function AjustesScreenInner() {
         onNotifPress={(n) => {
           markNotificationRead(n.id);
           setShowNotifications(false);
-          if (n.chatId) router.push(`/chat/${n.chatId}` as any);
+          handleNotifNavigation(n);
         }}
       />
       <HamburgerMenu
@@ -367,7 +377,12 @@ function AjustesScreenInner() {
         currentAccountId={user?.id || ''}
         onClose={() => setShowAccountSwitcher(false)}
         onSwitch={(id) => { setShowAccountSwitcher(false); authAPI.me().then(setUser); }}
-        onAddAccount={() => router.push('/(auth)/login' as any)}
+        onAddAccount={async () => {
+          setShowAccountSwitcher(false);
+          // Establecer flag para evitar que _layout.tsx haga redirect automático
+          await AsyncStorage.setItem('egchat_adding_account', '1').catch(() => {});
+          setTimeout(() => router.push('/(auth)/login' as any), 300);
+        }}
       />
       <DraggableHomeButton />
     </SafeAreaView>
@@ -419,7 +434,7 @@ const styles = StyleSheet.create({
 
 export default function AjustesScreen() {
   return (
-    <TabErrorBoundary tabName="Ajustes">
+    <TabErrorBoundary tabName={tr('settings')}>
       <AjustesScreenInner />
     </TabErrorBoundary>
   );

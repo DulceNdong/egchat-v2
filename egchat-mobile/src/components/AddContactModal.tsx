@@ -5,6 +5,7 @@ import {
   Modal, StyleSheet, ActivityIndicator, SafeAreaView,
 } from 'react-native';
 import { Avatar } from './Avatar';
+import { t as tr } from '../translations';
 
 interface AddContactModalProps {
   visible: boolean;
@@ -45,7 +46,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
         .filter((u: any) => u.id?.toString() !== currentUserId && !existingIds.has(u.id?.toString()))
         .map((u: any) => ({
           id: u.id?.toString() || '',
-          full_name: u.full_name || 'Usuario',
+          full_name: u.full_name || tr('setUser'),
           phone: u.phone || '',
           avatar_url: u.avatar_url || '',
         }));
@@ -98,7 +99,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
   );
 
   const TABS: { id: Tab; label: string }[] = [
-    { id: 'number', label: '📞 Teléfono' },
+    { id: 'number', label: tr('xtTelefono') },
     { id: 'qr', label: '📷 QR' },
     { id: 'repertorio', label: '👥 Repertorio' },
   ];
@@ -108,7 +109,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
       <SafeAreaView style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Añadir Contacto</Text>
+          <Text style={styles.headerTitle}>{tr('ctsAddContactTitle')}</Text>
           <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
             <Text style={styles.closeBtnText}>✕</Text>
           </TouchableOpacity>
@@ -130,16 +131,16 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
         {/* Tab: Teléfono */}
         {tab === 'number' && (
           <View style={styles.content}>
-            <Text style={styles.label}>Nombre del contacto</Text>
+            <Text style={styles.label}>{tr('xtNombreDelContacto')}</Text>
             <TextInput
               style={styles.input}
               value={contactName}
               onChangeText={setContactName}
-              placeholder="Nombre del contacto"
+              placeholder={tr('xtNombreDelContacto')}
               placeholderTextColor="#9CA3AF"
             />
 
-            <Text style={styles.label}>Número de teléfono</Text>
+            <Text style={styles.label}>{tr('kyPhoneNumber')}</Text>
             <View style={styles.phoneRow}>
               <View style={styles.prefix}>
                 <Text style={styles.prefixText}>+240</Text>
@@ -148,7 +149,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
                 style={[styles.input, { flex: 1 }]}
                 value={phoneNumber}
                 onChangeText={setPhoneNumber}
-                placeholder="Número de teléfono"
+                placeholder={tr('kyPhoneNumber')}
                 placeholderTextColor="#9CA3AF"
                 keyboardType="phone-pad"
               />
@@ -159,7 +160,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
               onPress={handleAddByPhone}
               disabled={phoneNumber.trim().length < 6}
             >
-              <Text style={styles.btnPrimaryText}>Añadir contacto</Text>
+              <Text style={styles.btnPrimaryText}>{tr('ctsAddContact')}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -168,10 +169,10 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
         {tab === 'qr' && (
           <View style={[styles.content, styles.center]}>
             <Text style={styles.qrIcon}>📷</Text>
-            <Text style={styles.qrTitle}>Escanear código QR</Text>
-            <Text style={styles.qrSub}>Usa el escáner QR de la app para agregar un contacto</Text>
+            <Text style={styles.qrTitle}>{tr('xtEscanearCodigoQR')}</Text>
+            <Text style={styles.qrSub}>{tr('ctsUseQrToAdd')}</Text>
             <TouchableOpacity style={styles.btnPrimary} onPress={onClose}>
-              <Text style={styles.btnPrimaryText}>Abrir escáner QR</Text>
+              <Text style={styles.btnPrimaryText}>{tr('xtAbrirEscanerQR')}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -183,7 +184,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
               style={[styles.input, styles.searchInput]}
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholder="Buscar por nombre o teléfono..."
+              placeholder={tr('chtNcBuscarNombreTelefono')}
               placeholderTextColor="#9CA3AF"
             />
 
@@ -218,7 +219,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
                 ListEmptyComponent={
                   <View style={styles.center}>
                     <Text style={styles.emptyText}>
-                      {searchQuery ? 'No se encontraron usuarios' : 'No hay usuarios disponibles'}
+                      {searchQuery ? 'No se encontraron usuarios' : tr('xtNoHayUsuariosDisponibles')}
                     </Text>
                   </View>
                 }

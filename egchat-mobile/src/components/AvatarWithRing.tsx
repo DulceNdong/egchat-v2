@@ -7,7 +7,7 @@
 //   🔴 Rojo    → live activo (parpadeante)
 // ══════════════════════════════════════════════════════════════════
 import React, { useEffect, useRef } from 'react';
-import { View, Animated, StyleSheet } from 'react-native';
+import { View, Animated, StyleSheet, TouchableOpacity } from 'react-native';
 import { EGAvatar } from './ui';
 import type { ContentType } from '../hooks/useNewContentIndicators';
 
@@ -36,7 +36,7 @@ function getRingLabel(types: ContentType[]): string | null {
   return null;
 }
 
-export function AvatarWithRing({ src, name, size, contentTypes = [] }: Props) {
+export function AvatarWithRing({ src, name, size, contentTypes = [], onPress }: Props) {
   const ringColor = getRingColor(contentTypes);
   const isLive    = contentTypes.includes('live');
 
@@ -63,11 +63,16 @@ export function AvatarWithRing({ src, name, size, contentTypes = [] }: Props) {
   const total  = size + (gap + border) * 2;
 
   if (!ringColor) {
-    return <EGAvatar src={src} name={name} size={size} />;
+    return (
+      <TouchableOpacity onPress={onPress} activeOpacity={0.85} disabled={!onPress}>
+        <EGAvatar src={src} name={name} size={size} />
+      </TouchableOpacity>
+    );
   }
 
   return (
-    <View style={{ width: total, height: total, alignItems: 'center', justifyContent: 'center' }}>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.85} disabled={!onPress}>
+      <View style={{ width: total, height: total, alignItems: 'center', justifyContent: 'center' }}>
       {/* Anillo exterior */}
       <Animated.View
         style={[
@@ -90,6 +95,7 @@ export function AvatarWithRing({ src, name, size, contentTypes = [] }: Props) {
         </View>
       )}
     </View>
+    </TouchableOpacity>
   );
 }
 

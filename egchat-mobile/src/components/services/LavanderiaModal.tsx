@@ -1,15 +1,18 @@
 import React from 'react';
+import { useTranslation } from '../../context/LanguageContext';
 import { View, Text, TouchableOpacity, StyleSheet, Linking } from 'react-native';
 import { LAUNDRY } from '../../data/serviciosDiarios';
 import { FinancialModuleShell } from './FinancialModuleUI';
 
 interface Props { visible: boolean; onClose: () => void; }
 
-export const LavanderiaModal: React.FC<Props> = ({ visible, onClose }) => (
+export const LavanderiaModal: React.FC<Props> = ({ visible, onClose }) => {
+  const { t } = useTranslation();
+  return (
   <FinancialModuleShell
     visible={visible}
-    title="Lavandería"
-    subtitle="Servicios de lavado en Guinea Ecuatorial"
+    title={t('laundry')}
+    subtitle={t('svcLaundrySubtitle')}
     onBack={onClose}
     onClose={onClose}
     centerTitle
@@ -29,7 +32,8 @@ export const LavanderiaModal: React.FC<Props> = ({ visible, onClose }) => (
       </View>
     ))}
   </FinancialModuleShell>
-);
+  );
+};
 
 const st = StyleSheet.create({
   card: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: '#F0F2F5' },

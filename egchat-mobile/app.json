@@ -1,30 +1,81 @@
 {
   "expo": {
     "name": "EGCHAT",
-    "slug": "egchat-mobile",
+    "slug": "egchat",
+    "owner": "reddington120s-organization",
     "version": "1.0.0",
-    "privacy": "public",
     "orientation": "portrait",
+    "updates": {
+      "enabled": true,
+      "url": "https://u.expo.dev/6ec282e1-bbe9-4f66-98ba-8ece54592e47"
+    },
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "com.jallzstores.egchat",
-      "appleTeamId": "XU6YD7ZJ2K",
       "supportsTablet": false,
-      "buildNumber": "145",
-      "config": {
-        "usesNonExemptEncryption": false
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "entitlements": {
+        "com.apple.developer.associated-domains": [
+          "applinks:egchat-app.vercel.app"
+        ],
+        "aps-environment": "production",
+        "com.apple.developer.usernotifications.communication": true
       },
       "infoPlist": {
-        "NSCameraUsageDescription": "EGCHAT necesita acceso a la cámara para fotos de perfil y videollamadas.",
-        "NSMicrophoneUsageDescription": "EGCHAT necesita acceso al micrófono para llamadas de voz y video.",
-        "NSLocationWhenInUseUsageDescription": "EGCHAT necesita tu ubicación para servicios de taxi y mapas.",
-        "NSPhotoLibraryUsageDescription": "EGCHAT necesita acceso a tus fotos para compartir imágenes en chats.",
-        "NSPhotoLibraryAddUsageDescription": "EGCHAT necesita permiso para guardar fotos en tu galería."
-      }
+        "UIBackgroundModes": [
+          "audio",
+          "fetch",
+          "remote-notification",
+          "voip",
+          "processing",
+          "audio",
+          "fetch",
+          "remote-notification",
+          "voip",
+          "processing",
+          "audio",
+          "fetch",
+          "remote-notification",
+          "voip",
+          "processing",
+          "audio",
+          "fetch",
+          "remote-notification",
+          "voip",
+          "processing"
+        ],
+        "BGTaskSchedulerPermittedIdentifiers": [
+          "com.jallzstores.egchat.refresh",
+          "com.jallzstores.egchat.refresh",
+          "com.jallzstores.egchat.refresh",
+          "com.jallzstores.egchat.refresh"
+        ],
+        "NSSupportsLiveActivities": true,
+        "NSSupportsLiveActivitiesFrequentUpdates": true,
+        "NSCameraUsageDescription": "EGCHAT necesita la cámara para el streaming en vivo.",
+        "NSMicrophoneUsageDescription": "EGCHAT necesita el micrófono para el streaming en vivo.",
+        "NSPhotoLibraryUsageDescription": "EGCHAT necesita acceso a tus fotos y videos para enviarlos en el chat.",
+        "NSPhotoLibraryAddUsageDescription": "EGCHAT necesita permiso para guardar fotos y videos en tu galería.",
+        "NSContactsUsageDescription": "EGCHAT necesita acceso a tus contactos para compartirlos y encontrar amigos.",
+        "NSLocationWhenInUseUsageDescription": "EGCHAT necesita tu ubicación para compartirla en chats y usar servicios cercanos.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "EGCHAT necesita tu ubicación para servicios como MiTaxi y ubicación en vivo.",
+        "NSDocumentsFolderUsageDescription": "EGCHAT necesita acceso a documentos para enviarlos en el chat.",
+        "NSLocalNetworkUsageDescription": "EGCHAT necesita acceder a la red local para conectar con el servidor de desarrollo en tu Mac.",
+        "NSFaceIDUsageDescription": "EGCHAT usa Face ID para verificar tu identidad al acceder a datos protegidos.",
+        "NSBonjourServices": [
+          "_expo._tcp",
+          "_expo._tcp",
+          "_expo._tcp",
+          "_expo._tcp"
+        ],
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "buildNumber": "146"
     },
     "android": {
       "package": "com.egchat.app",
+      "versionCode": 132,
       "permissions": [
         "CAMERA",
         "RECORD_AUDIO",
@@ -33,41 +84,80 @@
         "VIBRATE",
         "USE_FULL_SCREEN_INTENT",
         "POST_NOTIFICATIONS",
+        "READ_CONTACTS",
+        "READ_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES",
+        "READ_MEDIA_VIDEO",
+        "READ_MEDIA_AUDIO",
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",
         "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION"
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.READ_CONTACTS",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_AUDIO",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION"
       ],
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyB1VKzNGKOOI99QR9r_RIU1qRIo_f_H0Zw"
+        }
+      },
+      "jsEngine": "hermes",
+      "softwareKeyboardLayoutMode": "resize",
+      "edgeToEdgeEnabled": false
     },
     "plugins": [
       "expo-router",
+      "./plugins/withPushKit",
+      "./plugins/withShareExtension",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "defaultChannel": "egchat-messages",
+          "sounds": [
+            "./assets/notification.wav"
+          ],
+          "iosDisplayInForeground": false
+        }
+      ],
       [
         "expo-camera",
         {
-          "cameraPermission": "EGCHAT necesita la camara para fotos de perfil."
+          "cameraPermission": "EGCHAT necesita la cámara para fotos, videollamadas y escanear QR.",
+          "microphonePermission": "EGCHAT necesita el micrófono para llamadas de voz y video.",
+          "recordAudioAndroid": true
         }
       ],
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "EGCHAT necesita tu ubicacion para servicios de taxi."
-        }
-      ],
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/notification-icon.png",
-          "color": "#00c8a0",
-          "defaultChannel": "egchat-messages",
-          "sounds": [
-            "./assets/notification.wav"
-          ]
+          "locationAlwaysAndWhenInUsePermission": "EGCHAT necesita tu ubicación para compartirla en chats y usar servicios como MiTaxi.",
+          "locationWhenInUsePermission": "EGCHAT necesita tu ubicación para compartirla en chats y usar servicios cercanos.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true
         }
       ],
       "expo-secure-store",
-      "./plugins/withVoIPModules.js",
-      "./plugins/withNotificationServiceExtension.js"
+      [
+        "expo-task-manager",
+        {}
+      ],
+      "./plugins/withNotificationServiceExtension.js",
+      [
+        "react-native-vision-camera",
+        {
+          "cameraPermissionText": "EGCHAT necesita la cámara para el streaming en vivo.",
+          "enableMicrophonePermission": true,
+          "microphonePermissionText": "EGCHAT necesita el micrófono para el streaming en vivo."
+        }
+      ]
     ],
     "platforms": [
       "ios",
@@ -80,15 +170,14 @@
     },
     "scheme": "egchat",
     "extra": {
-      "apiUrl": "https://chat2-0x2c.onrender.com",
+      "apiUrl": "https://egchat-api-xlxj.onrender.com",
       "router": {
         "origin": false
       },
       "eas": {
-        "projectId": "0ebb7958-d09b-4590-a7b7-80977a62b642"
+        "projectId": "6ec282e1-bbe9-4f66-98ba-8ece54592e47"
       }
     },
-    "owner": "reddington120",
     "runtimeVersion": "1.0.0"
   }
 }

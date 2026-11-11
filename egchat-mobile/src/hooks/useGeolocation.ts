@@ -4,6 +4,7 @@
  */
 import { useEffect, useState } from 'react';
 import * as Location from 'expo-location';
+import { t as tr } from '../translations';
 
 interface LocationData {
   latitude: number;
@@ -38,7 +39,7 @@ export const useGeolocation = (): UseGeolocationReturn => {
                address.subregion || 
                address.region || 
                address.country || 
-               'Mi ciudad';
+               tr('xtMiCiudad');
       }
       
       // Fallback usando OpenStreetMap como backup
@@ -51,9 +52,9 @@ export const useGeolocation = (): UseGeolocationReturn => {
              data?.address?.town || 
              data?.address?.village || 
              data?.address?.county || 
-             'Mi ciudad';
+             tr('xtMiCiudad');
     } catch {
-      return 'Mi ciudad';
+      return tr('xtMiCiudad');
     }
   };
 
@@ -65,7 +66,7 @@ export const useGeolocation = (): UseGeolocationReturn => {
       // Pedir permisos
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        throw new Error('Permiso de ubicación denegado');
+        throw new Error(tr('xtPermisoDeUbicacionDenegado2'));
       }
 
       // Obtener ubicación actual
@@ -80,7 +81,7 @@ export const useGeolocation = (): UseGeolocationReturn => {
 
       setLocation({ latitude, longitude, city });
     } catch (err: any) {
-      setError(err.message || 'Error obteniendo ubicación');
+      setError(err.message || tr('xtErrorObteniendoUbicacion'));
       console.log('Error de geolocalización:', err);
     } finally {
       setLoading(false);

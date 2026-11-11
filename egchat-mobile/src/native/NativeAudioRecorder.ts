@@ -11,6 +11,7 @@
  *   const { uri, duration } = await rec.stop();
  */
 import { NativeModules, Platform } from 'react-native';
+import { t as tr } from '../translations';
 
 const { EGChatAudioRecorder } = NativeModules;
 const isNativeAvailable = !!EGChatAudioRecorder && Platform.OS !== 'web';
@@ -25,12 +26,12 @@ export const NativeAudioRecorder = {
   isAvailable: isNativeAvailable,
 
   async start(): Promise<{ path: string; recording: boolean }> {
-    if (!isNativeAvailable) throw new Error('Módulo nativo no disponible');
+    if (!isNativeAvailable) throw new Error(tr('xtModuloNativoNoDisponible'));
     return EGChatAudioRecorder.startRecording();
   },
 
   async stop(): Promise<RecordingResult> {
-    if (!isNativeAvailable) throw new Error('Módulo nativo no disponible');
+    if (!isNativeAvailable) throw new Error(tr('xtModuloNativoNoDisponible'));
     return EGChatAudioRecorder.stopRecording();
   },
 

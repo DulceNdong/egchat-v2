@@ -16,6 +16,7 @@ import {
   loadKycDraftLocal, saveKycDraftLocal,
   validateStep3, submitKyc,
 } from '../src/services/kyc';
+import { useTranslation } from '../src/context/LanguageContext';
 
 // ── Barra de progreso ─────────────────────────────────────────────
 const KycProgressBar = ({ step }: { step: number }) => (
@@ -36,6 +37,7 @@ const SummaryRow = ({ label, value }: { label: string; value: string }) => (
 
 // ══════════════════════════════════════════════════════════════════
 export default function KycStep3() {
+  const { t } = useTranslation();
   const [form, setForm]       = useState<KycFormData>({} as KycFormData);
   const [error, setError]     = useState('');
   const [loadingPick, setLoadingPick] = useState(false);
@@ -60,15 +62,15 @@ export default function KycStep3() {
 
   const pickSelfie = async () => {
     Alert.alert(
-      'Foto selfie',
-      'Mira directamente a la cámara con buena iluminación y sin gafas ni sombrero.',
+      t('kySelfiePhoto'),
+      t('kySelfieAlertBody'),
       [
         {
-          text: '📷 Cámara (recomendado)',
+          text: t('kyCameraRecommended'),
           onPress: async () => {
             const { status } = await ImagePicker.requestCameraPermissionsAsync();
             if (status !== 'granted') {
-              Alert.alert('Permiso necesario', 'Necesitamos acceso a la cámara frontal para la selfie.');
+              Alert.alert(t('setPermissionNeeded'), t('kyFrontCameraBody'));
               return;
             }
             setLoadingPick(true);
@@ -86,7 +88,7 @@ export default function KycStep3() {
           },
         },
         {
-          text: '🖼️ Galería',
+          text: t('kyGalleryOption'),
           onPress: async () => {
             const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
             if (status !== 'granted') return;
@@ -103,7 +105,7 @@ export default function KycStep3() {
             }
           },
         },
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
       ]
     );
   };
@@ -114,12 +116,12 @@ export default function KycStep3() {
     if (err) { setError(err); return; }
 
     Alert.alert(
-      'Confirmar envío',
-      '¿Estás seguro de que todos tus datos son correctos? Una vez enviada, la solicitud será revisada por nuestro equipo.',
+      t('kyConfirmSendTitle'),
+      t('kyConfirmSendBody'),
       [
-        { text: 'Revisar', style: 'cancel' },
+        { text: t('kyReview'), style: 'cancel' },
         {
-          text: 'Enviar solicitud',
+          text: t('kySendRequest'),
           style: 'default',
           onPress: async () => {
             setSubmitting(true);
@@ -158,27 +160,27 @@ export default function KycStep3() {
             >
               <Text style={{ fontSize: 48 }}>✅</Text>
             </LinearGradient>
-            <Text style={st.successTitle}>¡Solicitud enviada!</Text>
+            <Text style={st.successTitle}>{t('kyRequestSentTitle')}</Text>
             <Text style={st.successSub}>
-              Hemos recibido tu verificación de identidad.{'\n'}
-              Nuestro equipo la revisará en{' '}
-              <Text style={{ color: '#00C8A0', fontWeight: '700' }}>24-48 horas hábiles</Text>.
+              {t('kyRequestSentBody')}{'\n'}
+              {t('kyRequestReviewedIn')}{' '}
+              <Text style={{ color: '#00C8A0', fontWeight: '700' }}>{t('kyBusinessHours')}</Text>.
             </Text>
             <View style={st.successSteps}>
               {[
-                { icon: '📧', text: 'Recibirás una notificación con el resultado' },
-                { icon: '🏦', text: 'Revisión por equipo autorizado BANGE' },
-                { icon: '🚀', text: 'Al aprobarse, tu monedero queda activo' },
+                { icon: '📧', textKey: 'kySuccessStepNotify' },
+                { icon: '🏦', textKey: 'kySuccessStepBankReview' },
+                { icon: '🚀', textKey: 'kySuccessStepWalletActive' },
               ].map((s, i) => (
                 <View key={i} style={st.successStep}>
                   <Text style={{ fontSize: 20 }}>{s.icon}</Text>
-                  <Text style={st.successStepText}>{s.text}</Text>
+                  <Text style={st.successStepText}>{t(s.textKey)}</Text>
                 </View>
               ))}
             </View>
             <TouchableOpacity style={st.goHomeBtn} onPress={goHome} activeOpacity={0.88}>
               <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={st.goHomeBtnGrad}>
-                <Text style={st.goHomeBtnText}>Ir a EGChat →</Text>
+                <Text style={st.goHomeBtnText}>{t('kyGoToEgchat')}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </Animated.View>
@@ -200,8 +202,8 @@ export default function KycStep3() {
             </Svg>
           </TouchableOpacity>
           <View style={st.headerCenter}>
-            <Text style={st.headerTitle}>Selfie de Verificación</Text>
-            <Text style={st.headerSub}>Paso 3 de 3 · Último paso</Text>
+            <Text style={st.headerTitle}>{t('kySelfieVerification')}</Text>
+            <Text style={st.headerSub}>{`${t('kyStep')} 3 ${t('of')} 3`} · {t('kyLastStep')}</Text>
           </View>
           <View style={{ width: 36 }}/>
         </View>
@@ -214,20 +216,18 @@ export default function KycStep3() {
         >
           {/* Instrucciones selfie */}
           <View style={st.selfieInstructions}>
-            <Text style={st.sectionTitle}>Tu selfie de verificación</Text>
-            <Text style={st.sectionSub}>
-              Mira directamente a la cámara frontal. Asegúrate de que tu cara sea claramente visible.
-            </Text>
+            <Text style={st.sectionTitle}>{t('kyYourSelfieTitle')}</Text>
+            <Text style={st.sectionSub}>{t('kyYourSelfieSub')}</Text>
             <View style={st.selfieRulesRow}>
               {[
-                { emoji: '✅', text: 'Cara visible' },
-                { emoji: '✅', text: 'Buena luz' },
-                { emoji: '❌', text: 'Sin gafas' },
-                { emoji: '❌', text: 'Sin sombrero' },
+                { emoji: '✅', textKey: 'kyRuleFaceVisible' },
+                { emoji: '✅', textKey: 'kyRuleGoodLight' },
+                { emoji: '❌', textKey: 'kyRuleNoGlasses' },
+                { emoji: '❌', textKey: 'kyRuleNoHat' },
               ].map((r, i) => (
                 <View key={i} style={st.selfieRule}>
                   <Text style={st.selfieRuleEmoji}>{r.emoji}</Text>
-                  <Text style={st.selfieRuleText}>{r.text}</Text>
+                  <Text style={st.selfieRuleText}>{t(r.textKey)}</Text>
                 </View>
               ))}
             </View>
@@ -249,16 +249,16 @@ export default function KycStep3() {
                   <Text style={{ color: '#fff', fontSize: 16, fontWeight: '800' }}>✓</Text>
                 </View>
                 <View style={st.selfieRetake}>
-                  <Text style={st.selfieRetakeText}>📷 Tomar otra selfie</Text>
+                  <Text style={st.selfieRetakeText}>{t('kyTakeAnotherSelfie')}</Text>
                 </View>
               </>
             ) : (
               <View style={st.selfiePlaceholder}>
                 <Text style={{ fontSize: 56 }}>🤳</Text>
-                <Text style={st.selfieLabel}>Toca para tomar selfie</Text>
-                <Text style={st.selfieSub}>Usa la cámara frontal</Text>
+                <Text style={st.selfieLabel}>{t('kyTapForSelfie')}</Text>
+                <Text style={st.selfieSub}>{t('kyUseFrontCamera')}</Text>
                 <View style={st.selfiePickBtn}>
-                  <Text style={st.selfiePickBtnText}>📷 Abrir cámara frontal</Text>
+                  <Text style={st.selfiePickBtnText}>{t('kyOpenFrontCamera')}</Text>
                 </View>
               </View>
             )}
@@ -266,20 +266,20 @@ export default function KycStep3() {
 
           {/* Resumen de datos para revisión */}
           <View style={st.summaryBox}>
-            <Text style={st.summaryTitle}>📋 Resumen de tu solicitud</Text>
-            <SummaryRow label="Nombre"      value={form.full_name || ''} />
-            <SummaryRow label="Nacimiento"  value={form.birth_date || ''} />
-            <SummaryRow label="Nacionalidad" value={form.nationality || ''} />
-            <SummaryRow label="Documento"   value={`${form.doc_type?.toUpperCase() || ''} · ${form.doc_number || ''}`} />
-            <SummaryRow label="Documento ✓" value={form.doc_front_uri ? 'Adjuntado' : '—'} />
-            <SummaryRow label="Selfie ✓"    value={form.selfie_uri ? 'Lista' : 'Pendiente'} />
+            <Text style={st.summaryTitle}>{t('kyYourRequestSummary')}</Text>
+            <SummaryRow label={t('nameField')}      value={form.full_name || ''} />
+            <SummaryRow label={t('kyBirth')}  value={form.birth_date || ''} />
+            <SummaryRow label={t('kyNationality')} value={form.nationality || ''} />
+            <SummaryRow label={t('liaAttachDocument')}   value={`${form.doc_type?.toUpperCase() || ''} · ${form.doc_number || ''}`} />
+            <SummaryRow label={t('kyDocumentCheck')} value={form.doc_front_uri ? t('kyAttached') : '—'} />
+            <SummaryRow label={t('kySelfieCheck')}    value={form.selfie_uri ? t('kyReady') : t('kyPending')} />
           </View>
 
           {/* Estado de subida */}
           {submitting && (
             <View style={st.progressBox}>
               <ActivityIndicator color="#00C8A0" size="small"/>
-              <Text style={st.progressText}>{progressMsg || 'Procesando…'}</Text>
+              <Text style={st.progressText}>{progressMsg || t('kyProcessingEllipsis')}</Text>
             </View>
           )}
 
@@ -293,10 +293,9 @@ export default function KycStep3() {
           {/* Aviso legal */}
           <View style={st.legalBox}>
             <Text style={st.legalText}>
-              Al enviar confirmas que los datos son verdaderos y autorizas el tratamiento
-              de tus datos personales conforme al{' '}
-              <Text style={st.legalBold}>Reglamento COBAC R-2023/01</Text>{' '}
-              y la <Text style={st.legalBold}>Ley N°2/2008</Text>.
+              {t('kyLegalBefore')}{' '}
+              <Text style={st.legalBold}>{t('kyLegalCobac')}</Text>{' '}
+              {t('kyLegalMiddle')} <Text style={st.legalBold}>{t('kyLegalLaw')}</Text>.
             </Text>
           </View>
 
@@ -315,7 +314,7 @@ export default function KycStep3() {
               {submitting ? (
                 <ActivityIndicator color="#fff"/>
               ) : (
-                <Text style={st.submitBtnText}>📤 Enviar solicitud KYC</Text>
+                <Text style={st.submitBtnText}>{t('kySendKycRequest')}</Text>
               )}
             </LinearGradient>
           </TouchableOpacity>

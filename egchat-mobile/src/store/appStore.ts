@@ -6,8 +6,11 @@
  *
  * Patrón: módulo singleton con listeners → cero dependencias externas.
  */
-import type { WeatherCondition } from '../components/EGChatHeader';
 import { Platform } from 'react-native';
+import { t as tr } from '../translations';
+
+// Tipo definido aquí para evitar ciclo de importación con EGChatHeader
+export type WeatherCondition = 'sunny' | 'cloudy' | 'rain';
 
 // Importar expo-location solo para plataformas nativas
 let Location: any = null;
@@ -22,12 +25,21 @@ if (Platform.OS !== 'web') {
 // ── Tipos ─────────────────────────────────────────────────────────
 export interface AppNotification {
   id: string;
-  type: 'message' | 'call' | 'system' | 'payment';
+  type: 'message' | 'call' | 'system' | 'payment' | 'story' | 'moment' | 'live';
   title: string;
   body: string;
   time: string;
   read: boolean;
   chatId?: string;
+  /** Para notificaciones de llamada: navegar al historial o devolver llamada */
+  callId?: string;
+  targetUserId?: string;
+  callType?: 'audio' | 'video';
+  liveId?: string;
+  storyId?: string;
+  momentId?: string;
+  /** Miniatura del media subido (story/moment) — si existe se muestra en vez del icono */
+  imageUrl?: string;
 }
 
 export interface WeatherState {
@@ -46,7 +58,7 @@ export interface AppState {
 const state: AppState = {
   weather: {
     temp: 24,
-    city: 'Detectando ubicación...',
+    city: tr('xtDetectandoUbicacion'),
     condition: 'cloudy',
     fetchedAt: 0,
   },
@@ -54,17 +66,17 @@ const state: AppState = {
     {
       id: 'welcome',
       type: 'system',
-      title: '💬 Bienvenido a EGCHAT',
-      body: 'Tu cuenta está activa y lista para usar',
-      time: 'Ahora',
+      get title() { return tr('sysWelcomeTitle'); },
+      get body() { return tr('sysWelcomeBody'); },
+      get time() { return tr('sysNow'); },
       read: false,
     },
     {
       id: 'e2e',
       type: 'system',
-      title: '🔒 Cifrado E2E activado',
-      body: 'Todos tus mensajes están cifrados',
-      time: 'Hoy',
+      get title() { return tr('sysE2eTitle'); },
+      get body() { return tr('sysE2eBody'); },
+      get time() { return tr('sysToday'); },
       read: false,
     },
   ],
@@ -203,7 +215,7 @@ const getCityName = async (latitude: number, longitude: number): Promise<string>
                           address.subregion || 
                           address.region || 
                           address.country || 
-                          'Ciudad desconocida';
+                          tr('xtCiudadDesconocida');
         console.log('[Geolocation] Ciudad detectada con Expo:', detectedCityName);
       }
     }
@@ -219,7 +231,7 @@ const getCityName = async (latitude: number, longitude: number): Promise<string>
                         data?.address?.town || 
                         data?.address?.village || 
                         data?.address?.county || 
-                        'Ciudad desconocida';
+                        tr('xtCiudadDesconocida');
       
       console.log('[Geolocation] Ciudad detectada con OpenStreetMap:', detectedCityName, 'para coordenadas:', latitude, longitude);
     }
@@ -301,7 +313,7 @@ export const initializeLocation = async () => {
       // Pedir permisos
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        throw new Error('Permiso de ubicación denegado');
+        throw new Error(tr('xtPermisoDeUbicacionDenegado2'));
       }
 
       // Obtener ubicación actual
@@ -349,10 +361,15 @@ export const addNotification = (n: Omit<AppNotification, 'id' | 'time' | 'read'>
     time: 'Ahora',
     read: false,
   };
-  // Evitar duplicados por chatId+mensaje reciente (ventana 5s)
-  const dup = state.notifications.find(
-    x => x.chatId === notif.chatId && Date.now() - parseInt(x.id.split('-')[0] || '0') < 5000,
-  );
+  // Evitar duplicados: por chatId (ventana 5s) para mensajes; por targetUserId+type (ventana 60s) para story/moment/live
+  const dup = notif.chatId != null
+    ? state.notifications.find(
+        x => x.chatId === notif.chatId && Date.now() - parseInt(x.id.split('-')[0] || '0') < 5000,
+      )
+    : state.notifications.find(
+        x => x.targetUserId === notif.targetUserId && x.type === notif.type &&
+             Date.now() - parseInt(x.id.split('-')[0] || '0') < 60000,
+      );
   if (dup) return;
 
   state.notifications = [notif, ...state.notifications].slice(0, 50); // máx 50

@@ -13,7 +13,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet,
   TextInput, ActivityIndicator, RefreshControl,
   ScrollView, Image, Platform, Alert, Modal, Pressable,
-  FlatList, KeyboardAvoidingView, Animated, Dimensions, PanResponder,
+  FlatList, KeyboardAvoidingView,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 
@@ -41,7 +41,7 @@ import { markAllRead, clearAllNotifications, removeNotification, markNotificatio
 import { haptics } from '../../src/hooks/useHaptics';
 import { useOffline } from '../../src/hooks/useOffline';
 import { EGAvatar } from '../../src/components/ui';
-import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification } from '../../src/components/HeaderPanels';
+import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification, handleNotifNavigation } from '../../src/components/HeaderPanels';
 import { EGChatHeader } from '../../src/components/EGChatHeader';
 import { SpinningLogo } from '../../src/components/SpinningLogo';
 import { DraggableHomeButton } from '../../src/components/DraggableHomeButton';
@@ -54,10 +54,12 @@ import {
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
 import { useFont } from '../../src/context/FontContext';
+import { useTranslation } from '../../src/context/LanguageContext';
 import { ChatListSkeleton } from '../../src/components/chat/ChatSkeleton';
 import { CreateGroupModal } from '../../src/components/chat/CreateGroupModal';
 import { syncPhoneContacts } from '../../src/services/contactSync';
 import SessionManager from '../../src/sessionManager';
+import { t as tr } from '../../src/translations';
 
 // ── Tipos ─────────────────────────────────────────────────────────
 interface Chat {
@@ -78,21 +80,50 @@ interface Chat {
   updated_at: string;
 }
 
+// Los chats archivados se guardan sin todos los campos de Chat: al leerlos se
+// completan con valores por defecto para que la lista no reciba undefined.
+const toChat = (a: ArchivedChat): Chat => {
+  const last = a.last_message as
+    | { text?: string; type?: string; created_at?: string; sender_id?: string }
+    | undefined;
+  return {
+    id: a.id,
+    type: a.type === 'group' || a.isGroup ? 'group' : 'private',
+    name: a.name ?? a.title,
+    avatar_url: a.avatar_url ?? a.avatarUrl,
+    participants: (a.participants as Chat['participants'] | undefined) ?? [],
+    last_message: last
+      ? {
+        text: last.text,
+        type: last.type ?? 'text',
+        created_at: last.created_at ?? '',
+        sender_id: last.sender_id ?? '',
+      }
+      : undefined,
+    unread_count: a.unread_count ?? 0,
+    updated_at: a.updated_at ?? '',
+  };
+};
+
 type FilterType = 'individual' | 'grupos' | 'dinero' | 'archivar';
 type ArchiveSubFilter = 'individual' | 'group';
 type GroupSubFilter = 'all' | 'normal' | 'djangue';
 
 // ── Helpers ───────────────────────────────────────────────────────
-const formatTime = (dateStr: string) => {
+const localeForLanguage = (language?: string) =>
+  language === 'fr' ? 'fr-FR' : language === 'en' ? 'en-US' : language === 'pt' ? 'pt-PT' : 'es-ES';
+
+const formatTime = (dateStr: string, language: string, t: (key: string) => string) => {
   if (!dateStr) return '';
+  const locale = localeForLanguage(language);
   const date = new Date(dateStr);
   const now = new Date();
   if (date.toDateString() === now.toDateString())
-    return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
   const yesterday = new Date(now);
   yesterday.setDate(yesterday.getDate() - 1);
-  if (date.toDateString() === yesterday.toDateString()) return 'Ayer';
-  return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+  if (date.toDateString() === yesterday.toDateString()) return t('msgYesterday');
+  return date.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
 };
 
 type LastMsgInfo = { icon: 'phone-missed' | 'money' | 'image' | 'video' | 'audio' | 'file' | 'location' | 'contact' | 'call-out' | 'video-call' | null; label: string };
@@ -101,25 +132,25 @@ type LastMsgInfo = { icon: 'phone-missed' | 'money' | 'image' | 'video' | 'audio
 const stripEmojis = (s: string) =>
   s.replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FEFF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FAFF}]/gu, '').trim();
 
-const getLastMessageInfo = (msg?: Chat['last_message']): LastMsgInfo => {
-  if (!msg) return { icon: null, label: 'Sin mensajes' };
+const getLastMessageInfo = (msg: Chat['last_message'] | undefined, t: (key: string) => string): LastMsgInfo => {
+  if (!msg) return { icon: null, label: t('msgNoMessages') };
   const txt = msg.text || '';
-  if (txt.includes('Llamada perdida')) return { icon: 'phone-missed', label: 'Llamada perdida' };
+  if (txt.includes('Llamada perdida')) return { icon: 'phone-missed', label: t('msgMissedCall') };
   if (txt.includes('VideoLlamada') || txt.includes('Videollamada') || txt.includes('video') && txt.includes('aliente'))
-    return { icon: 'video-call', label: stripEmojis(txt).replace(/videollamada/gi, 'Videollamada') || 'Videollamada saliente' };
+    return { icon: 'video-call', label: stripEmojis(txt).replace(/videollamada/gi, 'Videollamada') || t('msgVideoCallOutgoing') };
   if (txt.includes('Llamada') || txt.toLowerCase().includes('llamada'))
-    return { icon: 'call-out', label: stripEmojis(txt) || 'Llamada' };
-  if (txt.includes('Transferencia') || txt.includes('💸')) return { icon: 'money', label: 'Transferencia' };
-  if (msg.type === 'image' || txt.startsWith('📷')) return { icon: 'image', label: 'Foto' };
-  if (msg.type === 'video' || txt.startsWith('🎥')) return { icon: 'video', label: 'Video' };
-  if (msg.type === 'audio' || txt.startsWith('🎵')) return { icon: 'audio', label: 'Audio' };
-  if (msg.type === 'file' || txt.startsWith('📄') || txt.startsWith('📁')) return { icon: 'file', label: 'Archivo' };
-  if (msg.type === 'location' || txt.startsWith('📍')) return { icon: 'location', label: 'Ubicación' };
+    return { icon: 'call-out', label: stripEmojis(txt) || t('msgCall') };
+  if (txt.includes('Transferencia') || txt.includes('💸')) return { icon: 'money', label: t('msgTransfer') };
+  if (msg.type === 'image' || txt.startsWith('📷')) return { icon: 'image', label: t('msgPhoto') };
+  if (msg.type === 'video' || txt.startsWith('🎥')) return { icon: 'video', label: t('msgVideo') };
+  if (msg.type === 'audio' || txt.startsWith('🎵')) return { icon: 'audio', label: t('msgAudio') };
+  if (msg.type === 'file' || txt.startsWith('📄') || txt.startsWith('📁')) return { icon: 'file', label: t('msgFile') };
+  if (msg.type === 'location' || txt.startsWith('📍')) return { icon: 'location', label: t('msgLocation') };
   if (msg.type === 'contact' || txt.startsWith('👤')) {
     const name = stripEmojis(txt).split('\n')[0].trim();
-    return { icon: 'contact', label: name || 'Contacto' };
+    return { icon: 'contact', label: name || t('msgContact') };
   }
-  return { icon: null, label: stripEmojis(txt) || txt || 'Mensaje' };
+  return { icon: null, label: stripEmojis(txt) || txt || t('msgMessage') };
 };
 
 // Icono vectorial limpio para el último mensaje
@@ -237,16 +268,26 @@ const ChatItem = React.memo(({ chat, currentUserId, onPress, onLongPress, static
   chat: Chat; currentUserId: string; onPress?: () => void; onLongPress?: () => void; staticRow?: boolean;
   contentTypes?: ContentType[]; fontScale?: number;
 }) => {
+  const { language, t } = useTranslation();
   const fs = fontScale ?? 1;
   const other = chat.participants.find(p => String(p.user_id) !== String(currentUserId));
   const rawChatName = chat.type === 'private'
-    ? (getParticipantName(other) || 'Usuario')
-    : (chat.name || 'Grupo');
+    ? (getParticipantName(other) || tr('setUser'))
+    : (chat.name || tr('msgGroup'));
   const isDjangue = chat.type === 'group' && chat.name?.startsWith('💰');
   const chatName = isDjangue ? rawChatName.replace(/^💰\s*/, '') : rawChatName;
   const avatarSrc = chat.type === 'private' ? getParticipantAvatar(other) : chat.avatar_url;
-  const msgInfo = getLastMessageInfo(chat.last_message);
-  const time = formatTime(chat.updated_at);
+
+  const avatarOnPress = useMemo(() => {
+    if (chat.type !== 'private' || !other || !contentTypes || contentTypes.length === 0) return undefined;
+    const participantId = other.user_id;
+    if (contentTypes.includes('live'))   return () => router.push(`/stories?userId=${participantId}` as any);
+    if (contentTypes.includes('story'))  return () => router.push(`/stories?userId=${participantId}` as any);
+    if (contentTypes.includes('moment')) return () => router.push(`/moments?userId=${participantId}` as any);
+    return undefined;
+  }, [chat.type, other, contentTypes]);
+  const msgInfo = getLastMessageInfo(chat.last_message, t);
+  const time = formatTime(chat.updated_at, language, t);
   const hasUnread = chat.unread_count > 0;
   const msgIconColor = hasUnread ? Colors.accent : Colors.textTertiary;
 
@@ -259,6 +300,7 @@ const ChatItem = React.memo(({ chat, currentUserId, onPress, onLongPress, static
           name={chatName}
           size={Platform.OS === 'ios' ? 50 : 44}
           contentTypes={contentTypes}
+          onPress={avatarOnPress}
         />
         {chat.type === 'group' && (
           <View style={[st.groupBadge, isDjangue && st.groupBadgeDjangue]}>
@@ -358,7 +400,7 @@ function MensajeriaScreenInner() {
   const { indicators: newContentMap } = useNewContentIndicators(currentUserId);
   const [favoriteContacts, setFavoriteContacts] = useState<any[]>([]);
   const [favoriteGroupIds, setFavoriteGroupIds] = useState<string[]>([]);
-  const [archivedChats, setArchivedChats] = useState<ArchivedChat[]>([]);
+  const [archivedChats, setArchivedChats] = useState<Chat[]>([]);
   const [archivePassword, setArchivePasswordState] = useState('');
   const [archiveUnlocked, setArchiveUnlocked] = useState(false);
   const [archiveSubFilter, setArchiveSubFilter] = useState<ArchiveSubFilter>('individual');
@@ -372,18 +414,23 @@ function MensajeriaScreenInner() {
   const navigation = useNavigation<any>();
   const { isDark } = useThemeContext();
   const { fontScale } = useFont();
+  const { t } = useTranslation();
   const { saveCache, readCache } = useOffline();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
+
+  // Ref para loadChats — permite que debouncedLoadChats lo llame
+  // sin crear una dependencia circular (loadChats se declara más abajo)
+  const loadChatsRef = useRef<((userId?: string) => Promise<void>) | null>(null);
 
   // ── Debounced loadChats — agrupa múltiples eventos SSE/Supabase en una sola llamada ──
   // Evita que 3 mensajes seguidos disparen 3 recargas HTTP completas.
   const debouncedLoadChats = useCallback((userId: string) => {
     if (loadDebounceRef.current) clearTimeout(loadDebounceRef.current);
     loadDebounceRef.current = setTimeout(() => {
-      void loadChats(userId);
+      void loadChatsRef.current?.(userId);
       loadDebounceRef.current = null;
     }, Platform.OS === 'android' ? 800 : 400);
-  }, [loadChats]);
+  }, []);
 
   // ── SSE Stream — actualizar lista de chats al instante ────────────
   // Supabase Realtime ya no se usa para la lista — SSE cubre el mismo caso
@@ -408,8 +455,8 @@ function MensajeriaScreenInner() {
         for (const chat of chats) {
           const other = chat.participants.find((p: any) => String(p.user_id) !== String(currentUserId));
           const chatName = chat.type === 'private'
-            ? (getParticipantName(other) || 'Usuario')
-            : (chat.name || 'Grupo');
+            ? (getParticipantName(other) || tr('setUser'))
+            : (chat.name || tr('msgGroup'));
           const lastText = chat.last_message?.text || '';
           if (chatName.toLowerCase().includes(q) || lastText.toLowerCase().includes(q)) {
             results.push({ chatId: chat.id, chatName, messageText: lastText, messageTime: '' });
@@ -425,13 +472,13 @@ function MensajeriaScreenInner() {
   useSharedContent((content) => {
     if (content.uri || content.text) {
       (global as any).__egchat_shared_content = content;
-      toast.info('📎 Contenido recibido', 'Selecciona el chat donde enviarlo');
+      toast.info(`📎 ${t('msgContentReceived')}`, t('msgContentReceivedHint'));
     }
   });
 
   const getChatMeta = useCallback((chat: Chat) => {
     const other = chat.participants.find(p => String(p.user_id) !== String(currentUserId));
-    const name = chat.type === 'private' ? (getParticipantName(other) || 'Usuario') : (chat.name || 'Grupo');
+    const name = chat.type === 'private' ? (getParticipantName(other) || tr('setUser')) : (chat.name || tr('msgGroup'));
     const avatar = chat.type === 'private' ? getParticipantAvatar(other) : chat.avatar_url;
     return { name, avatar, other };
   }, [currentUserId]);
@@ -454,6 +501,26 @@ function MensajeriaScreenInner() {
       setChats(sortedChats);
       void saveCache('chat_list', sortedChats);
 
+      // Guardar chats en App Group para que la Share Extension los pueda mostrar
+      // TODO: Habilitar cuando EGChatShareModule esté correctamente registrado
+      // try {
+      //   const { NativeModules } = await import('react-native');
+      //   const { EGChatShareModule } = NativeModules;
+      //   if (EGChatShareModule?.saveRecentChats) {
+      //     const chatsForShare = sortedChats.slice(0, 30).map((c: Chat) => {
+      //       const other = c.participants?.find((p: any) => String(p.user_id) !== String(uid));
+      //       const name = c.type === 'private'
+      //         ? (other?.full_name || other?.users?.full_name || 'Usuario')
+      //         : (c.name || 'Grupo');
+      //       const avatar = c.type === 'private'
+      //         ? (other?.avatar_url || other?.users?.avatar_url || '')
+      //         : (c.avatar_url || '');
+      //       return { id: c.id, name, avatar };
+      //     });
+      //     EGChatShareModule.saveRecentChats(JSON.stringify(chatsForShare));
+      //   }
+      // } catch { /* silencioso */ }
+
       void Promise.all([
         contactsAPI.getFavorites().catch(() => []),
         getFavoriteGroupIds(),
@@ -466,8 +533,8 @@ function MensajeriaScreenInner() {
         HomeWidget.update(sortedChats.map(c => {
           const other = c.participants.find((p: any) => String(p.user_id) !== String(uid));
           const name = c.type === 'private'
-            ? (other?.full_name || other?.users?.full_name || 'Usuario')
-            : (c.name || 'Grupo');
+            ? (other?.full_name || other?.users?.full_name || tr('setUser'))
+            : (c.name || tr('msgGroup'));
           const avatar = c.type === 'private'
             ? (other?.avatar_url || other?.users?.avatar_url || '')
             : (c.avatar_url || '');
@@ -485,13 +552,15 @@ function MensajeriaScreenInner() {
         setChats(sortChatsByActivity(cachedChats));
         setLoadError('');
       } else if (msg.includes('abort') || msg.includes('timeout') || msg.includes('network')) {
-        setLoadError('No se pudo conectar con el servidor. Desliza para recargar.');
+        setLoadError(t('msgServerUnreachable'));
       } else {
-        setLoadError('No se pudieron cargar los chats. Desliza para reintentar.');
+        setLoadError(t('msgChatsLoadFailed'));
       }
     }
     finally { setLoading(false); setRefreshing(false); }
-  }, [readCache, saveCache, currentUserId]);
+  }, [readCache, saveCache, currentUserId, t]);
+  // Actualizar ref para que debouncedLoadChats siempre tenga la versión más reciente
+  loadChatsRef.current = loadChats;
 
   useEffect(() => {
     const init = async () => {
@@ -522,7 +591,7 @@ function MensajeriaScreenInner() {
       fetch('https://egchat-api-xlxj.onrender.com/health', { method: 'GET' }).catch(() => {});
     }, 14 * 60 * 1000);
 
-    loadArchivedChats().then(setArchivedChats);
+    loadArchivedChats().then(list => setArchivedChats(list.map(toChat)));
     getArchivePassword().then(setArchivePasswordState);
 
     return () => {
@@ -623,45 +692,45 @@ function MensajeriaScreenInner() {
       unread_count: chat.unread_count,
       updated_at: chat.updated_at,
     };
-    const nextArchived = [entry, ...archivedChats.filter(c => c.id !== chat.id)];
+    const nextArchived: ArchivedChat[] = [entry, ...archivedChats.filter(c => c.id !== chat.id)];
     await saveArchivedChats(nextArchived);
-    setArchivedChats(nextArchived);
+    setArchivedChats(nextArchived.map(toChat));
     setChats(prev => prev.filter(c => c.id !== chat.id));
-    toast.info('Chat archivado');
-  }, [archivedChats, getChatMeta]);
+    toast.info(t('msgChatArchived'));
+  }, [archivedChats, getChatMeta, t]);
 
-  const unarchiveChat = useCallback(async (chat: ArchivedChat) => {
+  const unarchiveChat = useCallback(async (chat: Chat) => {
     const nextArchived = archivedChats.filter(c => c.id !== chat.id);
     await saveArchivedChats(nextArchived);
     setArchivedChats(nextArchived);
     await loadChats(currentUserId);
-    toast.info('Chat desarchivado');
-  }, [archivedChats, loadChats]);
+    toast.info(t('msgChatUnarchived'));
+  }, [archivedChats, loadChats, t]);
 
   const deleteChatLocal = useCallback((chatId: string) => {
     Alert.alert(
-      'Eliminar chat',
-      'Se eliminará el chat, todos los mensajes y el contacto asociado. Esta acción no se puede deshacer.',
+      t('deleteChat'),
+      t('msgDeleteChatConfirm'),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Eliminar', style: 'destructive',
+          text: t('delete'), style: 'destructive',
           onPress: async () => {
             // Quitar de la lista inmediatamente (optimista)
             setChats(prev => prev.filter(c => c.id !== chatId));
             try {
               await chatAPI.deleteChat(chatId);
-              toast.success('Chat eliminado');
+              toast.success(t('msgChatDeleted'));
             } catch {
               // Si falla el servidor, recargar la lista real
               loadChats();
-              toast.error('No se pudo eliminar el chat');
+              toast.error(t('msgDeleteChatFailed'));
             }
           },
         },
       ]
     );
-  }, [loadChats]);
+  }, [loadChats, t]);
 
   const openFavoriteContact = useCallback(async (contact: any) => {
     try {
@@ -679,21 +748,21 @@ function MensajeriaScreenInner() {
         await loadChats();
         openChat(chat);
       } else {
-        toast.error('No se pudo abrir el chat');
+        toast.error(t('msgOpenChatFailed'));
       }
     } catch {
-      toast.error('No se pudo abrir el chat');
+      toast.error(t('msgOpenChatFailed'));
     }
-  }, [chats, loadChats, openChat]);
+  }, [chats, loadChats, openChat, t]);
 
   const handleChatLongPress = useCallback(async (chat: Chat) => {
     const { name } = getChatMeta(chat);
     if (chat.type === 'group') {
       const isFav = favoriteGroupIds.includes(chat.id);
-      Alert.alert(name, isFav ? 'Quitar de grupos favoritos' : 'Añadir a grupos favoritos', [
-        { text: 'Cancelar', style: 'cancel' },
+      Alert.alert(name, isFav ? t('removeFromFavoriteGroups') : t('addToFavoriteGroups'), [
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: isFav ? 'Quitar' : 'Favorito',
+          text: isFav ? t('remove') : t('msgFavorite'),
           onPress: async () => {
             const next = await toggleFavoriteGroup(chat.id);
             setFavoriteGroupIds(next);
@@ -706,10 +775,10 @@ function MensajeriaScreenInner() {
     const contact = favoriteContacts.find(
       (c: any) => c.contact_user_id === other?.user_id || c.user?.id === other?.user_id,
     );
-    Alert.alert(name, 'Opciones', [
-      { text: 'Cancelar', style: 'cancel' },
+    Alert.alert(name, t('moreOptions'), [
+      { text: t('cancel'), style: 'cancel' },
       {
-        text: contact ? 'Quitar favorito' : 'Marcar favorito',
+        text: contact ? t('msgRemoveFavorite') : t('msgMarkFavorite'),
         onPress: async () => {
           try {
             let list = await contactsAPI.getAll();
@@ -728,7 +797,7 @@ function MensajeriaScreenInner() {
         },
       },
     ]);
-  }, [favoriteContacts, favoriteGroupIds, getChatMeta, currentUserId]);
+  }, [favoriteContacts, favoriteGroupIds, getChatMeta, currentUserId, t]);
 
   const favoriteGroupChats = useMemo(
     () => chats.filter(c => c.type === 'group' && favoriteGroupIds.includes(c.id)),
@@ -751,7 +820,7 @@ function MensajeriaScreenInner() {
   const filtered = useMemo(() => chats.filter(c => {
     if (archivedIds.has(c.id)) return false;
     const other = c.participants.find(p => String(p.user_id) !== String(currentUserId));
-    const name = c.type === 'private' ? getParticipantName(other) : (c.name || 'Grupo');
+    const name = c.type === 'private' ? getParticipantName(other) : (c.name || tr('msgGroup'));
     // Ocultar chats privados cuyo contacto tiene nombre genérico (datos incompletos)
     if (c.type === 'private' && isGenericName(name)) return false;
     const last = c.last_message?.text || '';
@@ -772,9 +841,9 @@ function MensajeriaScreenInner() {
   }), [chats, archivedIds, currentUserId, filter, groupSubFilter, matchesSearch]);
 
   const filteredArchived = useMemo(() => archivedChats.filter(c => {
-    const isGrp = c.isGroup || c.type === 'group';
+    const isGrp = c.type === 'group';
     if (archiveSubFilter === 'group' ? !isGrp : isGrp) return false;
-    const name = c.name || c.title || 'Chat';
+    const name = c.name || tr('chat');
     return matchesSearch(name, c.last_message?.text);
   }), [archivedChats, archiveSubFilter, matchesSearch]);
 
@@ -805,7 +874,7 @@ function MensajeriaScreenInner() {
             style={[st.searchText, { color: C.textPrimary }]}
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholder="Buscar chat o contacto..."
+            placeholder={t('searchChat')}
             placeholderTextColor={C.textTertiary}
             returnKeyType="search"
           />
@@ -826,16 +895,16 @@ function MensajeriaScreenInner() {
             <Circle cx="11" cy="11" r="8"/>
             <Line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </Svg>
-          <Text style={{ fontSize: 10, color: C.textTertiary, marginTop: 1 }}>Global</Text>
+          <Text style={{ fontSize: 10, color: C.textTertiary, marginTop: 1 }}>{t('msgGlobal')}</Text>
         </TouchableOpacity>
         {/* Botón + nuevo chat */}
         <TouchableOpacity
           style={st.newChatBtn}
           onPress={() => {
-            Alert.alert('Nueva conversación', '¿Qué quieres crear?', [
-              { text: 'Chat privado', onPress: () => router.push('/new-chat' as any) },
-              { text: 'Grupo', onPress: () => setShowCreateGroup(true) },
-              { text: 'Cancelar', style: 'cancel' },
+            Alert.alert(t('msgNewConversation'), t('msgWhatToCreate'), [
+              { text: t('msgPrivateChat'), onPress: () => router.push('/new-chat' as any) },
+              { text: t('msgGroup'), onPress: () => setShowCreateGroup(true) },
+              { text: t('cancel'), style: 'cancel' },
             ]);
           }}
           activeOpacity={0.85}
@@ -858,9 +927,9 @@ function MensajeriaScreenInner() {
           {/* ══════════════════════════════════════════════════════
               CONTACTOS FAVORITOS
           ══════════════════════════════════════════════════════ */}
-          <FavoriteSection title="Contactos Favoritos" empty="No tienes contactos favoritos aún" C={C}>
+          <FavoriteSection title={t('favoriteContacts')} empty={t('noFavoriteContacts')} C={C}>
             {favoriteContacts.map((contact: any) => {
-              const name = contact.name || contact.user?.full_name || contact.user?.name || 'Usuario';
+              const name = contact.name || contact.user?.full_name || contact.user?.name || tr('setUser');
               const avatar = contact.avatar_url || contact.user?.avatar_url;
               return (
                 <FavoriteChip
@@ -873,7 +942,7 @@ function MensajeriaScreenInner() {
             })}
           </FavoriteSection>
 
-          <FavoriteSection title="Grupos Favoritos" empty="No tienes grupos favoritos aún" C={C}>
+          <FavoriteSection title={t('favoriteGroups')} empty={t('noFavoriteGroups')} C={C}>
             {favoriteGroupChats.map(chat => {
               const { name, avatar } = getChatMeta(chat);
               return <FavoriteChip key={chat.id} name={name} avatar={avatar} onPress={() => openChat(chat)} />;
@@ -886,10 +955,10 @@ function MensajeriaScreenInner() {
           <View style={[st.filtersWrap, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}>
             <View style={st.filtersRow}>
               {([
-                { id: 'individual' as FilterType, label: 'Individual', Icon: IconUser },
-                { id: 'grupos' as FilterType, label: 'Grupos', Icon: IconUsers },
-                { id: 'dinero' as FilterType, label: 'Dinero', Icon: IconMoney },
-                { id: 'archivar' as FilterType, label: 'Archivar', Icon: IconArchive },
+                { id: 'individual' as FilterType, label: t('individual'), Icon: IconUser },
+                { id: 'grupos' as FilterType, label: t('groups'), Icon: IconUsers },
+                { id: 'dinero' as FilterType, label: t('money'), Icon: IconMoney },
+                { id: 'archivar' as FilterType, label: t('archive'), Icon: IconArchive },
               ]).map(f => {
                 const active = filter === f.id;
                 const iconColor = active ? '#fff' : '#374151';
@@ -918,7 +987,7 @@ function MensajeriaScreenInner() {
               {([
                 {
                   id: 'all' as GroupSubFilter,
-                  label: 'Todos',
+                  label: t('all'),
                   Icon: ({ active }: { active: boolean }) => (
                     <Svg width={15} height={15} viewBox="0 0 24 24" fill="none"
                       stroke={active ? '#fff' : '#64748b'} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -931,7 +1000,7 @@ function MensajeriaScreenInner() {
                 },
                 {
                   id: 'normal' as GroupSubFilter,
-                  label: 'Mis grupos',
+                  label: t('myGroups'),
                   Icon: ({ active }: { active: boolean }) => (
                     <Svg width={15} height={15} viewBox="0 0 24 24" fill="none"
                       stroke={active ? '#fff' : '#64748b'} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -975,14 +1044,14 @@ function MensajeriaScreenInner() {
         ) : filter === 'archivar' && !archiveUnlocked ? (
           <View style={[st.listScroll, st.center]}>
               <Text style={{ fontSize: 40, marginBottom: 12 }}>🔒</Text>
-              <Text style={[st.emptyTitle, { color: C.textPrimary }]}>Archivo protegido</Text>
-              <Text style={[st.emptySub, { color: C.textSecondary, marginBottom: 20 }]}>{'Introduce tu contraseña para ver chats archivados'}</Text>
+              <Text style={[st.emptyTitle, { color: C.textPrimary }]}>{t('msgProtectedArchive')}</Text>
+              <Text style={[st.emptySub, { color: C.textSecondary, marginBottom: 20 }]}>{t('archivePasswordHint')}</Text>
               <TouchableOpacity
                 style={st.archiveUnlockBtn}
                 onPress={() => (archivePassword ? setShowArchiveUnlock(true) : setShowArchiveSetup(true))}
               >
                 <Text style={st.archiveUnlockBtnText}>
-                  {archivePassword ? 'Desbloquear' : 'Crear contraseña'}
+                  {archivePassword ? t('unlock') : t('createPassword')}
                 </Text>
               </TouchableOpacity>
           </View>
@@ -1001,7 +1070,7 @@ function MensajeriaScreenInner() {
                       onPress={() => setArchiveSubFilter(sub)}
                     >
                       <Text style={[st.archiveSubTabText, archiveSubFilter === sub && st.archiveSubTabTextActive]}>
-                        {sub === 'individual' ? 'Individuales' : 'Grupos'}
+                        {sub === 'individual' ? t('individual') : t('groups')}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -1011,8 +1080,8 @@ function MensajeriaScreenInner() {
             ListEmptyComponent={
               <View style={st.center}>
                 <Text style={{ fontSize: 32 }}>📦</Text>
-                <Text style={[st.emptyTitle, { color: C.textPrimary }]}>{`Sin ${archiveSubFilter === 'group' ? 'grupos' : 'chats'} archivados`}</Text>
-                <Text style={[st.emptySub, { color: C.textSecondary }]}>{'Desliza un chat a la izquierda para archivarlo'}</Text>
+                <Text style={[st.emptyTitle, { color: C.textPrimary }]}>{archiveSubFilter === 'group' ? t('noArchivedGroups') : t('noArchivedChats')}</Text>
+                <Text style={[st.emptySub, { color: C.textSecondary }]}>{t('swipeToArchive')}</Text>
               </View>
             }
             ListFooterComponent={<View style={{ height: Platform.OS === 'android' ? 80 : 100 }} />}
@@ -1020,7 +1089,7 @@ function MensajeriaScreenInner() {
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.brand} colors={[Colors.brand]} />
             }
             renderItem={({ item: chat }: { item: Chat }) => {
-              const name = (chat as any).name || (chat as any).title || 'Chat';
+              const name = (chat as any).name || (chat as any).title || tr('chat');
               return (
                 <TouchableOpacity
                   style={st.archivedRow}
@@ -1030,10 +1099,10 @@ function MensajeriaScreenInner() {
                   <EGAvatar src={(chat as any).avatar_url || (chat as any).avatarUrl} name={name} size={46} />
                   <View style={{ flex: 1 }}>
                     <Text style={st.archivedName} numberOfLines={1}>{name}</Text>
-                    <Text style={st.archivedSub}>Archivado</Text>
+                    <Text style={st.archivedSub}>{t('msgArchived')}</Text>
                   </View>
                   <TouchableOpacity style={st.restoreBtn} onPress={() => unarchiveChat(chat)}>
-                    <Text style={st.restoreBtnText}>Restaurar</Text>
+                    <Text style={st.restoreBtnText}>{t('msgRestore')}</Text>
                   </TouchableOpacity>
                 </TouchableOpacity>
               );
@@ -1054,15 +1123,15 @@ function MensajeriaScreenInner() {
             )}
             <Text style={[st.emptyTitle, { color: C.textPrimary }]}>
               {filter === 'dinero'
-                ? 'Sin transferencias recientes'
-                : searchQuery ? 'Sin resultados' : 'No tienes chats aún'}
+                ? t('noRecentTransfers')
+                : searchQuery ? t('noResults') : t('noChatsYet')}
             </Text>
             <Text style={[st.emptySub, { color: C.textSecondary }]}>
               {loadError && !searchQuery && filter !== 'dinero'
                 ? loadError
                 : filter === 'dinero'
-                ? 'Los chats con movimientos XAF aparecerán aquí'
-                : searchQuery ? 'Prueba con otro nombre' : 'Toca + para empezar una conversación'}
+                ? t('moneyChatsHint')
+                : searchQuery ? t('tryAnotherName') : t('tapPlusToStart')}
             </Text>
             {loadError && !searchQuery && filter !== 'dinero' && (
               <TouchableOpacity
@@ -1070,7 +1139,7 @@ function MensajeriaScreenInner() {
                 onPress={() => { setRefreshing(true); loadChats(currentUserId); }}
                 activeOpacity={0.85}
               >
-                <Text style={st.retryBtnText}>Recargar chats</Text>
+                <Text style={st.retryBtnText}>{t('msgReloadChats')}</Text>
               </TouchableOpacity>
             )}
             {filter === 'dinero' && (
@@ -1080,7 +1149,7 @@ function MensajeriaScreenInner() {
                 activeOpacity={0.85}
               >
                 <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.dineroCtaGrad}>
-                  <Text style={st.dineroCtaText}>Abrir Mi Cartera</Text>
+                  <Text style={st.dineroCtaText}>{t('openWallet')}</Text>
                 </LinearGradient>
               </TouchableOpacity>
             )}
@@ -1102,12 +1171,12 @@ function MensajeriaScreenInner() {
             ItemSeparatorComponent={() => (
               <View style={[st.separator, { backgroundColor: C.borderLight }]} />
             )}
-            renderItem={({ item }: { item: ArchivedChat }) => (
+            renderItem={({ item }: { item: Chat }) => (
               <SwipeChatItem
                 onOpen={() => openChat(item)}
                 onArchive={() => archiveChat(item)}
                 onDelete={() => deleteChatLocal(item.id)}
-                onMarkUnread={() => toast.info('Marcado como no leído')}
+                onMarkUnread={() => toast.info(t('msgMarkedUnread'))}
               >
                 <ChatItem
                   chat={item}
@@ -1132,28 +1201,8 @@ function MensajeriaScreenInner() {
       </View>
 
       {/* ══════════════════════════════════════════════════════════
-          FAB REFRESH — botón circular verde abajo derecha
-      ══════════════════════════════════════════════════════════ */}
-      <TouchableOpacity
-        style={st.fabRefresh}
-        onPress={onRefresh}
-        activeOpacity={0.85}
-      >
-        <LinearGradient
-          colors={['#00C8A0', '#00B4E6']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={st.fabGradient}
-        >
-          <IconRefresh />
-        </LinearGradient>
-      </TouchableOpacity>
-
-      {/* ══════════════════════════════════════════════════════════
           PANELES DEL HEADER
       ══════════════════════════════════════════════════════════ */}
-      {/* Botón HOME flotante arrastrable */}
-      <DraggableHomeButton />
 
       <NotificationsPanel
         visible={showNotifications}
@@ -1164,7 +1213,7 @@ function MensajeriaScreenInner() {
         onNotifPress={(n) => {
           markNotificationRead(n.id);
           setShowNotifications(false);
-          if (n.chatId) router.push(`/chat/${n.chatId}` as any);
+          handleNotifNavigation(n);
         }}
       />
       <HamburgerMenu
@@ -1202,13 +1251,13 @@ function MensajeriaScreenInner() {
         <Pressable style={st.modalOverlay} onPress={() => { setShowArchiveSetup(false); setShowArchiveUnlock(false); }}>
           <Pressable style={st.modalSheet} onPress={() => {}}>
             <Text style={st.modalTitle}>
-              {showArchiveSetup ? (archivePassword ? 'Cambiar contraseña' : 'Crear contraseña') : 'Desbloquear archivo'}
+              {showArchiveSetup ? (archivePassword ? t('changePassword') : t('createPassword')) : t('unlock')}
             </Text>
             <TextInput
               secureTextEntry
               value={archivePwdInput}
               onChangeText={setArchivePwdInput}
-              placeholder="Contraseña"
+              placeholder={t('password')}
               placeholderTextColor="#9ca3af"
               style={st.modalInput}
             />
@@ -1218,14 +1267,14 @@ function MensajeriaScreenInner() {
                 style={[st.modalBtn, { backgroundColor: '#f3f4f6' }]}
                 onPress={() => { setShowArchiveSetup(false); setShowArchiveUnlock(false); setArchivePwdInput(''); }}
               >
-                <Text style={{ fontWeight: '600', color: '#374151' }}>Cancelar</Text>
+                <Text style={{ fontWeight: '600', color: '#374151' }}>{t('cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[st.modalBtn, { backgroundColor: '#6B5BD6' }]}
                 onPress={async () => {
                   if (showArchiveSetup) {
                     if (archivePwdInput.length < 4) {
-                      setArchivePwdError('Mínimo 4 caracteres');
+                      setArchivePwdError(t('minFourChars'));
                       return;
                     }
                     await setArchivePassword(archivePwdInput);
@@ -1233,10 +1282,10 @@ function MensajeriaScreenInner() {
                     setArchiveUnlocked(true);
                     setShowArchiveSetup(false);
                     setArchivePwdInput('');
-                    toast.success('Contraseña guardada');
+                    toast.success(t('passwordSaved'));
                   } else {
                     if (archivePwdInput !== archivePassword) {
-                      setArchivePwdError('Contraseña incorrecta');
+                      setArchivePwdError(t('wrongPassword'));
                       return;
                     }
                     setArchiveUnlocked(true);
@@ -1246,7 +1295,7 @@ function MensajeriaScreenInner() {
                 }}
               >
                 <Text style={{ fontWeight: '700', color: '#fff' }}>
-                  {showArchiveSetup ? (archivePassword ? 'Cambiar' : 'Crear') : 'Desbloquear'}
+                  {showArchiveSetup ? (archivePassword ? t('change') : t('create')) : t('unlock')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -1254,6 +1303,9 @@ function MensajeriaScreenInner() {
         </Pressable>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* Botón HOME flotante arrastrable */}
+      <DraggableHomeButton />
 
     </SafeAreaView>
   );
@@ -1563,21 +1615,6 @@ const st = StyleSheet.create({
   modalBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
 
   // ── FAB Refresh ──────────────────────────────────────────────────
-  fabRefresh: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    zIndex: 20,
-    ...Shadow.lg,
-  },
-  fabGradient: {
-    width: 52, height: 52, borderRadius: 26,
-    alignItems: 'center', justifyContent: 'center',
-  },
-
   // ── LIA-25 flotante ──────────────────────────────────────────────
   liaBtn: {
     position: 'absolute',
@@ -1604,7 +1641,7 @@ const st = StyleSheet.create({
 
 export default function MensajeriaScreen() {
   return (
-    <TabErrorBoundary tabName="Mensajería">
+    <TabErrorBoundary tabName={tr('xtMensajeria')}>
       <MensajeriaScreenInner />
     </TabErrorBoundary>
   );

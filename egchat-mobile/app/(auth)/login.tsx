@@ -25,17 +25,40 @@ import { EGErrorMessage } from '../../src/components/ui';
 import { useAuth } from '../../src/hooks/useAuth';
 import { SpinningLogo } from '../../src/components/SpinningLogo';
 import { useTranslation } from '../../src/context/LanguageContext';
+import { maxDigitos, nacionalLimpia, nacionalValida, soloDigitos } from '../../src/utils/phonePlan';
 
 const { width } = Dimensions.get('window');
 
-// ── Países CEMAC — solo GQ activo ───────────────────────────────────
+// ── Países disponibles — todos activos ───────────────────────────────────
 const COUNTRIES = [
-  { code: 'GQ', name: 'Guinea Ecuatorial', phone: '+240', active: true  },
-  { code: 'CM', name: 'Cameroun',           phone: '+237', active: false },
-  { code: 'GA', name: 'Gabon',              phone: '+241', active: false },
-  { code: 'CG', name: 'Congo',              phone: '+242', active: false },
-  { code: 'CF', name: 'Rép. Centrafricaine',phone: '+236', active: false },
-  { code: 'TD', name: 'Tchad',              phone: '+235', active: false },
+  { code: 'GQ', name: 'Guinea Ecuatorial', phone: '+240', active: true },
+  { code: 'CM', name: 'Cameroun',           phone: '+237', active: true },
+  { code: 'GA', name: 'Gabon',              phone: '+241', active: true },
+  { code: 'CG', name: 'Congo',              phone: '+242', active: true },
+  { code: 'CF', name: 'Rép. Centrafricaine',phone: '+236', active: true },
+  { code: 'TD', name: 'Tchad',              phone: '+235', active: true },
+  { code: 'NG', name: 'Nigeria',            phone: '+234', active: true },
+  { code: 'ES', name: 'España',             phone: '+34',  active: true },
+  { code: 'FR', name: 'France',             phone: '+33',  active: true },
+  { code: 'GB', name: 'United Kingdom',     phone: '+44',  active: true },
+  { code: 'US', name: 'United States',      phone: '+1',   active: true },
+  { code: 'DE', name: 'Deutschland',        phone: '+49',  active: true },
+  { code: 'IT', name: 'Italia',             phone: '+39',  active: true },
+  { code: 'PT', name: 'Portugal',           phone: '+351', active: true },
+  { code: 'SN', name: 'Sénégal',            phone: '+221', active: true },
+  { code: 'CI', name: "Côte d'Ivoire",      phone: '+225', active: true },
+  { code: 'MA', name: 'Maroc',              phone: '+212', active: true },
+  { code: 'BR', name: 'Brasil',             phone: '+55',  active: true },
+  { code: 'MX', name: 'México',             phone: '+52',  active: true },
+  { code: 'CO', name: 'Colombia',           phone: '+57',  active: true },
+  { code: 'AR', name: 'Argentina',          phone: '+54',  active: true },
+  { code: 'VE', name: 'Venezuela',          phone: '+58',  active: true },
+  { code: 'CN', name: 'China',              phone: '+86',  active: true },
+  { code: 'AO', name: 'Angola',             phone: '+244', active: true },
+  { code: 'CD', name: 'Congo RDC',          phone: '+243', active: true },
+  { code: 'KE', name: 'Kenya',              phone: '+254', active: true },
+  { code: 'GH', name: 'Ghana',              phone: '+233', active: true },
+  { code: 'ZA', name: 'South Africa',       phone: '+27',  active: true },
 ];
 
 const COMING_SOON: Record<string, { lang: string; title: string; body: string; cta: string }> = {
@@ -157,6 +180,7 @@ export default function LoginScreen() {
   const [countryCode, setCountryCode]             = useState('+240');
   const [phone, setPhone]                         = useState('');
   const [password, setPassword]                   = useState('');
+  const [localError, setLocalError]               = useState('');
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [comingSoonCountry, setComingSoonCountry] = useState<typeof COUNTRIES[0] | null>(null);
 
@@ -166,25 +190,29 @@ export default function LoginScreen() {
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
 
   const selectedCountry = COUNTRIES.find(c => c.phone === countryCode) || COUNTRIES[0];
-  const fullPhone       = countryCode + phone.replace(/\s/g, '');
-  const doLogin         = () => login(fullPhone, password);
+  const fullPhone       = countryCode + nacionalLimpia(countryCode, phone);
+  const showErr         = localError || error;
+  const doLogin         = () => {
+    if (!nacionalValida(countryCode, phone)) { setLocalError(t('authPhoneDigitsWrong')); return; }
+    setLocalError('');
+    login(fullPhone, password);
+  };
 
   useEffect(() => {
     (async () => {
       try {
         const raw = await AsyncStorage.getItem(LOGIN_DRAFT_KEY);
         if (!raw) return;
-        const d = JSON.parse(raw) as { countryCode?: string; phone?: string; password?: string };
+        const d = JSON.parse(raw) as { countryCode?: string; phone?: string };
         if (d.countryCode) setCountryCode(d.countryCode);
-        if (d.phone)       setPhone(d.phone);
-        if (d.password)    setPassword(d.password);
+        if (d.phone)       setPhone(soloDigitos(d.phone));
       } catch {}
     })();
   }, []);
 
   useEffect(() => {
-    AsyncStorage.setItem(LOGIN_DRAFT_KEY, JSON.stringify({ countryCode, phone, password })).catch(() => {});
-  }, [countryCode, phone, password]);
+    AsyncStorage.setItem(LOGIN_DRAFT_KEY, JSON.stringify({ countryCode, phone })).catch(() => {});
+  }, [countryCode, phone]);
 
   const handleSelectCountry = (c: typeof COUNTRIES[0]) => {
     setShowCountryPicker(false);
@@ -232,7 +260,7 @@ export default function LoginScreen() {
                     <View style={s.mProgressTrack}>
                       <LinearGradient colors={['#00c8a0','#0099c8']} start={{x:0,y:0}} end={{x:1,y:0}} style={s.mProgressFill} />
                     </View>
-                    <Text style={s.mProgressLabel}>En desarrollo · En cours de développement</Text>
+                    <Text style={s.mProgressLabel}>{t('authInDevelopment')}</Text>
                     <TouchableOpacity style={s.mBtn} onPress={() => setComingSoonCountry(null)} activeOpacity={0.85}>
                       <LinearGradient colors={['#00c8a0','#0099c8']} start={{x:0,y:0}} end={{x:1,y:0}} style={s.mBtnGrad}>
                         <Text style={s.mBtnText}>{cs.cta}</Text>
@@ -259,7 +287,7 @@ export default function LoginScreen() {
               <SpinningLogo size={84} glow={false} />
             </View>
             <Text style={s.appName}>EGChat</Text>
-            <Text style={s.appTagline}>África Central conectada</Text>
+            <Text style={s.appTagline}>{t('authTagline')}</Text>
             <View style={s.cemacBadge}>
               <Text style={s.cemacLabel}>CEMAC</Text>
               <View style={s.flagsRow}>
@@ -279,12 +307,12 @@ export default function LoginScreen() {
           {/* ── Tarjeta ────────────────────────────────────── */}
           <View style={[s.card, { backgroundColor: cardBg }]}>
 
-            <Text style={[s.cardTitle, { color: C.textPrimary }]}>Iniciar sesión</Text>
-            <Text style={[s.cardSub, { color: C.textSecondary }]}>Ingresa tu teléfono y contraseña</Text>
+            <Text style={[s.cardTitle, { color: C.textPrimary }]}>{t('login')}</Text>
+            <Text style={[s.cardSub, { color: C.textSecondary }]}>{t('authLoginSubtitle')}</Text>
 
             {/* País */}
             <View style={f.wrap}>
-              <Text style={[f.label, { color: isDark ? '#4a6a80' : '#94a3b8' }]}>PAÍS</Text>
+              <Text style={[f.label, { color: isDark ? '#4a6a80' : '#94a3b8' }]}>{t('authCountryLabel')}</Text>
               <TouchableOpacity
                 style={[s.countryBox, { backgroundColor: fieldBg, borderColor: fieldBdr }]}
                 onPress={() => setShowCountryPicker(p => !p)}
@@ -299,7 +327,12 @@ export default function LoginScreen() {
               </TouchableOpacity>
 
               {showCountryPicker && (
-                <View style={[s.dropdown, { backgroundColor: isDark ? '#0d1b26' : '#fff', borderColor: fieldBdr }]}>
+                <ScrollView
+                  style={[s.dropdown, { backgroundColor: isDark ? '#0d1b26' : '#fff', borderColor: fieldBdr, maxHeight: 220 }]}
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={true}
+                  nestedScrollEnabled={true}
+                >
                   {COUNTRIES.map(c => (
                     <TouchableOpacity
                       key={c.phone}
@@ -311,7 +344,7 @@ export default function LoginScreen() {
                       <Text style={s.cFlag}>{getFlag(c.code)}</Text>
                       <View style={{ flex: 1 }}>
                         <Text style={[s.ddItemText, { color: C.textPrimary }]}>{c.name}</Text>
-                        {!c.active && <Text style={s.ddSoonText}>Próximamente · Bientôt</Text>}
+                        {!c.active && <Text style={s.ddSoonText}>{t('authComingSoonDotted')}</Text>}
                       </View>
                       {c.active
                         ? <Text style={s.cBadge}>{c.phone}</Text>
@@ -319,13 +352,13 @@ export default function LoginScreen() {
                       {c.phone === countryCode && <Text style={s.ddCheck}>✓</Text>}
                     </TouchableOpacity>
                   ))}
-                </View>
+                </ScrollView>
               )}
             </View>
 
             {/* Teléfono */}
             <View style={[f.wrap, { marginBottom: 10 }]}>
-              <Text style={[f.label, { color: isDark ? '#4a6a80' : '#94a3b8' }]}>TELÉFONO</Text>
+              <Text style={[f.label, { color: isDark ? '#4a6a80' : '#94a3b8' }]}>{t('authPhoneLabel')}</Text>
               <View style={[f.box, { backgroundColor: fieldBg, borderColor: fieldBdr, paddingHorizontal: 0 }]}>
                 {/* Prefijo */}
                 <View style={[s.prefixBox, { backgroundColor: isDark ? '#162330' : '#eef2f7', borderColor: fieldBdr }]}>
@@ -334,10 +367,11 @@ export default function LoginScreen() {
                 </View>
                 <TextInput
                   value={phone}
-                  onChangeText={setPhone}
+                  onChangeText={v => { setPhone(nacionalLimpia(countryCode, v).slice(0, maxDigitos(countryCode))); setLocalError(''); }}
                   placeholder="222 XXX XXX"
                   placeholderTextColor={isDark ? '#4a6070' : '#b0bcc8'}
                   keyboardType="phone-pad"
+                  maxLength={maxDigitos(countryCode)}
                   autoCapitalize="none"
                   autoCorrect={false}
                   autoComplete="tel"
@@ -348,7 +382,7 @@ export default function LoginScreen() {
 
             {/* Contraseña — input propio con ojo SVG */}
             <Field
-              label="CONTRASEÑA"
+              label={t('authPasswordLabel')}
               value={password}
               onChangeText={setPassword}
               placeholder="••••••••"
@@ -357,9 +391,9 @@ export default function LoginScreen() {
               isDark={isDark}
             />
 
-            {error ? (
+            {showErr ? (
               <View style={s.errBox}>
-                <Text style={s.errText}>{error}</Text>
+                <Text style={s.errText}>{showErr}</Text>
               </View>
             ) : null}
 
@@ -375,7 +409,7 @@ export default function LoginScreen() {
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                 style={s.loginGrad}
               >
-                <Text style={s.loginText}>{isLoading ? 'Iniciando...' : 'Iniciar sesión'}</Text>
+                <Text style={s.loginText}>{isLoading ? t('setStarting') : t('login')}</Text>
               </LinearGradient>
             </TouchableOpacity>
 
@@ -384,13 +418,13 @@ export default function LoginScreen() {
               onPress={() => router.push('/(auth)/forgot-password' as any)}
               style={s.forgotBtn}
             >
-              <Text style={s.forgotText}>¿Olvidaste tu contraseña?</Text>
+              <Text style={s.forgotText}>{t('forgotPassword')}</Text>
             </TouchableOpacity>
 
             {/* Separador */}
             <View style={s.sep}>
               <View style={[s.sepLine, { backgroundColor: isDark ? '#1e2d3a' : '#e2e8f0' }]} />
-              <Text style={[s.sepText, { color: isDark ? '#3a5060' : '#cbd5e1' }]}>o</Text>
+              <Text style={[s.sepText, { color: isDark ? '#3a5060' : '#cbd5e1' }]}>{t('authOr')}</Text>
               <View style={[s.sepLine, { backgroundColor: isDark ? '#1e2d3a' : '#e2e8f0' }]} />
             </View>
 
@@ -400,12 +434,20 @@ export default function LoginScreen() {
               onPress={() => router.push('/(auth)/register' as any)}
               activeOpacity={0.8}
             >
-              <Text style={[s.createText, { color: C.textPrimary }]}>Crear nueva cuenta</Text>
+              <Text style={[s.createText, { color: C.textPrimary }]}>{t('authCreateNewAccount')}</Text>
             </TouchableOpacity>
 
             {/* Volver */}
-            <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-              <Text style={[s.backText, { color: isDark ? '#3a5060' : '#94a3b8' }]}>← Volver al inicio</Text>
+            <TouchableOpacity onPress={() => {
+              // Limpiar flag de añadir cuenta al salir del login
+              AsyncStorage.removeItem('egchat_adding_account').catch(() => {});
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/(tabs)' as any);
+              }
+            }} style={s.backBtn}>
+              <Text style={[s.backText, { color: isDark ? '#3a5060' : '#94a3b8' }]}>← {t('backHome')}</Text>
             </TouchableOpacity>
 
           </View>

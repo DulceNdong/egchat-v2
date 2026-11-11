@@ -15,6 +15,7 @@ import { router } from 'expo-router';
 import Svg, { Path, Circle, Rect, Line, Polyline } from 'react-native-svg';
 import { getKycStatus, KYC_STATUS_LABELS, KYC_STATUS_COLORS } from '../src/services/kyc';
 import { Colors, Spacing, BorderRadius, FontSize, FontWeight, Shadow } from '../src/theme';
+import { useTranslation } from '../src/context/LanguageContext';
 
 const { width: W } = Dimensions.get('window');
 
@@ -56,38 +57,40 @@ const IconClose = ({ color = 'rgba(255,255,255,0.5)', size = 20 }: { color?: str
 );
 
 // ── Beneficios que se muestran en la pantalla ─────────────────────
+// titleKey/subKey son claves i18n; se resuelven en el render.
 const BENEFITS = [
   {
     icon: <IconWallet color="#00C8A0" size={20}/>,
-    title: 'Monedero digital XAF',
-    sub:   'Guarda y gestiona tu saldo de forma segura',
+    titleKey: 'kyBenefitWallet',
+    subKey:   'kyBenefitWalletSub',
   },
   {
     icon: <IconTransfer color="#00C8A0" size={20}/>,
-    title: 'Transferencias instantáneas',
-    sub:   'Envía dinero a cualquier usuario EGChat al instante',
+    titleKey: 'kyBenefitTransfers',
+    subKey:   'kyBenefitTransfersSub',
   },
   {
     icon: <IconBill color="#00C8A0" size={20}/>,
-    title: 'Paga servicios',
-    sub:   'Electricidad, agua, teléfono y mucho más desde la app',
+    titleKey: 'kyBenefitPayBills',
+    subKey:   'kyBenefitPayBillsSub',
   },
   {
     icon: <IconShield color="#00C8A0" size={20}/>,
-    title: 'Seguridad COBAC',
-    sub:   'Verificación obligatoria bajo normativa bancaria BEAC',
+    titleKey: 'kyBenefitCobac',
+    subKey:   'kyBenefitCobacSub',
   },
 ];
 
 // ── Pasos del proceso ─────────────────────────────────────────────
 const STEPS = [
-  { num: '1', label: 'Datos personales',       time: '2 min' },
-  { num: '2', label: 'Documento de identidad', time: '1 min' },
-  { num: '3', label: 'Selfie de verificación', time: '30 seg' },
+  { num: '1', labelKey: 'kyStepPersonal',  timeKey: 'kyTime2Min'  },
+  { num: '2', labelKey: 'kyStepDocument',  timeKey: 'kyTime1Min'  },
+  { num: '3', labelKey: 'kyStepSelfie',    timeKey: 'kyTime30Sec' },
 ];
 
 // ════════════════════════════════════════════════════════════════
 export default function KycWalletPrompt() {
+  const { t } = useTranslation();
   const fadeAnim   = useRef(new Animated.Value(0)).current;
   const slideAnim  = useRef(new Animated.Value(40)).current;
   const scaleAnim  = useRef(new Animated.Value(0.9)).current;
@@ -145,7 +148,7 @@ export default function KycWalletPrompt() {
       <SafeAreaView style={st.safe}>
         {/* Botón saltar */}
         <TouchableOpacity style={st.skipBtn} onPress={skipNow} activeOpacity={0.7}>
-          <Text style={st.skipText}>Ahora no</Text>
+          <Text style={st.skipText}>{t('setNotNow')}</Text>
           <IconClose size={16}/>
         </TouchableOpacity>
 
@@ -170,23 +173,25 @@ export default function KycWalletPrompt() {
 
             {isRejected ? (
               <>
-                <Text style={st.badge}>⚠️ Verificación rechazada</Text>
-                <Text style={st.heroTitle}>Corrige tu solicitud</Text>
+                <Text style={st.badge}>{t('kyRejectedBadge')}</Text>
+                <Text style={st.heroTitle}>{t('kyFixYourRequest')}</Text>
                 <Text style={st.heroSub}>
-                  Tu solicitud anterior no fue aprobada. Puedes{'\n'}
-                  volver a intentarlo con documentos correctos.
+                  {t('kyRejectedHeroPart1')}{'\n'}
+                  {t('kyRejectedHeroPart2')}
                 </Text>
               </>
             ) : (
               <>
                 <View style={st.newBadge}>
-                  <Text style={st.newBadgeText}>✨ NUEVO</Text>
+                  <Text style={st.newBadgeText}>{t('kyNewBadge')}</Text>
                 </View>
-                <Text style={st.heroTitle}>Activa tu Monedero{'\n'}Digital</Text>
+                <Text style={st.heroTitle}>
+                  {t('kyHeroTitleLine1')}{'\n'}{t('kyHeroTitleLine2')}
+                </Text>
                 <Text style={st.heroSub}>
-                  Completa tu verificación de identidad y{'\n'}
-                  desbloquea <Text style={st.heroSubBold}>todas las funciones financieras</Text>{'\n'}
-                  de EGChat en menos de 5 minutos.
+                  {t('kyHeroSubLine1')}{'\n'}
+                  <Text style={st.heroSubBold}>{t('kyHeroSubHighlight')}</Text>{'\n'}
+                  {t('kyHeroSubLine2')}
                 </Text>
               </>
             )}
@@ -200,8 +205,8 @@ export default function KycWalletPrompt() {
                   {b.icon}
                 </View>
                 <View style={st.benefitText}>
-                  <Text style={st.benefitTitle}>{b.title}</Text>
-                  <Text style={st.benefitSub}>{b.sub}</Text>
+                  <Text style={st.benefitTitle}>{t(b.titleKey)}</Text>
+                  <Text style={st.benefitSub}>{t(b.subKey)}</Text>
                 </View>
               </View>
             ))}
@@ -209,15 +214,15 @@ export default function KycWalletPrompt() {
 
           {/* ── Pasos del proceso ── */}
           <Animated.View style={[st.stepsBox, { opacity: fadeAnim }]}>
-            <Text style={st.stepsTitle}>¿Qué necesitas hacer?</Text>
+            <Text style={st.stepsTitle}>{t('kyWhatToDo')}</Text>
             <View style={st.stepsRow}>
               {STEPS.map((s, i) => (
                 <View key={i} style={st.stepItem}>
                   <View style={st.stepNum}>
                     <Text style={st.stepNumText}>{s.num}</Text>
                   </View>
-                  <Text style={st.stepLabel}>{s.label}</Text>
-                  <Text style={st.stepTime}>{s.time}</Text>
+                  <Text style={st.stepLabel}>{t(s.labelKey)}</Text>
+                  <Text style={st.stepTime}>{t(s.timeKey)}</Text>
                   {i < STEPS.length - 1 && <View style={st.stepConnector}/>}
                 </View>
               ))}
@@ -227,10 +232,10 @@ export default function KycWalletPrompt() {
           {/* ── Garantía legal ── */}
           <Animated.View style={[st.legalBox, { opacity: fadeAnim }]}>
             <Text style={st.legalText}>
-              🔒 Tus datos están protegidos bajo el{' '}
-              <Text style={st.legalBold}>Reglamento COBAC R-2023/01</Text>{' '}
-              y la <Text style={st.legalBold}>Ley N°2/2008</Text> de Guinea Ecuatorial.
-              Solo usados para verificar tu identidad.
+              {t('kyLegalProtected')}{' '}
+              <Text style={st.legalBold}>{t('kyLegalCobac')}</Text>{' '}
+              {t('kyLegalMiddle')} <Text style={st.legalBold}>{t('kyLegalLaw')}</Text>{' '}
+              {t('kyLegalGqSuffix')}
             </Text>
           </Animated.View>
 
@@ -253,9 +258,9 @@ export default function KycWalletPrompt() {
                 ) : (
                   <>
                     <Text style={st.ctaText}>
-                      {isRejected ? '🔄 Reintentar verificación' : '🚀 Activar mi monedero ahora'}
+                      {isRejected ? t('kyRetryVerification') : t('kyActivateNow')}
                     </Text>
-                    <Text style={st.ctaSub}>Solo toma ~5 minutos · Completamente gratuito</Text>
+                    <Text style={st.ctaSub}>{t('kyCtaSub')}</Text>
                   </>
                 )}
               </LinearGradient>
@@ -264,10 +269,8 @@ export default function KycWalletPrompt() {
 
           {/* ── Saltar ── */}
           <TouchableOpacity style={st.laterBtn} onPress={skipNow} activeOpacity={0.7}>
-            <Text style={st.laterText}>Quizás más tarde</Text>
-            <Text style={st.laterHint}>
-              Sin verificación, las funciones del monedero estarán bloqueadas
-            </Text>
+            <Text style={st.laterText}>{t('kyMaybeLater')}</Text>
+            <Text style={st.laterHint}>{t('kyLaterHint')}</Text>
           </TouchableOpacity>
 
         </ScrollView>

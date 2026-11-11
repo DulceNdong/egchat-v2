@@ -5,6 +5,7 @@ import {
   SafeAreaView, Image, PanResponder, Dimensions, Alert,
 } from 'react-native';
 import * as ImageManipulator from 'expo-image-manipulator';
+import { t as tr } from '../translations';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const SIZE = Math.min(SCREEN_W - 48, 300);
@@ -82,15 +83,15 @@ export const AvatarCropModal: React.FC<AvatarCropModalProps> = ({
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity onPress={onClose}>
-              <Text style={styles.cancelBtn}>Cancelar</Text>
+              <Text style={styles.cancelBtn}>{tr('cancel')}</Text>
             </TouchableOpacity>
-            <Text style={styles.title}>Ajustar foto</Text>
+            <Text style={styles.title}>{tr('xtAjustarFoto')}</Text>
             <TouchableOpacity onPress={handleSave} style={styles.saveBtn}>
-              <Text style={styles.saveBtnText}>Guardar</Text>
+              <Text style={styles.saveBtnText}>{tr('chtSaveAction')}</Text>
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.hint}>Arrastra para posicionar · Pellizca para zoom</Text>
+          <Text style={styles.hint}>{tr('xtArrastraParaPosicionarPellizcaParaZoom')}</Text>
 
           {/* Preview circular */}
           <View style={styles.cropArea} {...panResponder.panHandlers}>

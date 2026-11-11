@@ -5,18 +5,46 @@ import { router } from 'expo-router';
 import { Colors, Typography, Spacing, BorderRadius, FontSize, FontWeight, Shadow } from '../src/theme';
 import { useThemeContext } from '../src/theme/ThemeContext';
 import { DarkColors } from '../src/theme/darkMode';
+import { useTranslation } from '../src/context/LanguageContext';
+
+type BankService = { key?: string; text?: string };
+
+const BANK_SERVICES = {
+  currentAccount: { key: 'walCurrentAccount' },
+  debitCreditCard: { key: 'walDebitCreditCard' },
+  cemacTransfers: { key: 'walCemacTransfers' },
+  personalLoans: { key: 'walPersonalLoans' },
+  businessBanking: { key: 'walBusinessBanking' },
+  personalBanking: { key: 'walPersonalBanking' },
+  investments: { key: 'walInvestments' },
+  insurance: { key: 'walInsurance' },
+  leasing: { key: 'walLeasing' },
+  savingsAccount: { key: 'walSavingsAccount' },
+  microcredits: { key: 'walMicrocredits' },
+  directDebits: { key: 'walDirectDebits' },
+  cards: { key: 'walCardsPlural' },
+  digitalBanking: { key: 'walDigitalBanking' },
+  africaTransfers: { key: 'walAfricaTransfers' },
+  foreignExchange: { key: 'walForeignExchange' },
+  privateBanking: { key: 'walPrivateBanking' },
+  financing: { key: 'walFinancing' },
+  wealthManagement: { key: 'walWealthManagement' },
+  xpressAccount: { text: 'Xpress Account' },
+  tradeFinance: { text: 'Trade Finance' },
+};
 
 const BANKS = [
-  { name: 'BANGE', full: 'Banco Nacional de Guinea Ecuatorial', color: '#003082', phone: '+240 333 09 00 00', web: 'https://bange.gq', services: ['Cuenta corriente', 'Tarjeta débito/crédito', 'Transferencias CEMAC', 'Préstamos personales', 'Banca empresarial'] },
-  { name: 'BGFI', full: 'BGFI Bank Guinea Ecuatorial', color: '#1E3A5F', phone: '+240 333 09 11 11', web: 'https://bgfi.com', services: ['Banca personal', 'Banca empresarial', 'Inversiones', 'Seguros', 'Leasing'] },
-  { name: 'CCEI', full: 'CCEI Bank Guinea Ecuatorial', color: '#0066CC', phone: '+240 333 09 22 22', web: 'https://cceibank.com', services: ['Cuenta de ahorro', 'Microcréditos', 'Transferencias CEMAC', 'Domiciliaciones', 'Tarjetas'] },
-  { name: 'Ecobank', full: 'Ecobank Guinea Ecuatorial', color: '#00A651', phone: '+240 333 09 33 33', web: 'https://ecobank.com', services: ['Banca digital', 'Xpress Account', 'Transferencias África', 'Divisas', 'Trade Finance'] },
-  { name: 'Société Générale', full: 'Société Générale GQ', color: '#E30613', phone: '+240 333 09 44 44', web: 'https://societegenerale.com', services: ['Banca personal', 'Banca privada', 'Financiación', 'Seguros', 'Gestión de patrimonio'] },
+  { name: 'BANGE', full: 'Banco Nacional de Guinea Ecuatorial', color: '#003082', phone: '+240 333 09 00 00', web: 'https://bange.gq', services: [BANK_SERVICES.currentAccount, BANK_SERVICES.debitCreditCard, BANK_SERVICES.cemacTransfers, BANK_SERVICES.personalLoans, BANK_SERVICES.businessBanking] as BankService[] },
+  { name: 'BGFI', full: 'BGFI Bank Guinea Ecuatorial', color: '#1E3A5F', phone: '+240 333 09 11 11', web: 'https://bgfi.com', services: [BANK_SERVICES.personalBanking, BANK_SERVICES.businessBanking, BANK_SERVICES.investments, BANK_SERVICES.insurance, BANK_SERVICES.leasing] as BankService[] },
+  { name: 'CCEI', full: 'CCEI Bank Guinea Ecuatorial', color: '#0066CC', phone: '+240 333 09 22 22', web: 'https://cceibank.com', services: [BANK_SERVICES.savingsAccount, BANK_SERVICES.microcredits, BANK_SERVICES.cemacTransfers, BANK_SERVICES.directDebits, BANK_SERVICES.cards] as BankService[] },
+  { name: 'Ecobank', full: 'Ecobank Guinea Ecuatorial', color: '#00A651', phone: '+240 333 09 33 33', web: 'https://ecobank.com', services: [BANK_SERVICES.digitalBanking, BANK_SERVICES.xpressAccount, BANK_SERVICES.africaTransfers, BANK_SERVICES.foreignExchange, BANK_SERVICES.tradeFinance] as BankService[] },
+  { name: 'Société Générale', full: 'Société Générale GQ', color: '#E30613', phone: '+240 333 09 44 44', web: 'https://societegenerale.com', services: [BANK_SERVICES.personalBanking, BANK_SERVICES.privateBanking, BANK_SERVICES.financing, BANK_SERVICES.insurance, BANK_SERVICES.wealthManagement] as BankService[] },
 ];
 
 export default function BancosScreen() {
   const [selected, setSelected] = useState<typeof BANKS[0] | null>(null);
   const { isDark } = useThemeContext();
+  const { t } = useTranslation();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
   const insets = useSafeAreaInsets();
 
@@ -26,7 +54,7 @@ export default function BancosScreen() {
         <TouchableOpacity onPress={() => selected ? setSelected(null) : router.back()} style={styles.backBtn}>
           <Text style={[styles.backIcon, { color: C.textPrimary }]}>‹</Text>
         </TouchableOpacity>
-        <Text style={[styles.title, { color: C.textPrimary }]}>{selected ? selected.name : 'Bancos'}</Text>
+        <Text style={[styles.title, { color: C.textPrimary }]}>{selected ? selected.name : t('banks')}</Text>
       </View>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {!selected ? (
@@ -46,18 +74,21 @@ export default function BancosScreen() {
               <Text style={styles.bankName}>{selected.name}</Text>
               <Text style={styles.bankFull}>{selected.full}</Text>
             </View>
-            <Text style={[styles.sectionLabel, { color: C.textTertiary }]}>SERVICIOS</Text>
-            {selected.services.map(s => (
-              <View key={s} style={styles.serviceRow}>
-                <Text style={styles.serviceDot}>●</Text>
-                <Text style={[styles.serviceText, { color: C.textPrimary }]}>{s}</Text>
-              </View>
-            ))}
+            <Text style={[styles.sectionLabel, { color: C.textTertiary }]}>{t('walServicesSection')}</Text>
+            {selected.services.map(s => {
+              const label = s.key ? t(s.key) : s.text;
+              return (
+                <View key={label} style={styles.serviceRow}>
+                  <Text style={styles.serviceDot}>●</Text>
+                  <Text style={[styles.serviceText, { color: C.textPrimary }]}>{label}</Text>
+                </View>
+              );
+            })}
             <TouchableOpacity style={styles.callBtn} onPress={() => Linking.openURL(`tel:${selected.phone}`)}>
               <Text style={styles.callBtnText}>📞 {selected.phone}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.callBtn, styles.webBtn, { backgroundColor: C.bgSecondary }]} onPress={() => Linking.openURL(selected.web)}>
-              <Text style={[styles.callBtnText, { color: Colors.accent }]}>🌐 Visitar web</Text>
+              <Text style={[styles.callBtnText, { color: Colors.accent }]}>{t('walVisitWeb')}</Text>
             </TouchableOpacity>
           </View>
         )}

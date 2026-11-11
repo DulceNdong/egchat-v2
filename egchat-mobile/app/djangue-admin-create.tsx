@@ -13,14 +13,15 @@ import Svg, { Path, Line, Circle, Rect, Polyline } from 'react-native-svg';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 import { apiFetch, getToken, getApiBase } from '../src/api';
+import { t as tr } from '../src/translations';
 
 type Frequency = 'daily' | 'weekly' | 'monthly' | 'annual';
 
 const FREQUENCIES: { value: Frequency; label: string; desc: string; color: string }[] = [
-  { value: 'daily',   label: 'Diario',   desc: 'Cada día',    color: '#f59e0b' },
-  { value: 'weekly',  label: 'Semanal',  desc: 'Cada semana', color: '#10b981' },
-  { value: 'monthly', label: 'Mensual',  desc: 'Cada mes',    color: '#6366f1' },
-  { value: 'annual',  label: 'Anual',    desc: 'Cada año',    color: '#ec4899' },
+  { value: 'daily',   get label() { return tr('setDaily'); },   get desc() { return tr('xtCadaDia'); },    color: '#f59e0b' },
+  { value: 'weekly',  get label() { return tr('setWeekly'); },  get desc() { return tr('xtCadaSemana'); }, color: '#10b981' },
+  { value: 'monthly', get label() { return tr('setMonthly'); },  get desc() { return tr('xtCadaMes'); },    color: '#6366f1' },
+  { value: 'annual',  get label() { return tr('xtAnual'); },    get desc() { return tr('xtCadaAno'); },    color: '#ec4899' },
 ];
 
 // ── Iconos SVG ────────────────────────────────────────────────────
@@ -80,7 +81,7 @@ export default function DjangueAdminCreateScreen() {
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permiso requerido', 'Necesitamos acceso a tus fotos para subir el logo.');
+      Alert.alert(tr('kyPermRequired'), 'Necesitamos acceso a tus fotos para subir el logo.');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -91,9 +92,9 @@ export default function DjangueAdminCreateScreen() {
   };
 
   const createDjangue = async () => {
-    if (!name.trim()) return Alert.alert('Falta el nombre', 'Ponle un nombre al djangue.');
-    if (Number(quotaAmount) <= 0) return Alert.alert('Cuota inválida', 'La cuota debe ser mayor a 0.');
-    if (Number(maxMembers) < 2) return Alert.alert('Mínimo 2 miembros', 'Un djangue necesita al menos 2 integrantes.');
+    if (!name.trim()) return Alert.alert(tr('xtFaltaElNombre'), 'Ponle un nombre al djangue.');
+    if (Number(quotaAmount) <= 0) return Alert.alert(tr('djnInvalidQuota'), 'La cuota debe ser mayor a 0.');
+    if (Number(maxMembers) < 2) return Alert.alert(tr('xtMinimo2Miembros'), 'Un djangue necesita al menos 2 integrantes.');
 
     setLoading(true);
     try {
@@ -133,7 +134,7 @@ export default function DjangueAdminCreateScreen() {
         router.replace({ pathname: '/djangue-detail', params: { id: response.id } } as any);
       }, 100);
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'No se pudo crear el djangue');
+      Alert.alert(tr('error'), e.message || 'No se pudo crear el djangue');
     } finally {
       setLoading(false);
     }
@@ -152,8 +153,8 @@ export default function DjangueAdminCreateScreen() {
           </Svg>
         </TouchableOpacity>
         <View style={s.headerCenter}>
-          <Text style={s.headerTitle}>Crear Djangue</Text>
-          <Text style={s.headerSub}>Nuevo grupo de ahorro</Text>
+          <Text style={s.headerTitle}>{tr('xtCrearDjangue')}</Text>
+          <Text style={s.headerSub}>{tr('xtNuevoGrupoDeAhorro')}</Text>
         </View>
         <View style={{ width: 40 }} />
       </View>
@@ -170,7 +171,7 @@ export default function DjangueAdminCreateScreen() {
                   <Circle cx="12" cy="13" r="4"/>
                 </Svg>
               </View>
-              <Text style={s.cardTitle}>Logo <Text style={s.optional}>(opcional)</Text></Text>
+              <Text style={s.cardTitle}>Logo <Text style={s.optional}>{tr('xtOpcional')}</Text></Text>
             </View>
             <TouchableOpacity style={s.logoBtn} onPress={pickImage} activeOpacity={0.8}>
               {logoUri ? (
@@ -197,24 +198,24 @@ export default function DjangueAdminCreateScreen() {
                   <Path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
                 </Svg>
               </View>
-              <Text style={s.cardTitle}>Información básica</Text>
+              <Text style={s.cardTitle}>{tr('xtInformacionBasica')}</Text>
             </View>
 
             <View style={s.fieldGroup}>
-              <Text style={s.label}>Nombre *</Text>
+              <Text style={s.label}>{tr('mznNameStar')}</Text>
               <TextInput style={s.input} value={name} onChangeText={setName}
                 placeholder="Ej: Djangue Familiar" placeholderTextColor="#cbd5e1" maxLength={50} />
             </View>
             <View style={s.fieldGroup}>
-              <Text style={s.label}>Eslogan <Text style={s.optional}>(opcional)</Text></Text>
+              <Text style={s.label}>Eslogan <Text style={s.optional}>{tr('xtOpcional')}</Text></Text>
               <TextInput style={s.input} value={slogan} onChangeText={setSlogan}
                 placeholder="Ahorrando juntos..." placeholderTextColor="#cbd5e1" maxLength={80} />
             </View>
             <View style={s.fieldGroup}>
-              <Text style={s.label}>Descripción <Text style={s.optional}>(opcional)</Text></Text>
+              <Text style={s.label}>{tr('mznDescription')} <Text style={s.optional}>{tr('xtOpcional')}</Text></Text>
               <TextInput style={[s.input, { height: 72, textAlignVertical: 'top', paddingTop: 10 }]}
                 value={description} onChangeText={setDescription}
-                placeholder="Propósito del grupo..." placeholderTextColor="#cbd5e1"
+                placeholder={tr('xtPropositoDelGrupo')} placeholderTextColor="#cbd5e1"
                 multiline maxLength={200} />
             </View>
           </View>
@@ -259,11 +260,11 @@ export default function DjangueAdminCreateScreen() {
                   <Path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
                 </Svg>
               </View>
-              <Text style={s.cardTitle}>Configuración financiera</Text>
+              <Text style={s.cardTitle}>{tr('xtConfiguracionFinanciera')}</Text>
             </View>
             <View style={s.row}>
               <View style={[s.fieldGroup, { flex: 1 }]}>
-                <Text style={s.label}>Cuota (XAF) *</Text>
+                <Text style={s.label}>{tr('xtCuotaXAF2')}</Text>
                 <View style={s.inputWithTag}>
                   <TextInput style={[s.input, { flex: 1, marginBottom: 0 }]} value={quotaAmount}
                     onChangeText={setQuotaAmount} keyboardType="numeric"
@@ -273,7 +274,7 @@ export default function DjangueAdminCreateScreen() {
               </View>
               <View style={{ width: 12 }} />
               <View style={[s.fieldGroup, { flex: 1 }]}>
-                <Text style={s.label}>Máx. integrantes</Text>
+                <Text style={s.label}>{tr('xtMaxIntegrantes')}</Text>
                 <View style={s.counter}>
                   <TouchableOpacity style={s.counterBtn} hitSlop={8}
                     onPress={() => setMaxMembers(v => String(Math.max(2, Number(v) - 1)))}>
@@ -298,30 +299,30 @@ export default function DjangueAdminCreateScreen() {
                   <Line x1="12" y1="9" x2="12" y2="13"/><Line x1="12" y1="17" x2="12.01" y2="17"/>
                 </Svg>
               </View>
-              <Text style={s.cardTitle}>Sanciones y notificaciones</Text>
+              <Text style={s.cardTitle}>{tr('xtSancionesYNotificaciones')}</Text>
             </View>
 
             <View style={s.fieldGroup}>
-              <Text style={s.label}>% de mora por retraso</Text>
+              <Text style={s.label}>{tr('xtDeMoraPorRetraso')}</Text>
               <View style={s.inputWithTag}>
                 <TextInput style={[s.input, { flex: 1, marginBottom: 0 }]} value={penaltyPercent}
                   onChangeText={setPenaltyPercent} keyboardType="numeric"
                   placeholder="10" placeholderTextColor="#cbd5e1" />
                 <View style={s.pctTag}><Text style={s.pctTxt}>%</Text></View>
               </View>
-              <Text style={s.hint}>Se aplica sobre la cuota a quienes no paguen a tiempo</Text>
+              <Text style={s.hint}>{tr('xtSeAplicaSobreLaCuotaAQuienesNoPaguenATiempo')}</Text>
             </View>
 
             <View style={s.row}>
               <View style={[s.fieldGroup, { flex: 1 }]}>
-                <Text style={s.label}>1ª notificación (días antes)</Text>
+                <Text style={s.label}>{tr('xt1NotificacionDiasAntes')}</Text>
                 <TextInput style={s.input} value={notifDaysBefore}
                   onChangeText={setNotifDaysBefore} keyboardType="numeric"
                   placeholder="10" placeholderTextColor="#cbd5e1" />
               </View>
               <View style={{ width: 12 }} />
               <View style={[s.fieldGroup, { flex: 1 }]}>
-                <Text style={s.label}>Recordatorios diarios (días)</Text>
+                <Text style={s.label}>{tr('xtRecordatoriosDiariosDias')}</Text>
                 <TextInput style={s.input} value={notifFinalDays}
                   onChangeText={setNotifFinalDays} keyboardType="numeric"
                   placeholder="5" placeholderTextColor="#cbd5e1" />
@@ -333,20 +334,20 @@ export default function DjangueAdminCreateScreen() {
                 <Circle cx="12" cy="12" r="10"/>
                 <Path d="M12 16v-4M12 8h.01"/>
               </Svg>
-              <Text style={s.infoTxt}>El secretario recibirá recordatorios automáticos para notificar a los integrantes</Text>
+              <Text style={s.infoTxt}>{tr('djnSecretaryReminders')}</Text>
             </View>
           </View>
 
           {/* Resumen */}
           {name.trim() && Number(quotaAmount) > 0 && (
             <View style={s.summaryCard}>
-              <Text style={s.summaryTitle}>Resumen del Djangue</Text>
+              <Text style={s.summaryTitle}>{tr('xtResumenDelDjangue')}</Text>
               {[
-                { l: 'Nombre', v: name },
+                { l: tr('nameField'), v: name },
                 { l: 'Periodicidad', v: selFreq.label, color: selFreq.color },
-                { l: 'Cuota', v: `${Number(quotaAmount).toLocaleString('fr-FR')} XAF` },
-                { l: 'Máx. integrantes', v: maxMembers },
-                { l: 'Mora por retraso', v: `${penaltyPercent}%` },
+                { l: tr('djhQuotaLabel'), v: `${Number(quotaAmount).toLocaleString('fr-FR')} XAF` },
+                { l: tr('xtMaxIntegrantes'), v: maxMembers },
+                { l: tr('xtMoraPorRetraso'), v: `${penaltyPercent}%` },
               ].map(r => (
                 <View key={r.l} style={s.summaryRow}>
                   <Text style={s.summaryLbl}>{r.l}</Text>
@@ -365,7 +366,7 @@ export default function DjangueAdminCreateScreen() {
           >
             {loading
               ? <ActivityIndicator color="#fff" />
-              : <Text style={s.createBtnTxt}>Crear Djangue</Text>
+              : <Text style={s.createBtnTxt}>{tr('xtCrearDjangue')}</Text>
             }
           </TouchableOpacity>
 

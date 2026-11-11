@@ -4,6 +4,7 @@ import {
   View, Text, TouchableOpacity, TextInput, ScrollView,
   Modal, StyleSheet, SafeAreaView, Linking,
 } from 'react-native';
+import { useTranslation } from '../context/LanguageContext';
 
 // ── Tipos ─────────────────────────────────────────────────────────
 type RStep = 'menu' | 'banco' | 'transferencia' | 'codigo' | 'efectivo' | 'confirm' | 'success';
@@ -47,6 +48,7 @@ interface RecargaProps {
 }
 
 export const RecargaMonederoModal: React.FC<RecargaProps> = ({ visible, onClose, userBalance, onCredit }) => {
+  const { t } = useTranslation();
   const [step, setStep] = useState<RStep>('menu');
   const [amount, setAmount] = useState('');
   const [banco, setBanco] = useState('');
@@ -56,16 +58,16 @@ export const RecargaMonederoModal: React.FC<RecargaProps> = ({ visible, onClose,
   const isValid = amountNum >= 1000;
 
   const METODOS = [
-    { id: 'banco', label: '🏦 Desde banco', sub: 'Transferencia bancaria desde tu cuenta' },
-    { id: 'transferencia', label: '↔️ Transferencia EGCHAT', sub: 'Recibe de otro usuario EGCHAT' },
-    { id: 'codigo', label: '🎟️ Código de recarga', sub: 'Introduce un código de recarga prepago' },
-    { id: 'efectivo', label: '💵 Depósito en efectivo', sub: 'En agentes autorizados EGCHAT' },
+    { id: 'banco', label: t('walFromBankEmoji'), sub: t('walFromBankSub') },
+    { id: 'transferencia', label: t('walTransferEgchatEmoji'), sub: t('walBankTransferEgchatSub') },
+    { id: 'codigo', label: t('walRechargeCodeEmoji'), sub: t('walRechargeCodeSub') },
+    { id: 'efectivo', label: t('walCashDepositEmoji'), sub: t('walCashDepositSub') },
   ];
 
   const TITLES: Record<RStep, string> = {
-    menu: 'Recargar monedero', banco: 'Desde banco', transferencia: 'Transferencia EGCHAT',
-    codigo: 'Código de recarga', efectivo: 'Depósito en efectivo',
-    confirm: 'Confirmar recarga', success: '¡Recarga completada!',
+    menu: t('walRechargeWallet'), banco: t('walFromBank'), transferencia: t('walBankTransferEgchat'),
+    codigo: t('walRechargeCode'), efectivo: t('walCashDeposit'),
+    confirm: t('walConfirmRecharge'), success: t('walRechargeDone'),
   };
 
   const reset = () => { setStep('menu'); setAmount(''); setBanco(''); setCodigo(''); };
@@ -76,11 +78,11 @@ export const RecargaMonederoModal: React.FC<RecargaProps> = ({ visible, onClose,
       <SafeAreaView style={styles.container}>
         <View style={styles.modalHeader}>
           <TouchableOpacity onPress={step === 'menu' ? close : () => setStep('menu')}>
-            <Text style={styles.backBtn}>{step === 'menu' ? '✕' : '← Atrás'}</Text>
+            <Text style={styles.backBtn}>{step === 'menu' ? '✕' : t('walBackArrow')}</Text>
           </TouchableOpacity>
           <View style={{ flex: 1, marginLeft: 12 }}>
             <Text style={styles.modalTitle}>{TITLES[step]}</Text>
-            <Text style={styles.modalSub}>Saldo: {userBalance.toLocaleString()} XAF</Text>
+            <Text style={styles.modalSub}>{t('walBalancePrefix')} {userBalance.toLocaleString()} XAF</Text>
           </View>
         </View>
 
@@ -88,7 +90,7 @@ export const RecargaMonederoModal: React.FC<RecargaProps> = ({ visible, onClose,
 
           {step === 'menu' && (
             <>
-              <SectionHead title="Monedero EGCHAT" sub={`${userBalance.toLocaleString()} XAF disponibles`} color="#1A3A6B" />
+              <SectionHead title={t('walEgchatWallet')} sub={`${userBalance.toLocaleString()} XAF ${t('walAvailableSuffix')}`} color="#1A3A6B" />
               {METODOS.map(m => (
                 <TouchableOpacity key={m.id} style={styles.menuItem} onPress={() => setStep(m.id as RStep)}>
                   <View style={{ flex: 1 }}>
@@ -103,29 +105,29 @@ export const RecargaMonederoModal: React.FC<RecargaProps> = ({ visible, onClose,
 
           {step === 'banco' && (
             <>
-              <SectionHead title="Transferencia bancaria" sub="Datos para realizar el ingreso" color="#1B3A6B" />
+              <SectionHead title={t('walBankTransfer')} sub={t('walBankTransferData')} color="#1B3A6B" />
               <View style={styles.infoBox}>
-                {[['Beneficiario', 'EGCHAT S.A.'], ['Banco', 'BANGE / CCEI / BGFI'], ['Cuenta', 'GQ-EGCHAT-001-2026'], ['Concepto', 'Recarga EGCHAT + tu teléfono']].map(([l, v]) => (
+                {[[t('walBeneficiary'), 'EGCHAT S.A.'], [t('walBankLabel'), 'BANGE / CCEI / BGFI'], [t('walAccount'), 'GQ-EGCHAT-001-2026'], [t('walConcept'), t('walConceptRechargeFull')]].map(([l, v]) => (
                   <View key={l} style={styles.infoRow}>
                     <Text style={styles.infoLabel}>{l}</Text>
                     <Text style={styles.infoValue}>{v}</Text>
                   </View>
                 ))}
               </View>
-              <Field label="Importe (mín. 1,000 XAF)" value={amount} onChangeText={setAmount} keyboardType="numeric" />
+              <Field label={t('walAmountMin1k')} value={amount} onChangeText={setAmount} keyboardType="numeric" />
               <TouchableOpacity
                 style={[styles.btnPrimary, (!isValid || !banco) && styles.btnDisabled]}
                 onPress={() => { if (isValid && banco) setStep('confirm'); }}
               >
-                <Text style={styles.btnPrimaryText}>Confirmar {isValid ? `- ${amountNum.toLocaleString()} XAF` : ''}</Text>
+                <Text style={styles.btnPrimaryText}>{t('confirm')} {isValid ? `- ${amountNum.toLocaleString()} XAF` : ''}</Text>
               </TouchableOpacity>
             </>
           )}
 
           {step === 'codigo' && (
             <>
-              <SectionHead title="Código de recarga" sub="Canjea tu voucher prepago" color="#92400E" />
-              <Field label="Código de 16 dígitos" value={codigo} onChangeText={setCodigo} placeholder="XXXX-XXXX-XXXX-XXXX" />
+              <SectionHead title={t('walRechargeCode')} sub={t('walRedeemVoucher')} color="#92400E" />
+              <Field label={t('walCode16')} value={codigo} onChangeText={setCodigo} placeholder="XXXX-XXXX-XXXX-XXXX" />
               <View style={styles.denominaciones}>
                 {[1000, 2000, 5000, 10000, 25000, 50000].map(v => (
                   <TouchableOpacity
@@ -149,14 +151,14 @@ export const RecargaMonederoModal: React.FC<RecargaProps> = ({ visible, onClose,
                   }
                 }}
               >
-                <Text style={styles.btnPrimaryText}>Canjear código</Text>
+                <Text style={styles.btnPrimaryText}>{t('walRedeemCode')}</Text>
               </TouchableOpacity>
             </>
           )}
 
           {step === 'efectivo' && (
             <>
-              <SectionHead title="Depósito en efectivo" sub="Agentes autorizados EGCHAT" color="#4C1D95" />
+              <SectionHead title={t('walCashDeposit')} sub={t('walAuthorizedAgents')} color="#4C1D95" />
               {[
                 { nombre: 'Agente EGCHAT Centro', dir: 'Av. de la Independencia, Malabo', tel: '+240222300001' },
                 { nombre: 'Agente EGCHAT Caracolas', dir: 'Barrio Caracolas, Malabo', tel: '+240222300002' },
@@ -169,7 +171,7 @@ export const RecargaMonederoModal: React.FC<RecargaProps> = ({ visible, onClose,
                     <Text style={styles.agentDir}>📍 {a.dir}</Text>
                   </View>
                   <TouchableOpacity style={styles.callBtn} onPress={() => Linking.openURL(`tel:${a.tel}`)}>
-                    <Text style={styles.callBtnText}>📞 Llamar</Text>
+                    <Text style={styles.callBtnText}>{t('walCallPhone')}</Text>
                   </TouchableOpacity>
                 </View>
               ))}
@@ -178,9 +180,9 @@ export const RecargaMonederoModal: React.FC<RecargaProps> = ({ visible, onClose,
 
           {step === 'confirm' && (
             <>
-              <SectionHead title="Confirmar recarga" sub="Revisa los datos antes de continuar" color="#1B3A6B" />
+              <SectionHead title={t('walConfirmRecharge')} sub={t('walReviewBeforeContinue')} color="#1B3A6B" />
               <View style={styles.confirmBox}>
-                {[['Método', 'Transferencia bancaria'], ['Importe', `${amountNum.toLocaleString()} XAF`]].map(([l, v]) => (
+                {[[t('walMethod'), t('walBankTransfer')], [t('walAmount'), `${amountNum.toLocaleString()} XAF`]].map(([l, v]) => (
                   <View key={l} style={styles.confirmRow}>
                     <Text style={styles.confirmLabel}>{l}</Text>
                     <Text style={styles.confirmValue}>{v}</Text>
@@ -188,7 +190,7 @@ export const RecargaMonederoModal: React.FC<RecargaProps> = ({ visible, onClose,
                 ))}
               </View>
               <TouchableOpacity style={styles.btnPrimary} onPress={() => setStep('success')}>
-                <Text style={styles.btnPrimaryText}>He realizado la transferencia</Text>
+                <Text style={styles.btnPrimaryText}>{t('walIDidTransfer')}</Text>
               </TouchableOpacity>
             </>
           )}
@@ -196,10 +198,10 @@ export const RecargaMonederoModal: React.FC<RecargaProps> = ({ visible, onClose,
           {step === 'success' && (
             <View style={styles.successWrap}>
               <Text style={styles.successIcon}>✅</Text>
-              <Text style={styles.successTitle}>¡Operación completada!</Text>
-              <Text style={styles.successSub}>Se acreditará en breve.</Text>
+              <Text style={styles.successTitle}>{t('walOperationDone')}</Text>
+              <Text style={styles.successSub}>{t('walWillCreditSoon')}</Text>
               <TouchableOpacity style={styles.btnPrimary} onPress={close}>
-                <Text style={styles.btnPrimaryText}>Cerrar</Text>
+                <Text style={styles.btnPrimaryText}>{t('close')}</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -221,6 +223,7 @@ interface RetiroProps {
 }
 
 export const RetiroMonederoModal: React.FC<RetiroProps> = ({ visible, onClose, userBalance, onDebit }) => {
+  const { t } = useTranslation();
   const [step, setStep] = useState<WStep>('menu');
   const [amount, setAmount] = useState('');
   const [cardNumber, setCardNumber] = useState('');
@@ -232,14 +235,14 @@ export const RetiroMonederoModal: React.FC<RetiroProps> = ({ visible, onClose, u
   const isValid = amountNum >= 1000 && amountNum <= userBalance;
 
   const METODOS = [
-    { id: 'tarjeta', label: '💳 Retirar a tarjeta', sub: 'Tarjeta bancaria vinculada · 1-3 días' },
-    { id: 'banco', label: '🏦 Transferencia bancaria', sub: 'A tu cuenta bancaria en GQ · 1-2 días' },
-    { id: 'agente', label: '🏠 Retirar en agente', sub: 'Efectivo inmediato en agentes EGCHAT' },
+    { id: 'tarjeta', label: t('walWithdrawToCardEmoji'), sub: t('walWithdrawToCardSub2') },
+    { id: 'banco', label: t('walBankTransferEmoji'), sub: t('walWithdrawBankSub2') },
+    { id: 'agente', label: t('walWithdrawAgentEmoji'), sub: t('walWithdrawAgentSub') },
   ];
 
   const TITLES: Record<WStep, string> = {
-    menu: 'Retirar dinero', tarjeta: 'Retirar a tarjeta', banco: 'Transferencia bancaria',
-    agente: 'Retirar en agente', confirm: 'Confirmar retiro', success: '¡Retiro procesado!',
+    menu: t('walWithdrawMoney'), tarjeta: t('walWithdrawToCard'), banco: t('walBankTransfer'),
+    agente: t('walWithdrawAgent'), confirm: t('walConfirmWithdraw'), success: t('walWithdrawDone'),
   };
 
   const reset = () => { setStep('menu'); setAmount(''); setCardNumber(''); setPin(''); setBanco(''); setCuenta(''); };
@@ -250,11 +253,11 @@ export const RetiroMonederoModal: React.FC<RetiroProps> = ({ visible, onClose, u
       <SafeAreaView style={styles.container}>
         <View style={styles.modalHeader}>
           <TouchableOpacity onPress={step === 'menu' ? close : () => setStep('menu')}>
-            <Text style={styles.backBtn}>{step === 'menu' ? '✕' : '← Atrás'}</Text>
+            <Text style={styles.backBtn}>{step === 'menu' ? '✕' : t('walBackArrow')}</Text>
           </TouchableOpacity>
           <View style={{ flex: 1, marginLeft: 12 }}>
             <Text style={styles.modalTitle}>{TITLES[step]}</Text>
-            <Text style={styles.modalSub}>Disponible: {userBalance.toLocaleString()} XAF</Text>
+            <Text style={styles.modalSub}>{t('walAvailablePrefix')} {userBalance.toLocaleString()} XAF</Text>
           </View>
         </View>
 
@@ -262,7 +265,7 @@ export const RetiroMonederoModal: React.FC<RetiroProps> = ({ visible, onClose, u
 
           {step === 'menu' && (
             <>
-              <SectionHead title="Retirar dinero" sub={`${userBalance.toLocaleString()} XAF disponibles`} color="#4C1D95" />
+              <SectionHead title={t('walWithdrawMoney')} sub={`${userBalance.toLocaleString()} XAF ${t('walAvailableSuffix')}`} color="#4C1D95" />
               {METODOS.map(m => (
                 <TouchableOpacity key={m.id} style={styles.menuItem} onPress={() => setStep(m.id as WStep)}>
                   <View style={{ flex: 1 }}>
@@ -277,41 +280,41 @@ export const RetiroMonederoModal: React.FC<RetiroProps> = ({ visible, onClose, u
 
           {step === 'tarjeta' && (
             <>
-              <SectionHead title="Retirar a tarjeta" sub="Transferencia a tarjeta bancaria" color="#1B3A6B" />
-              <Field label="Importe a retirar (mín. 1,000 XAF)" value={amount} onChangeText={setAmount} keyboardType="numeric" />
-              <Field label="Últimos 4 dígitos de la tarjeta" value={cardNumber} onChangeText={setCardNumber} keyboardType="numeric" />
-              <Field label="PIN de confirmación" value={pin} onChangeText={setPin} keyboardType="numeric" />
+              <SectionHead title={t('walWithdrawToCard')} sub={t('walTransferToCard')} color="#1B3A6B" />
+              <Field label={t('walAmountToWithdrawMin')} value={amount} onChangeText={setAmount} keyboardType="numeric" />
+              <Field label={t('walCardLast4')} value={cardNumber} onChangeText={setCardNumber} keyboardType="numeric" />
+              <Field label={t('walConfirmPinLabel')} value={pin} onChangeText={setPin} keyboardType="numeric" />
               {amountNum > userBalance && amountNum > 0 && (
-                <Text style={styles.errorText}>⚠️ Saldo insuficiente</Text>
+                <Text style={styles.errorText}>{t('walInsufficientWarn')}</Text>
               )}
               <TouchableOpacity
                 style={[styles.btnPrimary, (!isValid || !cardNumber || !pin) && styles.btnDisabled]}
                 onPress={() => { if (isValid && cardNumber && pin) setStep('confirm'); }}
               >
-                <Text style={styles.btnPrimaryText}>Continuar {isValid ? `- ${amountNum.toLocaleString()} XAF` : ''}</Text>
+                <Text style={styles.btnPrimaryText}>{t('continue')} {isValid ? `- ${amountNum.toLocaleString()} XAF` : ''}</Text>
               </TouchableOpacity>
             </>
           )}
 
           {step === 'banco' && (
             <>
-              <SectionHead title="Transferencia bancaria" sub="A tu cuenta bancaria en GQ" color="#065F46" />
-              <Field label="Importe a retirar (mín. 1,000 XAF)" value={amount} onChangeText={setAmount} keyboardType="numeric" />
-              <Field label="Banco destino" value={banco} onChangeText={setBanco} />
-              <Field label="Número de cuenta bancaria" value={cuenta} onChangeText={setCuenta} />
+              <SectionHead title={t('walBankTransfer')} sub={t('walToYourGqAccount')} color="#065F46" />
+              <Field label={t('walAmountToWithdrawMin')} value={amount} onChangeText={setAmount} keyboardType="numeric" />
+              <Field label={t('walDestBank')} value={banco} onChangeText={setBanco} />
+              <Field label={t('walBankAccountNumber')} value={cuenta} onChangeText={setCuenta} />
               <TouchableOpacity
                 style={[styles.btnPrimary, (!isValid || !banco || !cuenta) && styles.btnDisabled]}
                 onPress={() => { if (isValid && banco && cuenta) setStep('confirm'); }}
               >
-                <Text style={styles.btnPrimaryText}>Continuar {isValid ? `- ${amountNum.toLocaleString()} XAF` : ''}</Text>
+                <Text style={styles.btnPrimaryText}>{t('continue')} {isValid ? `- ${amountNum.toLocaleString()} XAF` : ''}</Text>
               </TouchableOpacity>
             </>
           )}
 
           {step === 'agente' && (
             <>
-              <SectionHead title="Retirar en agente" sub="Efectivo inmediato" color="#4C1D95" />
-              <Field label="Importe a retirar (mín. 1,000 XAF)" value={amount} onChangeText={setAmount} keyboardType="numeric" />
+              <SectionHead title={t('walWithdrawAgent')} sub={t('walImmediateCash')} color="#4C1D95" />
+              <Field label={t('walAmountToWithdrawMin')} value={amount} onChangeText={setAmount} keyboardType="numeric" />
               {[
                 { nombre: 'Agente EGCHAT Centro', dir: 'Av. de la Independencia, Malabo', tel: '+240222300001' },
                 { nombre: 'Agente EGCHAT Caracolas', dir: 'Barrio Caracolas, Malabo', tel: '+240222300002' },
@@ -322,7 +325,7 @@ export const RetiroMonederoModal: React.FC<RetiroProps> = ({ visible, onClose, u
                     <Text style={styles.agentDir}>📍 {a.dir}</Text>
                   </View>
                   <TouchableOpacity style={styles.callBtn} onPress={() => Linking.openURL(`tel:${a.tel}`)}>
-                    <Text style={styles.callBtnText}>📞 Llamar</Text>
+                    <Text style={styles.callBtnText}>{t('walCallPhone')}</Text>
                   </TouchableOpacity>
                 </View>
               ))}
@@ -330,26 +333,26 @@ export const RetiroMonederoModal: React.FC<RetiroProps> = ({ visible, onClose, u
                 style={[styles.btnPrimary, !isValid && styles.btnDisabled]}
                 onPress={() => { if (isValid) setStep('confirm'); }}
               >
-                <Text style={styles.btnPrimaryText}>Generar código de retiro</Text>
+                <Text style={styles.btnPrimaryText}>{t('walGenerateWithdrawCode')}</Text>
               </TouchableOpacity>
             </>
           )}
 
           {step === 'confirm' && (
             <>
-              <SectionHead title="Confirmar retiro" sub="Revisa los datos antes de continuar" color="#4C1D95" />
+              <SectionHead title={t('walConfirmWithdraw')} sub={t('walReviewBeforeContinue')} color="#4C1D95" />
               <View style={styles.confirmBox}>
                 <View style={styles.confirmRow}>
-                  <Text style={styles.confirmLabel}>Importe</Text>
+                  <Text style={styles.confirmLabel}>{t('walAmount')}</Text>
                   <Text style={styles.confirmValue}>{amountNum.toLocaleString()} XAF</Text>
                 </View>
                 <View style={styles.confirmRow}>
-                  <Text style={styles.confirmLabel}>Saldo restante</Text>
+                  <Text style={styles.confirmLabel}>{t('walRemainingBalance')}</Text>
                   <Text style={styles.confirmValue}>{(userBalance - amountNum).toLocaleString()} XAF</Text>
                 </View>
               </View>
               <TouchableOpacity style={styles.btnPrimary} onPress={() => { onDebit(amountNum); setStep('success'); }}>
-                <Text style={styles.btnPrimaryText}>Confirmar retiro</Text>
+                <Text style={styles.btnPrimaryText}>{t('walConfirmWithdraw')}</Text>
               </TouchableOpacity>
             </>
           )}
@@ -357,10 +360,10 @@ export const RetiroMonederoModal: React.FC<RetiroProps> = ({ visible, onClose, u
           {step === 'success' && (
             <View style={styles.successWrap}>
               <Text style={styles.successIcon}>✅</Text>
-              <Text style={styles.successTitle}>¡Retiro procesado!</Text>
-              <Text style={styles.successSub}>Tu dinero está en camino.</Text>
+              <Text style={styles.successTitle}>{t('walWithdrawDone')}</Text>
+              <Text style={styles.successSub}>{t('walMoneyOnWay')}</Text>
               <TouchableOpacity style={styles.btnPrimary} onPress={close}>
-                <Text style={styles.btnPrimaryText}>Cerrar</Text>
+                <Text style={styles.btnPrimaryText}>{t('close')}</Text>
               </TouchableOpacity>
             </View>
           )}

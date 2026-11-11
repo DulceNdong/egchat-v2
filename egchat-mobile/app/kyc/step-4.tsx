@@ -8,27 +8,30 @@ import { saveKycDraft } from '../../src/services/kycStorage';
 import { saveFinancialData } from '../../src/services/kycService';
 import { getNetworkStatus } from '../../src/store/offlineStore';
 import { enqueueKycAction } from '../../src/hooks/useKycOfflineSync';
+import { useTranslation } from '../../src/context/LanguageContext';
 
+// `value` es el código técnico enviado al backend; `labelKey` es la etiqueta visible.
 const INCOME_OPTIONS = [
-  { label: 'Menos de 200.000 XAF',         value: 'UNDER_100K'   },
-  { label: '200.000 – 500.000 XAF',         value: '100K_500K'   },
-  { label: '500.000 – 1.000.000 XAF',       value: '500K_1M'     },
-  { label: 'Más de 1.000.000 XAF',          value: '1M_5M'       },
+  { labelKey: 'kyIncomeUnder100k', value: 'UNDER_100K' },
+  { labelKey: 'kyIncome100k500k',  value: '100K_500K'  },
+  { labelKey: 'kyIncome500k1m',    value: '500K_1M'    },
+  { labelKey: 'kyIncome1m5m',      value: '1M_5M'      },
 ];
 
 const FUND_SOURCES = [
-  { label: 'Salario',         value: 'SALARY'     },
-  { label: 'Negocio propio',  value: 'BUSINESS'   },
-  { label: 'Remesas',         value: 'REMITTANCE' },
-  { label: 'Inversiones',     value: 'INVESTMENT' },
-  { label: 'Pensión',         value: 'PENSION'    },
-  { label: 'Ahorros',         value: 'SAVINGS'    },
-  { label: 'Otro',            value: 'OTHER'      },
+  { labelKey: 'kyFundSalary',      value: 'SALARY'     },
+  { labelKey: 'kyFundBusiness',    value: 'BUSINESS'   },
+  { labelKey: 'kyFundRemittance',  value: 'REMITTANCE' },
+  { labelKey: 'kyFundInvestment',  value: 'INVESTMENT' },
+  { labelKey: 'kyFundPension',     value: 'PENSION'    },
+  { labelKey: 'kyFundSavings',     value: 'SAVINGS'    },
+  { labelKey: 'setOther',          value: 'OTHER'      },
 ];
 
 export default function Step4() {
   const store = useKycStore();
   const fin   = store.financialData;
+  const { t } = useTranslation();
 
   const [errors, setErrors]     = useState<Record<string, string>>({});
   const [loading, setLoading]   = useState(false);
@@ -49,9 +52,9 @@ export default function Step4() {
 
   const validate = (): boolean => {
     const e: Record<string, string> = {};
-    if (!fin.profession.trim())        e.profession    = 'La profesión es obligatoria';
-    if (!fin.monthlyIncomeRange)       e.income        = 'Selecciona un rango de ingresos';
-    if (!fin.sourceOfFunds.length)     e.sources       = 'Selecciona al menos un origen de fondos';
+    if (!fin.profession.trim())        e.profession    = t('kyProfessionRequired');
+    if (!fin.monthlyIncomeRange)       e.income        = t('kyIncomeRangeRequired');
+    if (!fin.sourceOfFunds.length)     e.sources       = t('kySourcesRequired');
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -73,18 +76,21 @@ export default function Step4() {
       await saveKycDraft({ ...store, currentStep: 5 } as any);
       router.push('/kyc/step-5');
     } catch {
-      setErrors({ api: 'Error al guardar. Verifica tu conexión.' });
+      setErrors({ api: t('kySaveConnectionError') });
     } finally {
       setLoading(false);
     }
   };
 
-  const incomeLabel = INCOME_OPTIONS.find(o => o.value === fin.monthlyIncomeRange)?.label ?? '';
+  const incomeLabel = (() => {
+    const found = INCOME_OPTIONS.find(o => o.value === fin.monthlyIncomeRange);
+    return found ? t(found.labelKey) : '';
+  })();
 
   return (
     <KycStepLayout
       step={4} completed={store.completedSteps}
-      title="Información Financiera"
+      title={t('kyFinancialInfo')}
       onBack={() => router.push('/kyc/step-3')}
       onNext={handleNext}
       nextDisabled={loading}
@@ -92,31 +98,31 @@ export default function Step4() {
       onExit={() => router.back()}
     >
       {/* Profesión */}
-      <Text style={st.label}>Profesión / Ocupación <Text style={{ color: '#ef4444' }}>*</Text></Text>
+      <Text style={st.label}>{t('kyProfessionOccupation')} <Text style={{ color: '#ef4444' }}>*</Text></Text>
       <TextInput
         style={[st.input, !!errors.profession && st.inputError]}
         value={fin.profession}
         onChangeText={v => update({ profession: v })}
-        placeholder="Comerciante, empleado, estudiante..."
+        placeholder={t('kyProfessionPlaceholder')}
         placeholderTextColor="#9ca3af"
-        accessibilityLabel="Profesión u ocupación"
+        accessibilityLabel={t('kyProfessionOccupation')}
       />
       {!!errors.profession && <Text style={st.errorText}>{errors.profession}</Text>}
 
       {/* Empleador */}
-      <Text style={st.label}>Empleador <Text style={st.optional}>(opcional)</Text></Text>
+      <Text style={st.label}>{t('kyEmployer')} <Text style={st.optional}>({t('optional')})</Text></Text>
       <TextInput
         style={st.input}
         value={fin.employer}
         onChangeText={v => update({ employer: v })}
-        placeholder="Nombre de la empresa o institución"
+        placeholder={t('kyEmployerPlaceholder')}
         placeholderTextColor="#9ca3af"
-        accessibilityLabel="Empleador"
+        accessibilityLabel={t('kyEmployer')}
       />
 
       {/* Fecha de caducidad del documento */}
-      <Text style={[st.label, { marginTop: 16 }]}>📅 Fecha de caducidad del documento</Text>
-      <Text style={st.hint}>Introduce la fecha que aparece en tu DNI/Pasaporte (formato AAAA-MM-DD)</Text>
+      <Text style={[st.label, { marginTop: 16 }]}>{t('kyDocExpiryDate')}</Text>
+      <Text style={st.hint}>{t('kyDocExpiryHint')}</Text>
       <TextInput
         style={st.input}
         value={fin.docExpiryDate ?? ''}
@@ -125,26 +131,26 @@ export default function Step4() {
         placeholderTextColor="#9ca3af"
         keyboardType="numeric"
         maxLength={10}
-        accessibilityLabel="Fecha de caducidad del documento"
+        accessibilityLabel={t('kyDocExpiryDateA11y')}
       />
 
       {/* Ingreso mensual */}
-      <Text style={st.label}>Ingreso mensual estimado <Text style={{ color: '#ef4444' }}>*</Text></Text>
+      <Text style={st.label}>{t('kyEstimatedMonthlyIncome')} <Text style={{ color: '#ef4444' }}>*</Text></Text>
       <TouchableOpacity
         style={[st.dropdown, !!errors.income && st.inputError]}
         onPress={() => setIncome(true)}
-        accessibilityLabel="Seleccionar rango de ingresos"
+        accessibilityLabel={t('kySelectIncomeRange')}
       >
         <Text style={incomeLabel ? st.dropdownValue : st.dropdownPlaceholder}>
-          {incomeLabel || 'Seleccionar rango...'}
+          {incomeLabel || t('kySelectRangePlaceholder')}
         </Text>
         <Text style={st.arrow}>▾</Text>
       </TouchableOpacity>
       {!!errors.income && <Text style={st.errorText}>{errors.income}</Text>}
 
       {/* Origen de fondos */}
-      <Text style={st.label}>Origen de los fondos <Text style={{ color: '#ef4444' }}>*</Text></Text>
-      <Text style={st.sublabel}>Puedes seleccionar varios</Text>
+      <Text style={st.label}>{t('kyFundSource')} <Text style={{ color: '#ef4444' }}>*</Text></Text>
+      <Text style={st.sublabel}>{t('kySelectMultiple')}</Text>
       {FUND_SOURCES.map(src => {
         const checked = fin.sourceOfFunds.includes(src.value);
         return (
@@ -153,12 +159,12 @@ export default function Step4() {
             style={st.checkRow}
             onPress={() => toggleSource(src.value)}
             accessibilityRole="checkbox"
-            accessibilityLabel={src.label}
+            accessibilityLabel={t(src.labelKey)}
           >
             <View style={[st.checkbox, checked && st.checkboxActive]}>
               {checked && <Text style={st.checkmark}>✓</Text>}
             </View>
-            <Text style={st.checkLabel}>{src.label}</Text>
+            <Text style={st.checkLabel}>{t(src.labelKey)}</Text>
           </TouchableOpacity>
         );
       })}
@@ -173,8 +179,8 @@ export default function Step4() {
       {/* Modal income */}
       <Modal visible={showIncome} transparent animationType="slide" onRequestClose={() => setIncome(false)}>
         <TouchableOpacity style={st.overlay} activeOpacity={1} onPress={() => setIncome(false)}>
-          <View style={st.sheet} accessibilityViewIsModal={true} accessibilityLabel="Seleccionar ingreso mensual">
-            <Text style={st.sheetTitle}>Ingreso mensual estimado</Text>
+          <View style={st.sheet} accessibilityViewIsModal={true} accessibilityLabel={t('kySelectMonthlyIncome')}>
+            <Text style={st.sheetTitle}>{t('kyEstimatedMonthlyIncome')}</Text>
             <FlatList
               data={INCOME_OPTIONS}
               keyExtractor={i => i.value}
@@ -184,7 +190,7 @@ export default function Step4() {
                   onPress={() => { update({ monthlyIncomeRange: item.value }); setIncome(false); }}
                 >
                   <Text style={[st.sheetItemText, item.value === fin.monthlyIncomeRange && { color: '#00C8A0', fontWeight: '700' }]}>
-                    {item.label}
+                    {t(item.labelKey)}
                   </Text>
                   {item.value === fin.monthlyIncomeRange && <Text style={{ color: '#00C8A0' }}>✓</Text>}
                 </TouchableOpacity>

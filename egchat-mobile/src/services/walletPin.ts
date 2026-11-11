@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
+import { authAPI } from '../api';
 
 const PIN_KEY = 'egchat_wallet_pin_hash';
 const PIN_SET_KEY = 'egchat_wallet_pin_set';
@@ -7,6 +8,10 @@ const PIN_SALT = 'egchat_pin_salt_v1';
 
 async function hashPIN(pin: string): Promise<string> {
   return Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, PIN_SALT + pin);
+}
+
+async function clearLocal(): Promise<void> {
+  await AsyncStorage.multiRemove([PIN_KEY, PIN_SET_KEY, 'egchat_wallet_pin']);
 }
 
 export const walletPIN = {
@@ -22,7 +27,18 @@ export const walletPIN = {
     await AsyncStorage.setItem(PIN_SET_KEY, '1');
     await AsyncStorage.removeItem('egchat_wallet_pin');
   },
-  clear: async (): Promise<void> => {
-    await AsyncStorage.multiRemove([PIN_KEY, PIN_SET_KEY, 'egchat_wallet_pin']);
+  clear: clearLocal,
+  // El servidor manda: si el PIN de la cuenta se borró, la copia de este
+  // teléfono no puede seguir dando el PIN viejo por bueno. Sin conexión se
+  // conserva lo local para no dejar la cartera inutilizable.
+  syncWithServer: async (): Promise<boolean> => {
+    try {
+      const { hasPin } = await authAPI.hasPinConfigured();
+      if (!hasPin) {
+        await clearLocal();
+        return false;
+      }
+    } catch { /* offline */ }
+    return (await AsyncStorage.getItem(PIN_SET_KEY)) === '1';
   },
 };

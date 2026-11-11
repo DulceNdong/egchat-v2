@@ -15,6 +15,7 @@ import {
   type Account,
 } from '../services/multiAccount';
 import { setToken } from '../api';
+import { useLanguage } from '../context/LanguageContext';
 
 interface Props {
   visible: boolean;
@@ -29,6 +30,7 @@ export function AccountSwitcher({
 }: Props) {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [switching, setSwitching] = useState<string | null>(null);
+  const { translate: t } = useLanguage();
 
   useEffect(() => {
     if (visible) getAccounts().then(setAccounts);
@@ -56,7 +58,7 @@ export function AccountSwitcher({
       <Pressable style={s.overlay} onPress={onClose}>
         <Pressable style={s.sheet} onPress={e => e.stopPropagation()}>
           <View style={s.handle} />
-          <Text style={s.title}>Cambiar cuenta</Text>
+          <Text style={s.title}>{t('switchAccount')}</Text>
 
           {accounts.map(acc => {
             const isActive  = acc.id === currentAccountId;
@@ -95,11 +97,11 @@ export function AccountSwitcher({
           })}
 
           {accounts.length < 3 && (
-            <TouchableOpacity style={s.addBtn} onPress={() => { onClose(); onAddAccount(); }} activeOpacity={0.8}>
+            <TouchableOpacity style={s.addBtn} onPress={() => { onAddAccount(); }} activeOpacity={0.8}>
               <LinearGradient colors={['#00c8a0', '#00B4E6']} style={s.addGrad}>
                 <Text style={s.addIcon}>+</Text>
               </LinearGradient>
-              <Text style={s.addText}>Añadir cuenta</Text>
+              <Text style={s.addText}>{t('addAccount')}</Text>
             </TouchableOpacity>
           )}
         </Pressable>

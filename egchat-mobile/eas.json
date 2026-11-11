@@ -1,7 +1,8 @@
 {
   "cli": {
     "version": ">= 10.0.0",
-    "appVersionSource": "local"
+    "appVersionSource": "local",
+    "promptToConfigurePushNotifications": false
   },
   "build": {
     "development": {
@@ -12,11 +13,22 @@
         "buildType": "apk",
         "gradleCommand": ":app:assembleDebug"
       },
-      "ios": {
-        "simulator": false
-      },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://egchat-api-xlxj.onrender.com"
+        "EXPO_PUBLIC_API_URL": "https://egchat-api-xlxj.onrender.com",
+        "EXPO_PUBLIC_ENABLE_PUSH": "1",
+        "EXPO_PUBLIC_ENABLE_VOIP": "1",
+        "EXPO_PUBLIC_ENABLE_WEBRTC": "1",
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyB1VKzNGKOOI99QR9r_RIU1qRIo_f_H0Zw",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "egchat-4efe7.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_DATABASE_URL": "https://egchat-4efe7-default-rtdb.firebaseio.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "egchat-4efe7",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "egchat-4efe7.appspot.com",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "745900172350",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:745900172350:android:758256b45294a7db695d6f"
+      },
+      "ios": {
+        "simulator": false,
+        "resourceClass": "m-medium"
       }
     },
     "preview": {
@@ -24,62 +36,167 @@
       "channel": "preview",
       "android": {
         "buildType": "apk",
-        "gradleCommand": ":app:assembleRelease"
-      },
-      "ios": {
-        "simulator": true,
-        "buildConfiguration": "Release"
+        "gradleCommand": ":app:assembleRelease -PreactNativeArchitectures=arm64-v8a"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://egchat-api-xlxj.onrender.com"
+        "EXPO_PUBLIC_API_URL": "https://egchat-api-xlxj.onrender.com",
+        "EXPO_PUBLIC_API_URL_MOBILE": "https://egchat-api-xlxj.onrender.com",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://fqfxtjnfhvpggssbymdn.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_UonPkwqCB9LBgamDDjX2RA_CFEaP4nJ",
+        "EXPO_PUBLIC_ENABLE_PUSH": "1",
+        "EXPO_PUBLIC_ENABLE_VOIP": "1",
+        "EXPO_PUBLIC_ENABLE_WEBRTC": "1",
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyB1VKzNGKOOI99QR9r_RIU1qRIo_f_H0Zw",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "egchat-4efe7.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_DATABASE_URL": "https://egchat-4efe7-default-rtdb.firebaseio.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "egchat-4efe7",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "egchat-4efe7.appspot.com",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "745900172350",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:745900172350:android:758256b45294a7db695d6f",
+        "EXPO_PUBLIC_TURN_USERNAME": "da650e4049827172fe68c0ca",
+        "EXPO_PUBLIC_TURN_CREDENTIAL": "j/1W4W30lqysk7rF",
+        "GRADLE_OPTS": "-Dorg.gradle.jvmargs=-Xmx4096m -Dorg.gradle.daemon=false -Dkotlin.incremental=false"
+      },
+      "ios": {
+        "resourceClass": "m-medium",
+        "buildConfiguration": "Release",
+        "autoIncrement": true,
+        "image": "macos-sequoia-15.3-xcode-16.2",
+        "cocoapods": "1.17.0"
+      }
+    },
+    "preview-arm32": {
+      "distribution": "internal",
+      "channel": "preview",
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease -PreactNativeArchitectures=armeabi-v7a"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://egchat-api-xlxj.onrender.com",
+        "EXPO_PUBLIC_ENABLE_PUSH": "1",
+        "EXPO_PUBLIC_ENABLE_VOIP": "1",
+        "EXPO_PUBLIC_ENABLE_WEBRTC": "1",
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyB1VKzNGKOOI99QR9r_RIU1qRIo_f_H0Zw",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "egchat-4efe7.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_DATABASE_URL": "https://egchat-4efe7-default-rtdb.firebaseio.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "egchat-4efe7",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "egchat-4efe7.appspot.com",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "745900172350",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:745900172350:android:758256b45294a7db695d6f",
+        "GRADLE_OPTS": "-Dorg.gradle.jvmargs=-Xmx4096m -Dorg.gradle.daemon=false -Dkotlin.incremental=false"
+      }
+    },
+    "preview-slim": {
+      "distribution": "internal",
+      "channel": "preview",
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease",
+        "image": "latest",
+        "resourceClass": "medium"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://egchat-api-xlxj.onrender.com",
+        "EXPO_PUBLIC_ENABLE_PUSH": "1",
+        "EXPO_PUBLIC_ENABLE_VOIP": "1",
+        "EXPO_PUBLIC_ENABLE_WEBRTC": "1",
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyB1VKzNGKOOI99QR9r_RIU1qRIo_f_H0Zw",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "egchat-4efe7.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_DATABASE_URL": "https://egchat-4efe7-default-rtdb.firebaseio.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "egchat-4efe7",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "egchat-4efe7.appspot.com",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "745900172350",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:745900172350:android:758256b45294a7db695d6f",
+        "GRADLE_OPTS": "-Dorg.gradle.jvmargs=-Xmx4096m -Dorg.gradle.daemon=false -Dkotlin.incremental=false",
+        "ANDROID_ABI": "arm64-v8a"
+      }
+    },
+    "testflight": {
+      "distribution": "store",
+      "channel": "testflight",
+      "node": "20.18.0",
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease -PreactNativeArchitectures=arm64-v8a",
+        "resourceClass": "medium"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://egchat-api-xlxj.onrender.com",
+        "EXPO_PUBLIC_API_URL_MOBILE": "https://egchat-api-xlxj.onrender.com",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://fqfxtjnfhvpggssbymdn.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_UonPkwqCB9LBgamDDjX2RA_CFEaP4nJ",
+        "EXPO_PUBLIC_ENABLE_PUSH": "1",
+        "EXPO_PUBLIC_ENABLE_VOIP": "1",
+        "EXPO_PUBLIC_ENABLE_WEBRTC": "1",
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyB1VKzNGKOOI99QR9r_RIU1qRIo_f_H0Zw",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "egchat-4efe7.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_DATABASE_URL": "https://egchat-4efe7-default-rtdb.firebaseio.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "egchat-4efe7",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "egchat-4efe7.appspot.com",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "745900172350",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:745900172350:android:758256b45294a7db695d6f",
+        "EXPO_PUBLIC_TURN_USERNAME": "da650e4049827172fe68c0ca",
+        "EXPO_PUBLIC_TURN_CREDENTIAL": "j/1W4W30lqysk7rF",
+        "GRADLE_OPTS": "-Dorg.gradle.jvmargs=-Xmx4096m -Dorg.gradle.daemon=false -Dkotlin.incremental=false"
+      },
+      "ios": {
+        "autoIncrement": true,
+        "resourceClass": "m-medium",
+        "buildConfiguration": "Release",
+        "image": "latest",
+        "cocoapods": "1.17.0"
       }
     },
     "production": {
       "distribution": "store",
       "channel": "production",
+      "node": "20.18.0",
       "android": {
-        "buildType": "app-bundle"
-      },
-      "ios": {
-        "buildConfiguration": "Release",
-        "autoIncrement": true,
-        "resourceClass": "m-medium"
+        "buildType": "app-bundle",
+        "resourceClass": "medium"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://egchat-api-xlxj.onrender.com"
-      }
-    },
-    "production-device": {
-      "extends": "production",
-      "distribution": "internal",
-      "ios": {
-        "buildConfiguration": "Release",
-        "simulator": false
-      }
-    },
-    "testflight": {
-      "distribution": "internal",
-      "channel": "testflight",
-      "ios": {
-        "buildConfiguration": "Release",
-        "autoIncrement": true,
-        "simulator": false,
-        "resourceClass": "m-medium"
+        "EXPO_PUBLIC_API_URL": "https://egchat-api-xlxj.onrender.com",
+        "EXPO_PUBLIC_ENABLE_PUSH": "1",
+        "EXPO_PUBLIC_ENABLE_VOIP": "1",
+        "EXPO_PUBLIC_ENABLE_WEBRTC": "1",
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyB1VKzNGKOOI99QR9r_RIU1qRIo_f_H0Zw",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "egchat-4efe7.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_DATABASE_URL": "https://egchat-4efe7-default-rtdb.firebaseio.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "egchat-4efe7",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "egchat-4efe7.appspot.com",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "745900172350",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:745900172350:android:758256b45294a7db695d6f",
+        "GRADLE_OPTS": "-Dorg.gradle.jvmargs=-Xmx3072m -Dorg.gradle.daemon=false -Dkotlin.incremental=false -Dkotlin.compiler.execution.strategy=in-process"
       },
-      "env": {
-        "EXPO_PUBLIC_API_URL": "https://egchat-api-xlxj.onrender.com"
+      "ios": {
+        "autoIncrement": true,
+        "resourceClass": "m-medium",
+        "buildConfiguration": "Release",
+        "image": "macos-sequoia-15.5-xcode-26.0",
+        "cocoapods": "1.17.0"
       }
     }
   },
   "submit": {
+    "testflight": {
+      "ios": {
+        "bundleIdentifier": "com.jallzstores.egchat",
+        "appleId": "reddington120@icloud.com",
+        "ascAppId": "6810877584",
+        "appleTeamId": "XU6YD7ZJ2K",
+        "sku": "com.jallzstores.egchat"
+      }
+    },
     "production": {
       "android": {
         "serviceAccountKeyPath": "./google-play-key.json",
         "track": "internal"
       },
       "ios": {
-        "appleId": "tu-apple-id@email.com",
-        "ascAppId": "placeholder",
+        "appleId": "reddington120@icloud.com",
+        "ascAppId": "6810877584",
         "appleTeamId": "XU6YD7ZJ2K"
       }
     }

@@ -41,6 +41,7 @@ import Svg, { Path, Line } from 'react-native-svg';
 import { WebView } from './WebViewCompat';
 import { toast } from '../components/Toast';
 import { PERMISSION_LABELS, type MiniAppPermission } from './miniAppsStore';
+import { t as tr } from '../translations';
 
 export interface MiniAppProps {
   url: string;
@@ -71,7 +72,7 @@ function PermissionsScreen({
       <LinearGradient colors={['#0f172a', '#1e3a5f']} style={StyleSheet.absoluteFill} />
       <View style={ps.card}>
         <Text style={ps.title}>{appName}</Text>
-        <Text style={ps.subtitle}>solicita los siguientes permisos:</Text>
+        <Text style={ps.subtitle}>{tr('xtSolicitaLosSiguientesPermisos')}</Text>
 
         <View style={ps.list}>
           {permissions.map(perm => {
@@ -95,7 +96,7 @@ function PermissionsScreen({
 
         <View style={ps.btns}>
           <TouchableOpacity style={ps.denyBtn} onPress={onDeny}>
-            <Text style={ps.denyTxt}>Cancelar</Text>
+            <Text style={ps.denyTxt}>{tr('cancel')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={ps.acceptBtn} onPress={onAccept}>
             <LinearGradient colors={['#00c8a0', '#00B4E6']} style={ps.acceptGrad}>
@@ -272,21 +273,21 @@ export function MiniAppRuntime({
         case 'pay':
           if (onPayment) {
             Alert.alert(
-              '💳 Pago con EGChat',
+              tr('xtPagoConEGChat'),
               `${params.description}\nImporte: ${params.amount} ${params.currency}`,
               [
-                { text: 'Cancelar', style: 'cancel', onPress: () => sendResponse(id, null, 'Cancelado por el usuario') },
-                { text: 'Pagar',    onPress: () => { onPayment(params.amount, params.description); sendResponse(id, { success: true }); } },
+                { text: tr('cancel'), style: 'cancel', onPress: () => sendResponse(id, null, tr('xtCanceladoPorElUsuario')) },
+                { text: tr('pay'),    onPress: () => { onPayment(params.amount, params.description); sendResponse(id, { success: true }); } },
               ],
             );
           } else {
             Alert.alert(
-              'Pago con EGChat',
+              tr('xtPagoConEGChat2'),
               `${params.description || initialTitle}\nImporte: ${params.amount || 0} ${params.currency || 'XAF'}`,
               [
-                { text: 'Cancelar', style: 'cancel', onPress: () => sendResponse(id, null, 'Cancelado por el usuario') },
+                { text: tr('cancel'), style: 'cancel', onPress: () => sendResponse(id, null, tr('xtCanceladoPorElUsuario')) },
                 {
-                  text: 'Abrir monedero',
+                  text: tr('xtAbrirMonedero'),
                   onPress: () => {
                     router.push('/(tabs)/monedero' as any);
                     sendResponse(id, { pending: true });
@@ -424,13 +425,13 @@ export function MiniAppRuntime({
       <View style={s.errorRoot}>
         <LinearGradient colors={['#0f172a', '#1e293b']} style={StyleSheet.absoluteFill} />
         <Text style={s.errorEmoji}>😞</Text>
-        <Text style={s.errorTitle}>No se pudo cargar la app</Text>
-        <Text style={s.errorDesc}>Comprueba tu conexión e intenta de nuevo.</Text>
+        <Text style={s.errorTitle}>{tr('xtNoSePudoCargarLaApp')}</Text>
+        <Text style={s.errorDesc}>{tr('sysCheckConnection')}</Text>
         <TouchableOpacity style={s.retryBtn} onPress={() => { setHasError(false); webviewRef.current?.reload(); }}>
           <Text style={s.retryTxt}>Reintentar</Text>
         </TouchableOpacity>
         <TouchableOpacity style={s.backBtnError} onPress={() => { onClose?.(); router.back(); }}>
-          <Text style={s.backBtnErrorTxt}>Volver</Text>
+          <Text style={s.backBtnErrorTxt}>{tr('djhBack')}</Text>
         </TouchableOpacity>
       </View>
     );

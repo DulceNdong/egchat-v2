@@ -2,7 +2,7 @@
 import React, { useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Animated, Platform,
+  ActivityIndicator, Animated, Platform, Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Line, Circle } from 'react-native-svg';
@@ -67,7 +67,7 @@ export function ChatInputBar({
     const selected = text.slice(start, end);
     const before   = text.slice(0, start);
     const after    = text.slice(end);
-    onChangeText(`${before}${open}${selected || 'texto'}${close}${after}`);
+    onChangeText(`${before}${open}${selected || t('chtFormatSample')}${close}${after}`);
   };
 
   if (isRecording) {
@@ -101,7 +101,6 @@ export function ChatInputBar({
 
   return (
     <>
-    <TextFormatBar visible={hasText} onFormat={handleFormat} />
     <View style={[s.bar, { paddingBottom: bottomPadding }]}>
       <TouchableOpacity
         style={s.plusBtn}
@@ -121,7 +120,7 @@ export function ChatInputBar({
         <TouchableOpacity
           style={s.iconInside}
           onPress={() => {
-            setNativeKeyboardVisible(false);
+            Keyboard.dismiss();
             onToggleEmojis();
           }}
           activeOpacity={0.8}

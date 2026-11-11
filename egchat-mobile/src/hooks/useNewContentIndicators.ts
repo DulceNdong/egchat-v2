@@ -10,6 +10,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getToken, getApiBase } from '../api';
 import { supabase } from '../supabase';
+import { addNotification } from '../store/appStore';
+import { t as tr } from '../translations';
 
 export type ContentType = 'story' | 'moment' | 'live';
 
@@ -20,6 +22,26 @@ export interface NewContentMap {
 const SEEN_STORIES_KEY  = 'egchat_seen_stories_v1';
 const SEEN_MOMENTS_KEY  = 'egchat_seen_moments_v1';
 const POLL_INTERVAL_MS  = 30_000;
+
+// Module-level sets to track which IDs have already triggered a notification this session
+const notifiedStoryIds  = new Set<string>();
+const notifiedMomentIds = new Set<string>();
+const notifiedLiveIds   = new Set<string>();
+
+// /api/stories `media` → primera URL de slide (elemento {url,type,caption} o string)
+const firstMediaUrl = (media: any): string | undefined => {
+  if (!Array.isArray(media) || media.length === 0) return undefined;
+  const f = media[0];
+  return typeof f === 'string' ? f : f?.url;
+};
+// /api/moments `images` → primera URL de imagen (string[] o string JSON)
+const firstImageUrl = (images: any): string | undefined => {
+  let arr = images;
+  if (typeof arr === 'string') { try { arr = JSON.parse(arr); } catch { return undefined; } }
+  if (!Array.isArray(arr) || arr.length === 0) return undefined;
+  const f = arr[0];
+  return typeof f === 'string' ? f : f?.url;
+};
 
 // Lee los IDs ya vistos de AsyncStorage
 async function readSeen(key: string): Promise<Set<string>> {
@@ -69,9 +91,32 @@ export function useNewContentIndicators(currentUserId: string) {
       // Stories nuevas
       if (storiesRes.status === 'fulfilled' && storiesRes.value.ok) {
         const stories: Array<{ user_id: string; id: string }> = await storiesRes.value.json();
+        // Solo si hay stories nuevas traemos /api/stories una vez para construir el
+        // mapa de miniaturas (bandwidth-optimal; conserva el filtrado por contactos).
+        const newStories = stories.filter(
+          s => s.user_id !== currentUserId && !seenStories.has(s.id) && !notifiedStoryIds.has(s.id),
+        );
+        const storyThumb = new Map<string, string>();
+        if (newStories.length > 0) {
+          try {
+            const fullRes = await fetch(`${BASE}/api/stories`, { headers: { Authorization: `Bearer ${token}` } });
+            if (fullRes.ok) {
+              const full: Array<{ id: string; media?: any }> = await fullRes.json();
+              for (const fs of full) {
+                const u = firstMediaUrl(fs.media);
+                if (u) storyThumb.set(fs.id, u);
+              }
+            }
+          } catch { /* mapa vacío → fallback a icono */ }
+        }
         for (const s of stories) {
           if (s.user_id !== currentUserId && !seenStories.has(s.id)) {
             addIndicator(s.user_id, 'story');
+            if (!notifiedStoryIds.has(s.id)) {
+              notifiedStoryIds.add(s.id);
+              const userName = (s as any).user_name || (s as any).author_name || (s as any).full_name || tr('xtUnContacto');
+              addNotification({ type: 'story', title: userName + tr('nciPublishedStatus'), body: tr('xtTocaParaVerlo'), targetUserId: s.user_id, storyId: s.id, imageUrl: storyThumb.get(s.id) });
+            }
           }
         }
       }
@@ -79,9 +124,30 @@ export function useNewContentIndicators(currentUserId: string) {
       // Moments nuevos (últimas 24h)
       if (momentsRes.status === 'fulfilled' && momentsRes.value.ok) {
         const moments: Array<{ user_id: string; id: string }> = await momentsRes.value.json();
+        const newMoments = moments.filter(
+          m => m.user_id !== currentUserId && !seenMoments.has(m.id) && !notifiedMomentIds.has(m.id),
+        );
+        const momentThumb = new Map<string, string>();
+        if (newMoments.length > 0) {
+          try {
+            const fullRes = await fetch(`${BASE}/api/moments`, { headers: { Authorization: `Bearer ${token}` } });
+            if (fullRes.ok) {
+              const full: Array<{ id: string; images?: any }> = await fullRes.json();
+              for (const fm of full) {
+                const u = firstImageUrl(fm.images);
+                if (u) momentThumb.set(fm.id, u);
+              }
+            }
+          } catch { /* mapa vacío → fallback a icono */ }
+        }
         for (const m of moments) {
           if (m.user_id !== currentUserId && !seenMoments.has(m.id)) {
             addIndicator(m.user_id, 'moment');
+            if (!notifiedMomentIds.has(m.id)) {
+              notifiedMomentIds.add(m.id);
+              const userName = (m as any).user_name || (m as any).author_name || (m as any).full_name || tr('xtUnContacto');
+              addNotification({ type: 'moment', title: userName + tr('nciPublishedMoment'), body: tr('xtTocaParaVerlo'), targetUserId: m.user_id, momentId: m.id, imageUrl: momentThumb.get(m.id) });
+            }
           }
         }
       }
@@ -92,6 +158,11 @@ export function useNewContentIndicators(currentUserId: string) {
         for (const l of lives) {
           if (l.host_id !== currentUserId) {
             addIndicator(l.host_id, 'live');
+            if (!notifiedLiveIds.has(l.live_id)) {
+              notifiedLiveIds.add(l.live_id);
+              const userName = (l as any).user_name || (l as any).host_name || (l as any).full_name || tr('xtUnContacto');
+              addNotification({ type: 'live', title: `${userName} está en directo`, body: tr('xtTocaParaUnirte'), targetUserId: l.host_id, liveId: l.live_id });
+            }
           }
         }
       }

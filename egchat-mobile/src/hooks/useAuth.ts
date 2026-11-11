@@ -8,6 +8,8 @@ import { router } from 'expo-router';
 import { authAPI, clearToken, setToken, wakeServer } from '../api';
 import SessionManager from '../sessionManager';
 import { registerForPushNotifications } from '../notifications';
+import { WALLET_KYC_REQUIRED } from '../config/walletConfig';
+import { t as tr } from '../translations';
 
 interface User {
   id: string;
@@ -42,7 +44,7 @@ export const useAuth = () => {
   // ── Login ─────────────────────────────────────────────────────
   const login = useCallback(async (phone: string, password: string) => {
     if (!phone || !password) {
-      setError('Rellena todos los campos');
+      setError(tr('setFillAllFields'));
       return false;
     }
     // Normalizar teléfono: quitar espacios y guiones
@@ -52,7 +54,7 @@ export const useAuth = () => {
       await wakeServer();
       const res = await authAPI.login(cleanPhone, password);
       if (!res?.token && !res?.user) {
-        setError('Respuesta inesperada del servidor.');
+        setError(tr('xtRespuestaInesperadaDelServidor'));
         return false;
       }
       setState({ user: res.user, isAuthenticated: true, isLoading: false, error: '' });
@@ -61,6 +63,11 @@ export const useAuth = () => {
           console.warn('[Login push bootstrap skipped]', pushErr);
         });
       }
+      // Limpiar flag de añadir cuenta (se establece cuando se navega intencionalmente al login)
+      try {
+        const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+        await AsyncStorage.removeItem('egchat_adding_account').catch(() => {});
+      } catch {}
       router.replace('/(tabs)');
       return true;
     } catch (e: any) {
@@ -71,19 +78,19 @@ export const useAuth = () => {
         || msg.includes('incorrectos') || msg.includes('invalid')
         || msg.includes('No autorizado')
       ) {
-        setError('Teléfono o contraseña incorrectos.');
+        setError(tr('xtTelefonoOContrasenaIncorrectos'));
       } else if (msg.includes('Sesión expirada')) {
-        setError('Sesión expirada. Inténtalo de nuevo.');
+        setError(tr('xtSesionExpiradaIntentaloDeNuevo'));
       } else if (
         msg.includes('No se pudo conectar al servidor')
         || msg.includes('fetch') || msg.includes('network')
         || msg.includes('Network') || msg.includes('AbortError')
       ) {
-        setError('No se pudo conectar al servidor. Verifica tu conexión e intenta de nuevo.');
+        setError(tr('xtNoSePudoConectarAlServidorVerificaTuConexionEInten'));
       } else if (msg.includes('500')) {
-        setError('Error del servidor. Intenta en unos minutos.');
+        setError(tr('xtErrorDelServidorIntentaEnUnosMinutos'));
       } else {
-        setError(msg || 'Error al iniciar sesión.');
+        setError(msg || tr('xtErrorAlIniciarSesion'));
       }
       return false;
     }
@@ -106,10 +113,11 @@ export const useAuth = () => {
           console.warn('[Register push bootstrap skipped]', pushErr);
         });
       }
-      // ── KYC: tras registro siempre mostrar la pantalla de activación del monedero.
-      // El usuario puede ignorarla y entrar a la app normalmente.
+      // ── KYC: tras registro, si el monedero requiere KYC obligatorio,
+      // mostrar la pantalla de activación. Si no (modo pruebas), ir directo a tabs.
+      // Para reactivar: cambiar WALLET_KYC_REQUIRED a true en src/config/walletConfig.ts
       // En web redirigimos directo a tabs (KYC es solo para la app nativa).
-      if (Platform.OS === 'web') {
+      if (Platform.OS === 'web' || !WALLET_KYC_REQUIRED) {
         router.replace('/(tabs)');
       } else {
         router.replace('/kyc-wallet-prompt' as any);
@@ -118,11 +126,11 @@ export const useAuth = () => {
     } catch (e: any) {
       const msg = e.message || '';
       if (msg.includes('ya está registrado') || msg.includes('409')) {
-        setError('Este número ya está registrado. Usa "Ya tengo cuenta".');
+        setError(tr('xtEsteNumeroYaEstaRegistradoUsaYaTengoCuenta'));
       } else if (msg.includes('fetch') || msg.includes('network')) {
-        setError('Error de conexión. Verifica tu internet.');
+        setError(tr('xtErrorDeConexionVerificaTuInternet'));
       } else {
-        setError(msg || 'Error al registrarse. Intenta de nuevo.');
+        setError(msg || tr('xtErrorAlRegistrarseIntentaDeNuevo'));
       }
       return false;
     }
@@ -144,7 +152,7 @@ export const useAuth = () => {
       setState(s => ({ ...s, isLoading: false, error: '' }));
       return true;
     } catch (e: any) {
-      setError(e.message || 'Error al enviar el código');
+      setError(e.message || tr('authSendCodeError'));
       return false;
     }
   }, []);
@@ -154,10 +162,10 @@ export const useAuth = () => {
     try {
       const { verified } = await authAPI.verifyCode(phone, code);
       setState(s => ({ ...s, isLoading: false, error: '' }));
-      if (!verified) setError('Código incorrecto. Inténtalo de nuevo.');
+      if (!verified) setError(tr('authCodeWrong'));
       return verified;
     } catch (e: any) {
-      setError(e.message || 'Código inválido');
+      setError(e.message || tr('authCodeInvalid'));
       return false;
     }
   }, []);
@@ -169,7 +177,7 @@ export const useAuth = () => {
       setState(s => ({ ...s, isLoading: false, error: '' }));
       return true;
     } catch (e: any) {
-      setError(e.message || 'Error al cambiar la contraseña');
+      setError(e.message || tr('authPasswordChangeError'));
       return false;
     }
   }, []);

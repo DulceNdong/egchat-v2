@@ -1,3 +1,4 @@
+import { t as tr } from '../translations';
 export interface StorySlide {
   id: string;
   media_url: string;
@@ -73,7 +74,7 @@ export function parseStoriesResponse(rows: unknown[], meId: string): {
       map.set(uid, {
         storyId: raw.id,
         userId: uid,
-        userName: raw.userName || 'Usuario',
+        userName: raw.userName || tr('setUser'),
         userAvatar: raw.avatarUrl,
         avatarColor: avatarColorFor(uid),
         stories: [],

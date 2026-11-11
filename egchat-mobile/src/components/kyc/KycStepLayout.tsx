@@ -6,6 +6,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KycProgressBar } from './KycProgressBar';
 import { useNetworkStatus } from '../../store/offlineStore';
+import { t as tr } from '../../translations';
 
 interface Props {
   step: number;
@@ -61,9 +62,9 @@ export function KycStepLayout({
           <TouchableOpacity
             style={st.btnBack}
             onPress={onBack}
-            accessibilityLabel="Volver al paso anterior"
+            accessibilityLabel={tr('xtVolverAlPasoAnterior')}
           >
-            <Text style={st.btnBackText}>← Atrás</Text>
+            <Text style={st.btnBackText}>{tr('walBackArrow')}</Text>
           </TouchableOpacity>
         )}
         <TouchableOpacity

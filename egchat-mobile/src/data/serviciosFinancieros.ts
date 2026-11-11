@@ -1,7 +1,5 @@
 // Datos servicios financieros — Configuración para backend real
 
-export type BankAccount = { type: string; number: string; balance: number };
-
 export type GQBank = {
   id: string;
   name: string;
@@ -18,7 +16,6 @@ export type GQBank = {
   branches: number;
   atms: number;
   services: string[];
-  accounts: BankAccount[];
 };
 
 export const GQ_BANKS: GQBank[] = [
@@ -29,7 +26,6 @@ export const GQ_BANKS: GQBank[] = [
     address: 'Av. de la Independencia, Malabo', phone: '+240 333 09 10 00', web: 'bange.gq', swift: 'BANGEGQXX',
     branches: 8, atms: 12,
     services: ['Cuenta Corriente', 'Cuenta de Ahorros', 'Transferencias Nacionales', 'Transferencias CEMAC', 'Préstamos Personales', 'Tarjeta de Débito', 'Banca Digital'],
-    accounts: [{ type: 'Cuenta Corriente', number: '****4521', balance: 45200 }, { type: 'Cuenta Ahorros', number: '****8834', balance: 120000 }],
   },
   {
     id: 'ccei', name: 'CCEI Bank GE', full: "Crédit Communautaire d'Afrique — Guinea Ecuatorial",
@@ -38,7 +34,6 @@ export const GQ_BANKS: GQBank[] = [
     address: 'Calle del Presidente Obiang, Malabo', phone: '+240 333 09 20 00', web: 'cceibank.gq', swift: 'CCEIGQXX',
     branches: 6, atms: 9,
     services: ['Cuenta Corriente', 'Cuenta de Ahorros', 'Transferencias Internacionales', 'Tarjetas Bancarias', 'Banca Digital'],
-    accounts: [{ type: 'Cuenta Corriente', number: '****7712', balance: 80000 }],
   },
   {
     id: 'bgfi', name: 'BGFIBank GE', full: 'Banque Gabonaise et Française Internationale — GE',
@@ -47,7 +42,6 @@ export const GQ_BANKS: GQBank[] = [
     address: 'Av. Hassan II, Malabo', phone: '+240 333 09 30 00', web: 'bgfi.gq', swift: 'BGFIGQXX',
     branches: 5, atms: 7,
     services: ['Banca Corporativa', 'Banca Personal', 'Pagos QR', 'Inversiones', 'Tarjetas Premium'],
-    accounts: [],
   },
   {
     id: 'ecobank', name: 'Ecobank GE', full: 'Ecobank Equatorial Guinea',
@@ -56,7 +50,6 @@ export const GQ_BANKS: GQBank[] = [
     address: 'Calle de Argelia, Malabo', phone: '+240 333 09 40 00', web: 'ecobank.com', swift: 'ECOBGQXX',
     branches: 4, atms: 8,
     services: ['Banca Móvil Xpress', 'Transferencias Pan-Africanas', 'Tarjeta Ecobank', 'Banca Digital'],
-    accounts: [],
   },
   {
     id: 'cbge', name: 'CBGE', full: 'Commercial Bank Guinée Equatoriale',
@@ -65,7 +58,6 @@ export const GQ_BANKS: GQBank[] = [
     address: 'Av. de la Libertad, Malabo', phone: '+240 333 09 50 00', web: 'cbge.gq', swift: 'CBGEGQXX',
     branches: 3, atms: 5,
     services: ['Cuenta Corriente Empresarial', 'Financiamiento Comercial', 'Cartas de Crédito', 'Banca Digital'],
-    accounts: [],
   },
 ];
 

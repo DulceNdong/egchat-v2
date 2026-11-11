@@ -5,7 +5,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import Svg, { Circle, Line, Path, Polyline, Rect } from 'react-native-svg';
 import { useLanguage } from '../../src/context/LanguageContext';
-import { t } from '../../src/translations';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 
 // ── Iconos SVG idénticos a la versión web ─────────────────────────
@@ -72,17 +71,18 @@ const NavIcon = ({ name, color, focused, size = 24 }: { name: string; color: str
 // ── Tab icon con indicador activo ──────────────────────────────────
 const TabIcon = ({ name, color, focused }: { name: string; color: string; focused: boolean }) => (
   <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-    <NavIcon name={name} color={color} focused={focused} size={27} />
+    <NavIcon name={name} color={color} focused={focused} size={30} />
   </View>
 );
 
 export default function TabsLayout() {
   const { isDark } = useThemeContext();
-  const { language } = useLanguage();
+  const { language, translate: t } = useLanguage();
   const insets = useSafeAreaInsets();
 
-  // La tab bar debe cubrir el home indicator (insets.bottom) + padding visual
-  const TAB_CONTENT_HEIGHT = 56;
+  // Altura visual alineada con las barras inferiores nativas de iOS.
+  // El área segura se suma aparte para no invadir el indicador de inicio.
+  const TAB_CONTENT_HEIGHT = 60;
   const tabBarHeight = TAB_CONTENT_HEIGHT + insets.bottom;
 
   return (
@@ -113,7 +113,7 @@ export default function TabsLayout() {
           backgroundColor: 'transparent',
           overflow: 'hidden',
           paddingBottom: insets.bottom,
-          paddingTop: Platform.OS === 'android' ? 4 : 0,
+          paddingTop: Platform.OS === 'android' ? 4 : 3,
         },
         tabBarBackground: () => (
           <LinearGradient
@@ -126,13 +126,13 @@ export default function TabsLayout() {
         tabBarActiveTintColor: '#ffffff',
         tabBarInactiveTintColor: 'rgba(255,255,255,0.5)',
         tabBarLabelStyle: {
-          fontSize: 10,
+          fontSize: 12,
           fontWeight: '600',
           letterSpacing: 0.3,
-          marginBottom: 2,
+          marginBottom: 4,
         },
         tabBarIconStyle: {
-          marginTop: 4,
+          marginTop: 6,
         },
       }}
     >

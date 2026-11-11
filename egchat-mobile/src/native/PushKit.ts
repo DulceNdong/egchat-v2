@@ -28,10 +28,26 @@ export interface VoIPCallData {
 }
 
 export const PushKit = {
+  /** Guarda el authToken en UserDefaults para que Swift pueda usarlo */
+  setAuthToken(token: string) {
+    if (!isAvailable) return;
+    EGChatPushKitModule.setAuthToken(token);
+  },
+
   /** Registra el dispositivo para recibir VoIP push */
   register() {
     if (!isAvailable) return;
     EGChatPushKitModule.registerVoIP();
+  },
+
+  /** Lee el token ya emitido por iOS antes de que JavaScript estuviera listo.
+   *  En builds antiguos el método nativo no existe: se devuelve null en vez de
+   *  lanzar "undefined is not a function". */
+  async getCurrentVoIPToken(): Promise<string | null> {
+    if (!isAvailable) return null;
+    const fn = (EGChatPushKitModule as any)?.getCurrentVoIPToken;
+    if (typeof fn !== 'function') return null;
+    try { return (await fn.call(EGChatPushKitModule)) || null; } catch { return null; }
   },
 
   /** Escucha el token VoIP para subirlo al servidor */

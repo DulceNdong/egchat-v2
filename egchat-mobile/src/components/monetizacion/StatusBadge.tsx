@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { t as tr } from '../../translations';
 
 export type BadgeStatus =
   | 'pagado'
@@ -19,16 +20,16 @@ interface StatusBadgeProps {
 }
 
 const STATUS_CONFIG: Record<string, { color: string; bg: string; label: string; dot?: boolean }> = {
-  pagado:     { color: '#00FF88', bg: '#00FF8822', label: '✓ Pagado' },
-  pendiente:  { color: '#FFD700', bg: '#FFD70022', label: '⏳ Pendiente' },
-  vencido:    { color: '#FF4444', bg: '#FF444422', label: '✗ Vencido' },
-  vigente:    { color: '#00FF88', bg: '#00FF8822', label: '● Vigente' },
-  proximo:    { color: '#FFD700', bg: '#FFD70022', label: '⚠ Por vencer' },
-  activo:     { color: '#00D4FF', bg: '#00D4FF22', label: '● Activo' },
-  inactivo:   { color: '#666688', bg: '#66668822', label: '● Inactivo' },
-  completado: { color: '#00FF88', bg: '#00FF8822', label: '✓ Completado' },
-  cancelado:  { color: '#FF4444', bg: '#FF444422', label: '✗ Cancelado' },
-  verificado: { color: '#00D4FF', bg: '#00D4FF22', label: '✓ Verificado' },
+  pagado:     { color: '#00FF88', bg: '#00FF8822', get label() { return tr('mznPaidMark'); } },
+  pendiente:  { color: '#FFD700', bg: '#FFD70022', get label() { return tr('xtPendiente'); } },
+  vencido:    { color: '#FF4444', bg: '#FF444422', get label() { return tr('xtVencido'); } },
+  vigente:    { color: '#00FF88', bg: '#00FF8822', get label() { return tr('xtVigente'); } },
+  proximo:    { color: '#FFD700', bg: '#FFD70022', get label() { return tr('xtPorVencer'); } },
+  activo:     { color: '#00D4FF', bg: '#00D4FF22', get label() { return tr('xtActivo'); } },
+  inactivo:   { color: '#666688', bg: '#66668822', get label() { return tr('xtInactivo'); } },
+  completado: { color: '#00FF88', bg: '#00FF8822', get label() { return tr('xtCompletado'); } },
+  cancelado:  { color: '#FF4444', bg: '#FF444422', get label() { return tr('xtCancelado'); } },
+  verificado: { color: '#00D4FF', bg: '#00D4FF22', get label() { return tr('mznVerifiedBadge'); } },
 };
 
 export function StatusBadge({ status, size = 'md' }: StatusBadgeProps) {

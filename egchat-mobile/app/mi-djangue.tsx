@@ -14,6 +14,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useFocusEffect } from 'expo-router';
 import Svg, { Path, Line, Circle, G } from 'react-native-svg';
 import { apiFetch } from '../src/api';
+import { t as tr } from '../src/translations';
 
 const { width } = Dimensions.get('window');
 
@@ -65,9 +66,9 @@ interface DjangueItem {
 
 const TABS = [
   { id: 'home', label: 'Inicio', icon: 'home' },
-  { id: 'my-djangues', label: 'Mis Djangues', icon: 'wallet' },
+  { id: 'my-djangues', label: tr('xtMisDjangues'), icon: 'wallet' },
   { id: 'admin', label: 'Administrar', icon: 'crown' },
-  { id: 'create', label: 'Crear', icon: 'plus' },
+  { id: 'create', label: tr('create'), icon: 'plus' },
 ];
 
 // Iconos SVG profesionales sin fondos
@@ -186,7 +187,7 @@ export default function MiDjangueScreen() {
         </Animated.View>
         <Text style={s.brandName}>EGChat</Text>
         <View style={s.divider} />
-        <Text style={s.productName}>Mi Djangue</Text>
+        <Text style={s.productName}>{tr('xtMiDjangue')}</Text>
       </View>
 
       {/* Ilustración compacta */}
@@ -224,7 +225,7 @@ export default function MiDjangueScreen() {
 
       {/* Texto */}
       <View style={s.textContainer}>
-        <Text style={s.title}>Ahorra en Grupo</Text>
+        <Text style={s.title}>{tr('xtAhorraEnGrupo')}</Text>
         <Text style={s.subtitle}>
           El sistema tradicional de ahorro rotativo,{'\n'}ahora en tu móvil
         </Text>
@@ -247,7 +248,7 @@ export default function MiDjangueScreen() {
                 strokeLinejoin="round"
               />
             </Svg>
-            <Text style={s.primaryButtonText}>Mis Djangues</Text>
+            <Text style={s.primaryButtonText}>{tr('xtMisDjangues')}</Text>
           </LinearGradient>
         </TouchableOpacity>
 
@@ -260,7 +261,7 @@ export default function MiDjangueScreen() {
             <Circle cx={12} cy={12} r={10} stroke="#fff" strokeWidth={2} />
             <Path d="M12 8v8M8 12h8" stroke="#fff" strokeWidth={2} strokeLinecap="round" />
           </Svg>
-          <Text style={s.secondaryButtonText}>Crear Nuevo Djangue</Text>
+          <Text style={s.secondaryButtonText}>{tr('xtCrearNuevoDjangue')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -271,14 +272,14 @@ export default function MiDjangueScreen() {
             <Path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" stroke="#fff" strokeWidth={2} strokeLinecap="round" opacity={0.7} />
             <Path d="M22 4L12 14.01l-3-3" stroke="#fff" strokeWidth={2} strokeLinecap="round" opacity={0.7} />
           </Svg>
-          <Text style={s.featureText}>Seguro y Confiable</Text>
+          <Text style={s.featureText}>{tr('xtSeguroYConfiable')}</Text>
         </View>
         <View style={s.featureRow}>
           <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
             <Path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="#fff" strokeWidth={2} strokeLinecap="round" opacity={0.7} />
             <Circle cx={9} cy={7} r={4} stroke="#fff" strokeWidth={2} opacity={0.7} />
           </Svg>
-          <Text style={s.featureText}>Fácil para Todos</Text>
+          <Text style={s.featureText}>{tr('djnEasyForAll')}</Text>
         </View>
       </View>
     </ScrollView>
@@ -302,10 +303,10 @@ export default function MiDjangueScreen() {
             <Circle cx={12} cy={12} r={10} stroke="rgba(0,200,160,0.3)" strokeWidth={2} />
             <Path d="M8 12h8M12 8v8" stroke="rgba(0,200,160,0.3)" strokeWidth={2} strokeLinecap="round" />
           </Svg>
-          <Text style={s.emptyTitle}>No tienes djangues</Text>
-          <Text style={s.emptySub}>Crea uno nuevo o únete a uno existente</Text>
+          <Text style={s.emptyTitle}>{tr('xtNoTienesDjangues')}</Text>
+          <Text style={s.emptySub}>{tr('xtCreaUnoNuevoOUneteAUnoExistente')}</Text>
           <TouchableOpacity style={s.createBtn} onPress={() => setActiveTab('create')}>
-            <Text style={s.createBtnTxt}>Crear Djangue</Text>
+            <Text style={s.createBtnTxt}>{tr('xtCrearDjangue')}</Text>
           </TouchableOpacity>
         </View>
       );
@@ -353,7 +354,7 @@ export default function MiDjangueScreen() {
 
               <View style={s.djangueInfo}>
                 <View style={s.djangueInfoBox}>
-                  <Text style={s.djangueInfoLabel}>Turno</Text>
+                  <Text style={s.djangueInfoLabel}>{tr('djhTurnLabel')}</Text>
                   <Text style={s.djangueInfoValue}>{djangue.current_turn}/{djangue.total_turns}</Text>
                 </View>
                 <View style={s.djangueInfoBox}>
@@ -361,7 +362,7 @@ export default function MiDjangueScreen() {
                   <Text style={s.djangueInfoValue}>{djangue.member_count}</Text>
                 </View>
                 <View style={s.djangueInfoBox}>
-                  <Text style={s.djangueInfoLabel}>Cuota</Text>
+                  <Text style={s.djangueInfoLabel}>{tr('djhQuotaLabel')}</Text>
                   <Text style={s.djangueInfoValue}>
                     {djangue.quota_amount.toLocaleString()} {djangue.currency}
                   </Text>
@@ -370,17 +371,17 @@ export default function MiDjangueScreen() {
 
               {djangue.is_my_turn && (
                 <View style={s.badge}>
-                  <Text style={s.badgeText}>🎉 ¡Es tu turno!</Text>
+                  <Text style={s.badgeText}>{tr('djnYourTurnParty')}</Text>
                 </View>
               )}
               {!djangue.is_my_turn && !djangue.paid_current_turn && (
                 <View style={[s.badge, { backgroundColor: 'rgba(239,68,68,0.2)', borderColor: 'rgba(239,68,68,0.4)' }]}>
-                  <Text style={[s.badgeText, { color: '#ef4444' }]}>⚠️ Pendiente de pago</Text>
+                  <Text style={[s.badgeText, { color: '#ef4444' }]}>{tr('xtPendienteDePago2')}</Text>
                 </View>
               )}
               {!djangue.is_my_turn && djangue.paid_current_turn && (
                 <View style={[s.badge, { backgroundColor: 'rgba(16,185,129,0.2)', borderColor: 'rgba(16,185,129,0.4)' }]}>
-                  <Text style={[s.badgeText, { color: '#10b981' }]}>✅ Al día</Text>
+                  <Text style={[s.badgeText, { color: '#10b981' }]}>{tr('xtAlDia2')}</Text>
                 </View>
               )}
             </LinearGradient>
@@ -397,10 +398,10 @@ export default function MiDjangueScreen() {
     if (adminDjangues.length === 0) {
       return (
         <View style={s.empty}>
-          <Text style={s.emptyTitle}>No administras ningún djangue</Text>
-          <Text style={s.emptySub}>Crea tu primer djangue para comenzar</Text>
+          <Text style={s.emptyTitle}>{tr('xtNoAdministrasNingunDjangue')}</Text>
+          <Text style={s.emptySub}>{tr('xtCreaTuPrimerDjangueParaComenzar')}</Text>
           <TouchableOpacity style={s.createBtn} onPress={() => setActiveTab('create')}>
-            <Text style={s.createBtnTxt}>Crear Djangue</Text>
+            <Text style={s.createBtnTxt}>{tr('xtCrearDjangue')}</Text>
           </TouchableOpacity>
         </View>
       );
@@ -415,7 +416,7 @@ export default function MiDjangueScreen() {
             onPress={() => router.push({ pathname: '/djangue-admin-stats', params: { id: djangue.id } } as any)}
           >
             <Text style={s.adminCardTitle}>{djangue.name}</Text>
-            <Text style={s.adminCardSub}>Ver estadísticas y reportes</Text>
+            <Text style={s.adminCardSub}>{tr('djnViewStatsReports')}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -426,14 +427,14 @@ export default function MiDjangueScreen() {
   const renderCreate = () => (
     <View style={s.tabContent}>
       <View style={s.createContainer}>
-        <Text style={s.createTitle}>Crear Nuevo Djangue</Text>
-        <Text style={s.createSub}>Configura tu grupo de ahorro rotativo</Text>
+        <Text style={s.createTitle}>{tr('xtCrearNuevoDjangue')}</Text>
+        <Text style={s.createSub}>{tr('xtConfiguraTuGrupoDeAhorroRotativo')}</Text>
         
         <TouchableOpacity
           style={s.createFullBtn}
           onPress={() => router.push('/djangue-admin-create')}
         >
-          <Text style={s.createFullBtnText}>Ir al Formulario Completo</Text>
+          <Text style={s.createFullBtnText}>{tr('xtIrAlFormularioCompleto')}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -450,7 +451,7 @@ export default function MiDjangueScreen() {
               <Path d="M12 19l-7-7 7-7" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" />
             </Svg>
           </TouchableOpacity>
-          <Text style={s.headerTitle}>Mi Djangue</Text>
+          <Text style={s.headerTitle}>{tr('xtMiDjangue')}</Text>
           <View style={{ width: 40 }}></View>
         </View>
 

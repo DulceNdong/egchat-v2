@@ -5,5 +5,16 @@
     "paths": {
       "@/*": ["./src/*"]
     }
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "ios",
+    "android",
+    "dist",
+    "build",
+    "egchat-v2",
+    "supabase",
+    "src/firebase.ts",
+    "**/*.bak"
+  ]
 }

@@ -11,6 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getToken } from './api';
 import { RichNotifications } from './native/RichNotifications';
 import { playNotification } from './hooks/useSounds';
+import { t as tr } from './translations';
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api-xlxj.onrender.com';
 const BACKGROUND_TASK = 'EGCHAT_BACKGROUND_NOTIFICATION';
@@ -31,7 +32,7 @@ Notifications.setNotificationHandler({
       // Para mensajes en primer plano: NO reproducir sonido del sistema
       // porque RichNotifications.show() ya da el feedback visual/auditivo
       // Para llamadas: tampoco — el ringtone lo maneja startRingtone()
-      shouldPlaySound: false,
+      shouldPlaySound: !isCall,
       shouldSetBadge: !isCall,
       priority: isCall
         ? Notifications.AndroidNotificationPriority.MAX
@@ -107,8 +108,8 @@ async function createChannels() {
     });
   }
 
-  if (!existingIds.has('egchat-calls')) {
-    await Notifications.setNotificationChannelAsync('egchat-calls', {
+  if (!existingIds.has('egchat-calls-v2')) {
+    await Notifications.setNotificationChannelAsync('egchat-calls-v2', {
       name: 'Llamadas',
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: soundSettings.vibrationEnabled ? [0, 500, 200, 500, 200, 500] : undefined,
@@ -141,7 +142,7 @@ export async function refreshAndroidChannels(): Promise<void> {
 
   // Borrar y recrear para que el nuevo sonido aplique
   await Notifications.deleteNotificationChannelAsync('egchat-messages').catch(() => {});
-  await Notifications.deleteNotificationChannelAsync('egchat-calls').catch(() => {});
+  await Notifications.deleteNotificationChannelAsync('egchat-calls-v2').catch(() => {});
 
   await Notifications.setNotificationChannelAsync('egchat-messages', {
     name: 'Mensajes',
@@ -152,7 +153,7 @@ export async function refreshAndroidChannels(): Promise<void> {
     showBadge: true,
   });
 
-  await Notifications.setNotificationChannelAsync('egchat-calls', {
+  await Notifications.setNotificationChannelAsync('egchat-calls-v2', {
     name: 'Llamadas',
     importance: Notifications.AndroidImportance.MAX,
     vibrationPattern: soundSettings.vibrationEnabled ? [0, 500, 200, 500, 200, 500] : undefined,
@@ -164,12 +165,60 @@ export async function refreshAndroidChannels(): Promise<void> {
   });
 }
 
+// ── Categorías iOS ──────────────────────────────────────────────────────────
+// El backend pide la categoría EGCHAT_CALL en el push de llamadas. Sin ella, el
+// banner de una llamada entrante no tiene botones y con el teléfono bloqueado el
+// usuario no puede ni rechazar. Hay que registrarla antes de que llegue el push.
+export async function ensureIosCategories() {
+  if (Platform.OS !== 'ios') return;
+  try {
+    await Notifications.setNotificationCategoryAsync('EGCHAT_CALL', [
+      {
+        identifier: 'EGCHAT_ANSWER',
+        buttonTitle: 'Aceptar',
+        // authentication-required: no se contesta sola dentro de un bolsillo.
+        // opensAppToForeground: con la app cerrada el listener solo dispara si
+        // la llamada abre la app.
+        options: { isAuthenticationRequired: true, opensAppToForeground: true },
+      },
+      {
+        identifier: 'EGCHAT_REJECT',
+        buttonTitle: 'Rechazar',
+        options: { isDestructive: true, opensAppToForeground: false },
+      },
+    ]);
+  } catch { /* el NSE puede haber fijado otra categoría; no es crítico */ }
+}
+
 // ── Solicitar permisos y registrar token FCM ────────────────────────────────
+let pushTokenListenerRegistered = false;
+
 export async function registerForPushNotifications(): Promise<string | null> {
   if (Platform.OS === 'web') return null;
   if (!PUSH_ENABLED) return null;
 
   await createChannels();
+  await ensureIosCategories();
+  const { installIosPushSound } = await import('./hooks/useSounds');
+  await installIosPushSound();
+
+  // Expo puede rotar el token (reinstalo, cambio de cuenta APNs, OTA). Sin
+  // este listener el servidor se queda con el token viejo y el push se
+  // descarta hasta el próximo arranque.
+  if (!pushTokenListenerRegistered) {
+    pushTokenListenerRegistered = true;
+    try {
+      Notifications.addPushTokenListener((tokenInfo) => {
+        const token = tokenInfo?.data;
+        if (!token) return;
+        void AsyncStorage.setItem('expoPushToken', token)
+          .then(() => syncTokenWithServer(token));
+      });
+    } catch (e: any) {
+      pushTokenListenerRegistered = false;
+      console.warn('[Push] No se pudo registrar el listener de token:', e?.message || e);
+    }
+  }
 
   // Registrar background task para recibir llamadas con app suspendida (Android)
   if (Platform.OS === 'android') {
@@ -207,46 +256,118 @@ export async function registerForPushNotifications(): Promise<string | null> {
   // projectId debe ser el EAS Project ID (UUID de expo.dev/accounts/<user>/projects/<slug>)
   // Si no tienes EAS configurado, corre: npx eas init
   let expoPushToken: string | null = null;
+  let nativeDeviceToken: string | null = null;
+  const projectId = Constants.expoConfig?.extra?.eas?.projectId
+    ?? Constants.easConfig?.projectId
+    ?? undefined;
+  console.log(`[Push] Iniciando registro. Platform: ${Platform.OS}, projectId: ${projectId}`);
   try {
-    const tokenData = await Notifications.getExpoPushTokenAsync({
-      projectId: Constants.expoConfig?.extra?.eas?.projectId
-        ?? Constants.easConfig?.projectId
-        ?? undefined,
-    });
+    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
     expoPushToken = tokenData.data;
-  } catch (e) {
-    // Expo push token requires EAS registration. Falls back to native device token.
-    // This covers Xcode direct builds (iOS) and non-EAS Android builds.
+    console.log(`[Push] ExponentPushToken obtenido: ...${expoPushToken.slice(-12)}`);
+  } catch (e: any) {
+    console.warn('[Push] getExpoPushTokenAsync falló:', e?.message || e);
+    // Fallback al token nativo APNs/FCM
     try {
       const nativeToken = await Notifications.getDevicePushTokenAsync();
       expoPushToken = nativeToken.data as string;
-      console.log(`[Push] Usando token nativo (${Platform.OS}):`, String(expoPushToken).slice(-12));
-    } catch (e2) {
-      console.warn('[Push] No se pudo obtener token nativo:', e2);
+      console.log(`[Push] Token nativo (${Platform.OS}) obtenido: ...${String(expoPushToken).slice(-12)}`);
+    } catch (e2: any) {
+      console.warn('[Push] getDevicePushTokenAsync también falló:', e2?.message || e2);
     }
   }
 
-  if (!expoPushToken) {
-    console.warn('Sin token push — las notificaciones no funcionarán en background');
+  // iOS: registrar AMBOS tokens — ExponentPushToken para compatibilidad general
+  // y el token APNs nativo para envíos directos con mutable-content (fotos en notificaciones)
+  if (Platform.OS === 'ios' && expoPushToken) {
+    try {
+      const nativeToken = await Notifications.getDevicePushTokenAsync();
+      nativeDeviceToken = nativeToken.data as string;
+      console.log(`[Push] Token APNs nativo: ...${String(nativeDeviceToken).slice(-12)}`);
+    } catch (error: any) {
+      console.warn('[Push] No se pudo obtener token APNs directo:', error?.message || error);
+    }
+  }
+
+  // Android registra además el token FCM directo. Las llamadas urgentes se
+  // entregan como data-only para que el receptor nativo funcione con la app
+  // cerrada, sin depender de que el proceso JavaScript se inicie a tiempo.
+  let fcmToken: string | null = null;
+  if (Platform.OS === 'android') {
+    try {
+      const { NativeCallKit } = await import('./native/CallKit');
+      fcmToken = await NativeCallKit.getFcmToken();
+    } catch (error) {
+      console.warn('[Push] No se pudo obtener token FCM directo:', error);
+    }
+  }
+
+  if (!expoPushToken && !fcmToken && !nativeDeviceToken) {
+    console.warn('[Push] ❌ Sin ningún token push — las notificaciones no funcionarán en background');
     return null;
   }
 
-  await AsyncStorage.setItem('expoPushToken', expoPushToken);
+  console.log(`[Push] Tokens obtenidos — expo: ${!!expoPushToken}, fcm: ${!!fcmToken}, apns: ${!!nativeDeviceToken}`);
 
-  // Registrar en el servidor
-  await syncTokenWithServer(expoPushToken);
+  if (expoPushToken) {
+    await AsyncStorage.setItem('expoPushToken', expoPushToken);
+    await syncTokenWithServer(expoPushToken);
+  }
 
-  return expoPushToken;
+  if (fcmToken && fcmToken !== expoPushToken) {
+    await syncTokenWithServer(fcmToken);
+  }
+
+  if (nativeDeviceToken && nativeDeviceToken !== expoPushToken) {
+    await syncTokenWithServer(nativeDeviceToken);
+  }
+
+  // Tokens que quedaron en cola en sesiones anteriores sin JWT
+  await retryPendingPushTokenSync().catch(() => {});
+
+  return expoPushToken || fcmToken || nativeDeviceToken;
 }
 
 // ── Enviar token al servidor ────────────────────────────────────────────────
-export async function syncTokenWithServer(expoPushToken: string) {
+// El alta viaja con el JWT del usuario: si todavía no hay sesión, o si la
+// llamada falla, el token se encola y se reintenta al iniciar sesión.
+const PENDING_PUSH_TOKENS_KEY = 'egchat_pending_push_tokens';
+
+async function queuePushToken(token: string) {
+  try {
+    const raw = await AsyncStorage.getItem(PENDING_PUSH_TOKENS_KEY);
+    const list: string[] = raw ? JSON.parse(raw) : [];
+    if (!list.includes(token)) {
+      list.push(token);
+      await AsyncStorage.setItem(PENDING_PUSH_TOKENS_KEY, JSON.stringify(list.slice(-5)));
+    }
+  } catch { /* cola no crítica */ }
+}
+
+async function dequeuePushToken(token: string) {
+  try {
+    const raw = await AsyncStorage.getItem(PENDING_PUSH_TOKENS_KEY);
+    if (!raw) return;
+    const list: string[] = JSON.parse(raw);
+    const next = list.filter(t => t !== token);
+    if (next.length !== list.length) {
+      await AsyncStorage.setItem(PENDING_PUSH_TOKENS_KEY, JSON.stringify(next));
+    }
+  } catch { /* ignorar */ }
+}
+
+export async function syncTokenWithServer(expoPushToken: string): Promise<boolean> {
   const authToken = await getToken();
-  if (!authToken) return;
+  if (!authToken) {
+    await queuePushToken(expoPushToken);
+    console.warn('[Push] syncTokenWithServer: sin authToken, token en cola para reintentar');
+    return false;
+  }
 
   const isExpoToken  = expoPushToken.startsWith('ExponentPushToken');
   const tokenType    = isExpoToken ? 'expo' : (Platform.OS === 'ios' ? 'apns' : 'fcm');
 
+  console.log(`[Push] Enviando token al servidor (${tokenType}/${Platform.OS}): ...${expoPushToken.slice(-8)}`);
   try {
     const res = await fetch(`${API_BASE}/api/push/register-expo-token`, {
       method: 'POST',
@@ -264,14 +385,35 @@ export async function syncTokenWithServer(expoPushToken: string) {
       const err = await res.json().catch(() => ({ message: res.statusText }));
       throw new Error(err.message || `HTTP ${res.status}`);
     }
-  } catch (e) {
-    console.warn('No se pudo registrar token push:', e);
+    await dequeuePushToken(expoPushToken);
+    console.log(`[Push] ✅ Token registrado en servidor correctamente`);
+    return true;
+  } catch (e: any) {
+    await queuePushToken(expoPushToken);
+    console.warn('[Push] ❌ No se pudo registrar token push:', e?.message || e);
+    return false;
   }
+}
+
+/** Reintenta los tokens que no pudieron registrarse por falta de sesión. */
+export async function retryPendingPushTokenSync(): Promise<void> {
+  if (!(await getToken())) return;
+  let list: string[] = [];
+  try {
+    const raw = await AsyncStorage.getItem(PENDING_PUSH_TOKENS_KEY);
+    list = raw ? JSON.parse(raw) : [];
+  } catch { return; }
+  if (!Array.isArray(list) || list.length === 0) return;
+  console.log(`[Push] Reintentando ${list.length} token(s) en cola`);
+  await Promise.allSettled(list.map(token => syncTokenWithServer(token)));
 }
 
 // ── Registrar token VoIP iOS (PushKit) ─────────────────────────────────────
 export async function syncVoIPTokenWithServer(voipToken: string) {
   if (Platform.OS !== 'ios') return;
+  if (voipToken) {
+    try { await AsyncStorage.setItem('voipToken', voipToken); } catch {}
+  }
   const authToken = await getToken();
   if (!authToken) return;
 
@@ -351,20 +493,64 @@ export function setupNotificationListeners(
     }
   });
 
-  // Usuario tocó la notificación
-  const responseSub = Notifications.addNotificationResponseReceivedListener((response) => {
+  // Usuario tocó la notificación o usó acción rápida
+  const responseSub = Notifications.addNotificationResponseReceivedListener(async (response) => {
     const data = response.notification.request.content.data as any;
     const action = response.actionIdentifier;
 
     if (data?.notificationType === 'incoming_call') {
-      if (action === 'REJECT') return; // ignorar
-      // Usar el mismo guard — si receivedSub ya navegó a esta llamada, este tap
-      // no dispara una segunda navegación.
+      if (action === 'EGCHAT_REJECT') {
+        // Rechazar desde el banner: hay que avisar al servidor para que el
+        // llamante deje de timbrar, no basta con cerrar la notificación.
+        // Con la app recién abierta puede no haber sesión → rechazar por API.
+        const { callManager } = await import('./call/CallManager');
+        if (callManager.session?.callId === data?.callId) {
+          callManager.rejectCall().catch(() => {});
+        } else if (data?.callId) {
+          const { callAPI } = await import('./api');
+          callAPI.reject(data.callId).catch(() => {});
+        }
+        return;
+      }
       handleIncomingCall(data);
+
+    } else if (action === 'REPLY_ACTION') {
+      // ── Acción rápida: Responder desde el banner sin abrir la app ──────
+      const replyText = (response as any).userText as string;
+      const chatId = data?.chatId;
+      if (replyText?.trim() && chatId) {
+        try {
+          const { chatAPI } = await import('./api');
+          await chatAPI.sendMessage(chatId, { text: replyText.trim() });
+          // Limpiar badge del chat respondido
+          await clearBadge();
+        } catch (e) {
+          console.warn('[Notif] Error en respuesta rápida:', e);
+        }
+      }
+
+    } else if (action === 'MARK_READ_ACTION') {
+      // ── Acción rápida: Marcar como leído sin abrir la app ──────────────
+      const chatId = data?.chatId;
+      if (chatId) {
+        try {
+          const { getToken } = await import('./api');
+          const token = await getToken();
+          if (token) {
+            await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api-xlxj.onrender.com'}/api/chats/${chatId}/read-all`, {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            }).catch(() => {});
+          }
+          await clearBadge();
+        } catch (e) {
+          console.warn('[Notif] Error marcando como leído:', e);
+        }
+      }
+
     } else if (data?.chatId) {
       onMessage(data.chatId);
     } else if (data?.type === 'djangue_notification' && data?.groupId) {
-      // D4 — Deep link a djangue desde notificación push
       onMessage(`__djangue__${data.groupId}`);
     }
   });
@@ -396,7 +582,7 @@ export async function notifyReaction(params: {
     const { senderName, emoji, messagePreview, chatId, chatName } = params;
     const body = messagePreview
       ? `"${messagePreview.slice(0, 40)}${messagePreview.length > 40 ? '…' : ''}"`
-      : 'tu mensaje';
+      : tr('xtTuMensaje');
 
     await Notifications.scheduleNotificationAsync({
       content: {
@@ -432,7 +618,7 @@ export async function notifyNewMoment(params: {
       },
       body: JSON.stringify({
         authorName: params.authorName,
-        preview: params.preview || 'Ha publicado un nuevo Moment',
+        preview: params.preview || tr('xtHaPublicadoUnNuevoMoment'),
       }),
     });
   } catch { /* silencioso */ }
@@ -494,6 +680,7 @@ export interface PendingCall {
   callerAvatar: string;
   callType: 'audio' | 'video';
   offer: object | null;
+  action?: 'answer' | 'reject' | 'end';
   timestamp: number;
 }
 
@@ -515,10 +702,11 @@ export async function consumePendingCall(): Promise<PendingCall | null> {
             await AsyncStorage.removeItem(PENDING_CALL_KEY).catch(() => {});
             return {
               callId:      parsed.callId,
-              callerName:  parsed.callerName  || 'Usuario',
+              callerName:  parsed.callerName  || tr('setUser'),
               callerAvatar: parsed.callerAvatar || '',
               callType:    (parsed.callType   || 'audio') as 'audio' | 'video',
               offer:       parsed.offer ? JSON.parse(parsed.offer) : null,
+              action:      parsed.action,
               timestamp:   Date.now(),
             };
           }

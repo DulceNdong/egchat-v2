@@ -4,6 +4,7 @@
  */
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { t as tr } from '../../translations';
 
 interface Props {
   onFormat: (open: string, close: string) => void;
@@ -14,7 +15,7 @@ const FORMATS = [
   { label: 'B',  open: '*',  close: '*',  bold: true,  title: 'Negrita' },
   { label: 'I',  open: '_',  close: '_',  italic: true, title: 'Cursiva' },
   { label: 'S',  open: '~',  close: '~',  strike: true, title: 'Tachado' },
-  { label: '<>', open: '`',  close: '`',  mono: true,  title: 'Código' },
+  { label: '<>', open: '`',  close: '`',  mono: true,  title: tr('xtCodigo') },
 ];
 
 export function TextFormatBar({ onFormat, visible }: Props) {

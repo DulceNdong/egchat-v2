@@ -29,7 +29,7 @@ import { router } from 'expo-router';
 import { walletAPI, authAPI } from '../../src/api';
 import { useLanguage } from '../../src/context/LanguageContext';
 import { t } from '../../src/translations';
-import { NotificationsPanel, HamburgerMenu, WeatherModal } from '../../src/components/HeaderPanels';
+import { NotificationsPanel, HamburgerMenu, WeatherModal, handleNotifNavigation } from '../../src/components/HeaderPanels';
 import type { AppNotification } from '../../src/store/appStore';
 import { EGChatHeader, WeatherCondition } from '../../src/components/EGChatHeader';
 import { HomeNoticiasModal, HomeIdDigitalModal } from '../../src/components/home/HomeModals';
@@ -49,6 +49,7 @@ import {
   markAllRead, clearAllNotifications, removeNotification, markNotificationRead,
 } from '../../src/store/appStore';
 import * as Haptics from 'expo-haptics';
+import { t as tr } from '../../src/translations';
 
 // ── Tipos ─────────────────────────────────────────────────────────
 interface UserProfile {
@@ -105,7 +106,7 @@ const IconClose = ({ color = '#fff', size = 22 }: { color?: string; size?: numbe
 
 // ── APPS principales (grid visible en home) ───────────────────────
 const HOME_APPS = [
-  { id: 'estados',   label: 'Estados',    route: '/stories',    color: '#00B4E6' },
+  { id: 'estados',   label: tr('stories'),    route: '/stories',    color: '#00B4E6' },
   { id: 'apuestas',  label: 'Juegos',     route: '/apuestas',   color: '#8b5cf6' },
   { id: 'cemac',     label: 'Cemac',      route: '/cemac',      color: '#00C8A0' },
   { id: 'mitaxi',    label: 'MiTaxi',     route: '/mitaxi',     color: '#f59e0b' },
@@ -241,6 +242,14 @@ function HomeScreenInner() {
   const liaPan = useRef(new Animated.ValueXY({ x: LIA_INIT_X, y: LIA_INIT_Y })).current;
   const liaDragging = useRef(false);
 
+  function getAnimVal(val: any): number {
+    if (!val) return 0;
+    if (typeof val.__getValue === 'function') return val.__getValue();
+    if (typeof val._value === 'number') return val._value;
+    if (typeof val._offset === 'number') return val._offset;
+    return 0;
+  }
+
   function makeDraggable(
     pos: Animated.ValueXY,
     dragging: React.MutableRefObject<boolean>,
@@ -251,7 +260,7 @@ function HomeScreenInner() {
       onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 4 || Math.abs(g.dy) > 4,
       onPanResponderGrant: () => {
         dragging.current = false;
-        pos.setOffset({ x: (pos.x as any)._value, y: (pos.y as any)._value });
+        pos.setOffset({ x: getAnimVal(pos.x), y: getAnimVal(pos.y) });
         pos.setValue({ x: 0, y: 0 });
       },
       onPanResponderMove: (_, g) => {
@@ -261,9 +270,9 @@ function HomeScreenInner() {
       onPanResponderRelease: () => {
         pos.flattenOffset();
         if (!dragging.current) { onTap(); return; }
-        const curX = (pos.x as any)._value;
+        const curX = getAnimVal(pos.x);
         const snapX = curX < SW / 2 ? 12 : SW - BTN_SIZE - 12;
-        const rawY = (pos.y as any)._value;
+        const rawY = getAnimVal(pos.y);
         const snapY = Math.max(60, Math.min(rawY, SH - BTN_SIZE - 80));
         Animated.spring(pos, { toValue: { x: snapX, y: snapY }, useNativeDriver: false, damping: 18, stiffness: 200 }).start();
         dragging.current = false;
@@ -388,11 +397,11 @@ function HomeScreenInner() {
   };
 
   const openSendMoney = () => {
-    Alert.alert('Enviar dinero', '¿Cómo quieres enviar?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Escanear QR', onPress: () => router.push('/_qr-scanner' as any) },
-      { text: 'Elegir contacto', onPress: () => router.push('/contacts' as any) },
-      { text: 'Mi Cartera', onPress: () => router.push('/(tabs)/monedero' as any) },
+    Alert.alert(t('sendMoney'), t('hmeHowToSend'), [
+      { text: t('cancel'), style: 'cancel' },
+      { text: t('scanQR'), onPress: () => router.push('/_qr-scanner' as any) },
+      { text: tr('xtElegirContacto'), onPress: () => router.push('/contacts' as any) },
+      { text: tr('xtMiCartera'), onPress: () => router.push('/(tabs)/monedero' as any) },
     ]);
   };
 
@@ -497,7 +506,7 @@ function HomeScreenInner() {
             <View style={st.infoCardText}>
               <Text style={[st.infoCardTitle, { color: C.textPrimary }]}>{t('digitalId')}</Text>
               <Text style={[st.infoCardSub, { color: Colors.accent }]}>
-                {user?.verified ? '✓ Verificado' : user ? t('activeAccount') : 'Sin verificar'}
+                {user?.verified ? '✓ Verificado' : user ? t('activeAccount') : tr('xtSinVerificar')}
               </Text>
             </View>
           </TouchableOpacity>
@@ -713,7 +722,7 @@ function HomeScreenInner() {
         onNotifPress={(n) => {
           markNotificationRead(n.id);
           setShowNotifications(false);
-          if (n.chatId) router.push(`/chat/${n.chatId}` as any);
+          handleNotifNavigation(n);
         }}
       />
       <HamburgerMenu
@@ -733,7 +742,7 @@ function HomeScreenInner() {
       <HomeIdDigitalModal
         visible={showIdDigital}
         onClose={() => setShowIdDigital(false)}
-        userName={user?.full_name || 'Usuario'}
+        userName={user?.full_name || tr('setUser')}
         userPhone={user?.phone || ''}
         userId={user?.id || ''}
         verified={user?.verified}

@@ -13,6 +13,7 @@ import { Audio } from 'expo-av';
 import { useThemeContext } from '../theme/ThemeContext';
 import { Colors } from '../theme/colors';
 import { DarkColors } from '../theme/darkMode';
+import { t as tr } from '../translations';
 
 export interface StoryMusic {
   trackId: string;
@@ -50,7 +51,7 @@ async function searchMusic(query: string): Promise<Track[]> {
     const data = await res.json();
     return (data.results || []).map((r: any) => ({
       id: String(r.trackId),
-      title: r.trackName || 'Sin título',
+      title: r.trackName || tr('xtSinTitulo'),
       artist: r.artistName || 'Artista desconocido',
       albumArt: r.artworkUrl60?.replace('60x60', '100x100'),
       previewUrl: r.previewUrl,
@@ -149,7 +150,7 @@ export function StoryMusicPicker({ visible, selected, onSelect, onClose }: Props
               <Line x1="18" y1="6" x2="6" y2="18"/><Line x1="6" y1="6" x2="18" y2="18"/>
             </Svg>
           </TouchableOpacity>
-          <Text style={s.headerTitle}>🎵 Añadir música</Text>
+          <Text style={s.headerTitle}>{tr('xtAnadirMusica')}</Text>
           {selected && (
             <TouchableOpacity style={s.removeBtn} onPress={() => { stopPreview(); onSelect(null); onClose(); }}>
               <Text style={s.removeBtnText}>Quitar</Text>
@@ -164,7 +165,7 @@ export function StoryMusicPicker({ visible, selected, onSelect, onClose }: Props
           </Svg>
           <TextInput
             style={[s.searchInput, { color: C.textPrimary }]}
-            placeholder="Buscar canción o artista..."
+            placeholder={tr('xtBuscarCancionOArtista')}
             placeholderTextColor={C.textTertiary}
             value={query}
             onChangeText={setQuery}
@@ -173,7 +174,7 @@ export function StoryMusicPicker({ visible, selected, onSelect, onClose }: Props
           />
           {query.length > 0 && (
             <TouchableOpacity onPress={handleSearch} style={s.searchBtn}>
-              <Text style={s.searchBtnText}>Buscar</Text>
+              <Text style={s.searchBtnText}>{tr('search')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -268,7 +269,7 @@ export function StoryMusicPicker({ visible, selected, onSelect, onClose }: Props
             </View>
             <TouchableOpacity style={s.confirmBtn} onPress={handleSelect}>
               <LinearGradient colors={['#1db954', '#17a844']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.confirmGrad}>
-                <Text style={s.confirmText}>Usar esta canción</Text>
+                <Text style={s.confirmText}>{tr('xtUsarEstaCancion')}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>

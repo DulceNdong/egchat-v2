@@ -10,6 +10,8 @@ import {
 import { Colors } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
+import { useLanguage } from '../../src/context/LanguageContext';
+import { t as tr } from '../../src/translations';
 
 function OptionRow({
   label,
@@ -52,6 +54,7 @@ export default function PermisosAmigosScreen() {
   const [lastSync, setLastSync] = useState<string>('');
   const { isDark } = useThemeContext();
   const C = isDark ? (DarkColors as unknown as typeof Colors) : Colors;
+  const { translate: t } = useLanguage();
 
   useEffect(() => {
     getCfgString(CFG.permAdd, 'Todos').then(setAddMe);
@@ -69,8 +72,8 @@ export default function PermisosAmigosScreen() {
 
       if (result.permissionDenied) {
         Alert.alert(
-          'Permiso requerido',
-          'Para sincronizar, ve a Ajustes del sistema y activa el permiso de Contactos para EGChat.',
+          tr('kyPermRequired'),
+          tr('xtParaSincronizarVeAAjustesDelSistemaYActivaElPermis'),
         );
         return;
       }
@@ -79,42 +82,42 @@ export default function PermisosAmigosScreen() {
         ? `✅ ${result.newContacts} contacto${result.newContacts > 1 ? 's' : ''} nuevo${result.newContacts > 1 ? 's' : ''} encontrado${result.newContacts > 1 ? 's' : ''} en EGChat.`
         : result.totalFound > 0
           ? `✅ Todos tus contactos ya estaban agregados (${result.totalFound} en EGChat).`
-          : '✅ Ningún contacto tuyo usa EGChat aún.';
+          : tr('xtNingunContactoTuyoUsaEGChatAun');
 
-      Alert.alert('Sincronización completa', msg);
+      Alert.alert(tr('xtSincronizacionCompleta'), msg);
       getLastSyncTime().then(d => setLastSync(formatLastSync(d)));
     } catch {
-      Alert.alert('Error', 'No se pudo sincronizar. Verifica tu conexión.');
+      Alert.alert(tr('error'), 'No se pudo sincronizar. Verifica tu conexión.');
     } finally {
       setSyncing(false);
     }
   }, []);
 
   return (
-    <SettingsLayout title="Permisos de amigos">
-      <SettingsSection label="¿Quién puede..." />
+    <SettingsLayout title={t('friendPermissions')}>
+      <SettingsSection label={t('whoCanSection')} />
       <SettingsCard>
-        <OptionRow label="Añadirme como contacto" value={addMe} options={['Todos', 'Solo mis contactos', 'Nadie']} onChange={v => { setAddMe(v); setCfg(CFG.permAdd, v); }} />
+        <OptionRow label={t('addMeAsContact')} value={addMe} options={[t('everyone'), t('onlyMyContacts'), t('nobody')]} onChange={v => { setAddMe(v); setCfg(CFG.permAdd, v); }} />
         <SettingsDivider />
-        <OptionRow label="Enviarme mensajes" value={msgMe} options={['Todos', 'Solo contactos']} onChange={v => { setMsgMe(v); setCfg(CFG.permMsg, v); }} />
+        <OptionRow label={t('sendMeMessages')} value={msgMe} options={[t('everyone'), t('onlyContacts')]} onChange={v => { setMsgMe(v); setCfg(CFG.permMsg, v); }} />
         <SettingsDivider />
-        <OptionRow label="Encontrarme por búsqueda" value={findMe} options={['Todos', 'Nadie']} onChange={v => { setFindMe(v); setCfg(CFG.permFind, v); }} />
+        <OptionRow label={t('findMeBySearch')} value={findMe} options={[t('everyone'), t('nobody')]} onChange={v => { setFindMe(v); setCfg(CFG.permFind, v); }} />
       </SettingsCard>
 
-      <SettingsSection label="Solicitudes" />
+      <SettingsSection label={t('requests')} />
       <SettingsCard>
-        <SettingsToggleRow label="Aceptar automáticamente" value={autoAccept} onValueChange={v => { setAutoAccept(v); setCfgBool(CFG.autoAccept, v); }} />
+        <SettingsToggleRow label={t('autoAccept')} value={autoAccept} onValueChange={v => { setAutoAccept(v); setCfgBool(CFG.autoAccept, v); }} />
         <SettingsDivider />
-        <SettingsToggleRow label="Silenciar desconocidos" value={muteUnknown} onValueChange={v => { setMuteUnknown(v); setCfgBool(CFG.muteUnknown, v); }} />
+        <SettingsToggleRow label={t('muteUnknown')} value={muteUnknown} onValueChange={v => { setMuteUnknown(v); setCfgBool(CFG.muteUnknown, v); }} />
       </SettingsCard>
 
-      <SettingsSection label="Contactos del teléfono" />
+      <SettingsSection label={t('phoneContacts')} />
       <SettingsCard>
         <View style={styles.syncRow}>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.syncTitle, { color: C.textPrimary }]}>Sincronizar agenda</Text>
+            <Text style={[styles.syncTitle, { color: C.textPrimary }]}>{t('syncContacts')}</Text>
             <Text style={[styles.syncSub, { color: C.textSecondary }]}>
-              {lastSync ? `Última sincronización: ${lastSync}` : 'Nunca sincronizado'}
+              {lastSync ? `${t('lastSync')}: ${lastSync}` : t('neverSynced')}
             </Text>
           </View>
           <TouchableOpacity
@@ -125,7 +128,7 @@ export default function PermisosAmigosScreen() {
           >
             {syncing
               ? <ActivityIndicator size="small" color="#fff" />
-              : <Text style={styles.syncBtnText}>Sincronizar</Text>
+              : <Text style={styles.syncBtnText}>{t('sync')}</Text>
             }
           </TouchableOpacity>
         </View>

@@ -1,6 +1,7 @@
 // useGPS.ts — Hook centralizado de geolocalización para React Native + Expo
 import { useState, useEffect, useRef, useCallback } from 'react';
 import * as Location from 'expo-location';
+import { t as tr } from '../translations';
 
 export interface GPSPosition {
   lat: number;
@@ -68,7 +69,7 @@ export function useGPS(options: UseGPSOptions = {}) {
   const requestPosition = useCallback(async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') {
-      setError('Permiso de ubicación denegado. Actívalo en ajustes.');
+      setError(tr('xtPermisoDeUbicacionDenegadoActivaloEnAjustes'));
       return;
     }
     setLoading(true);
@@ -79,7 +80,7 @@ export function useGPS(options: UseGPSOptions = {}) {
       });
       handlePosition(loc);
     } catch {
-      setError('No se pudo obtener la ubicación.');
+      setError(tr('xtNoSePudoObtenerLaUbicacion'));
       setLoading(false);
     }
   }, [handlePosition, highAccuracy]);
@@ -90,7 +91,7 @@ export function useGPS(options: UseGPSOptions = {}) {
     const start = async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        setError('Permiso de ubicación denegado.');
+        setError(tr('xtPermisoDeUbicacionDenegado'));
         return;
       }
       setLoading(true);
@@ -107,7 +108,7 @@ export function useGPS(options: UseGPSOptions = {}) {
           });
           if (active) handlePosition(loc);
         } catch {
-          if (active) { setError('No se pudo obtener la ubicación.'); setLoading(false); }
+          if (active) { setError(tr('xtNoSePudoObtenerLaUbicacion')); setLoading(false); }
         }
       }
     };

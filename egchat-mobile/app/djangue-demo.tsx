@@ -8,13 +8,14 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import Svg, { Circle, Path, Line, G, Text as SvgText } from 'react-native-svg';
+import { t as tr } from '../src/translations';
 
 const { width } = Dimensions.get('window');
 
 // Datos de ejemplo
 const seedGroup = () => ({
   name: "Djangue Familiar",
-  slogan: "Ahorrando juntos, cada quien en su turno.",
+  slogan: tr('xtAhorrandoJuntosCadaQuienEnSuTurno'),
   tipo: "mensual",
   cuota: 500,
   members: [
@@ -103,11 +104,11 @@ export default function DjangueDemoScreen() {
         {/* KPIs */}
         <View style={s.kpiGrid}>
           <View style={s.kpiCard}>
-            <Text style={s.kpiLabel}>Recaudado este periodo</Text>
+            <Text style={s.kpiLabel}>{tr('xtRecaudadoEstePeriodo')}</Text>
             <Text style={s.kpiValue}>${group.pot.toLocaleString()}</Text>
           </View>
           <View style={s.kpiCard}>
-            <Text style={s.kpiLabel}>Al día</Text>
+            <Text style={s.kpiLabel}>{tr('xtAlDia')}</Text>
             <Text style={s.kpiValue}>{paidCount}/{n}</Text>
           </View>
         </View>
@@ -119,7 +120,7 @@ export default function DjangueDemoScreen() {
           </View>
           <View style={s.progressSection}>
             <View style={s.progressHeader}>
-              <Text style={s.progressLabel}>Aportes del periodo</Text>
+              <Text style={s.progressLabel}>{tr('xtAportesDelPeriodo')}</Text>
               <Text style={s.progressValue}>{paidCount}/{n}</Text>
             </View>
             <View style={s.progressTrack}>
@@ -131,7 +132,7 @@ export default function DjangueDemoScreen() {
 
         {/* Lista de miembros */}
         <View style={s.membersCard}>
-          <Text style={s.sectionTitle}>Integrantes</Text>
+          <Text style={s.sectionTitle}>{tr('xtIntegrantes')}</Text>
           {group.members.map((m, i) => {
             const isCurrent = i === group.turnIndex % n;
             return (
@@ -147,7 +148,7 @@ export default function DjangueDemoScreen() {
                 </View>
                 {isCurrent && (
                   <View style={s.currentBadge}>
-                    <Text style={s.currentBadgeText}>En turno</Text>
+                    <Text style={s.currentBadgeText}>{tr('xtEnTurno')}</Text>
                   </View>
                 )}
               </View>
@@ -157,7 +158,7 @@ export default function DjangueDemoScreen() {
 
         {/* NUEVA PÁGINA PRINCIPAL ÚNICA */}
         <View style={[s.navCard, { backgroundColor: '#00C8A0', borderColor: '#00B4E6', borderWidth: 2 }]}>
-          <Text style={[s.sectionTitle, { color: '#fff' }]}>✨ Mi Djangue - Página Principal Única</Text>
+          <Text style={[s.sectionTitle, { color: '#fff' }]}>{tr('xtMiDjanguePaginaPrincipalUnica')}</Text>
           
           <TouchableOpacity 
             style={[s.navBtn, { backgroundColor: '#fff' }]}
@@ -167,7 +168,7 @@ export default function DjangueDemoScreen() {
               <Text style={[s.navIconText, { fontSize: 32 }]}>💰</Text>
             </View>
             <View style={s.navContent}>
-              <Text style={s.navTitle}>ABRIR MI DJANGUE</Text>
+              <Text style={s.navTitle}>{tr('xtABRIRMIDJANGUE')}</Text>
               <Text style={s.navDesc}>
                 TODO integrado: Inicio, Mis Djangues, Administración y Creación{'\n'}
                 Logo real de EGChat girando • Diseño profesional • Fácil de usar
@@ -189,8 +190,8 @@ export default function DjangueDemoScreen() {
               <Text style={s.navIconText}>🏠</Text>
             </View>
             <View style={s.navContent}>
-              <Text style={[s.navTitle, { color: '#fff' }]}>Página de Inicio</Text>
-              <Text style={[s.navDesc, { color: 'rgba(255,255,255,0.85)' }]}>Pantalla principal con logo EGChat y acceso rápido</Text>
+              <Text style={[s.navTitle, { color: '#fff' }]}>{tr('djnNavHomeTitle')}</Text>
+              <Text style={[s.navDesc, { color: 'rgba(255,255,255,0.85)' }]}>{tr('xtPantallaPrincipalConLogoEGChatYAccesoRapido')}</Text>
             </View>
           </TouchableOpacity>
 
@@ -203,8 +204,8 @@ export default function DjangueDemoScreen() {
               <Text style={s.navIconText}>📋</Text>
             </View>
             <View style={s.navContent}>
-              <Text style={s.navTitle}>Mis Djangues</Text>
-              <Text style={s.navDesc}>Lista con tabs: Administro / Participo - Cards grandes y claras</Text>
+              <Text style={s.navTitle}>{tr('xtMisDjangues')}</Text>
+              <Text style={s.navDesc}>{tr('xtListaConTabsAdministroParticipoCardsGrandesY')}</Text>
             </View>
           </TouchableOpacity>
 
@@ -219,8 +220,8 @@ export default function DjangueDemoScreen() {
               <Text style={s.navIconText}>👑</Text>
             </View>
             <View style={s.navContent}>
-              <Text style={s.navTitle}>Crear Djangue</Text>
-              <Text style={s.navDesc}>Formulario completo: logo, cuota, moras, configuración</Text>
+              <Text style={s.navTitle}>{tr('xtCrearDjangue')}</Text>
+              <Text style={s.navDesc}>{tr('xtFormularioCompletoLogoCuotaMorasConfiguracio')}</Text>
             </View>
           </TouchableOpacity>
 
@@ -232,8 +233,8 @@ export default function DjangueDemoScreen() {
               <Text style={s.navIconText}>🎯</Text>
             </View>
             <View style={s.navContent}>
-              <Text style={s.navTitle}>Detalle del Djangue (Admin)</Text>
-              <Text style={s.navDesc}>Dashboard completo con progreso y acciones</Text>
+              <Text style={s.navTitle}>{tr('xtDetalleDelDjangueAdmin')}</Text>
+              <Text style={s.navDesc}>{tr('xtDashboardCompletoConProgresoYAcciones')}</Text>
             </View>
           </TouchableOpacity>
 
@@ -245,7 +246,7 @@ export default function DjangueDemoScreen() {
               <Text style={s.navIconText}>📝</Text>
             </View>
             <View style={s.navContent}>
-              <Text style={s.navTitle}>Panel del Secretario</Text>
+              <Text style={s.navTitle}>{tr('djhSecretaryPanel')}</Text>
               <Text style={s.navDesc}>Gestionar miembros, recordatorios, justificaciones</Text>
             </View>
           </TouchableOpacity>
@@ -258,8 +259,8 @@ export default function DjangueDemoScreen() {
               <Text style={s.navIconText}>👤</Text>
             </View>
             <View style={s.navContent}>
-              <Text style={s.navTitle}>Vista de Integrante</Text>
-              <Text style={s.navDesc}>Info personal: turno, pagos, historial, chat</Text>
+              <Text style={s.navTitle}>{tr('xtVistaDeIntegrante')}</Text>
+              <Text style={s.navDesc}>{tr('xtInfoPersonalTurnoPagosHistorialChat')}</Text>
             </View>
           </TouchableOpacity>
 
@@ -271,8 +272,8 @@ export default function DjangueDemoScreen() {
               <Text style={s.navIconText}>📊</Text>
             </View>
             <View style={s.navContent}>
-              <Text style={s.navTitle}>Estadísticas</Text>
-              <Text style={s.navDesc}>Métricas, gráficos, top contribuyentes, moras</Text>
+              <Text style={s.navTitle}>{tr('djhStatsTab')}</Text>
+              <Text style={s.navDesc}>{tr('xtMetricasGraficosTopContribuyentesMoras')}</Text>
             </View>
           </TouchableOpacity>
         </View>

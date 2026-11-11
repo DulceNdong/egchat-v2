@@ -16,10 +16,13 @@ import { DNDSettingsModal } from '../../src/components/settings/DNDSettingsModal
 import { getDNDSettings, isDNDActive, formatTime } from '../../src/services/doNotDisturb';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
+import { useLanguage } from '../../src/context/LanguageContext';
+import { t as tr } from '../../src/translations';
 
 export default function NotificacionesScreen() {
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
+  const { translate: t } = useLanguage();
 
   // ── Permisos y token ─────────────────────────────────────────
   const [pushGranted, setPushGranted] = useState(false);
@@ -79,9 +82,9 @@ export default function NotificacionesScreen() {
   const activatePush = useCallback(async () => {
     const { status } = await Notifications.getPermissionsAsync();
     if (status === 'denied') {
-      Alert.alert('Bloqueadas', 'Actívalas en Ajustes del sistema.', [
-        { text: 'Abrir ajustes', onPress: () => Linking.openSettings() },
-        { text: 'Cancelar', style: 'cancel' },
+      Alert.alert(t('setBlockedTitle'), t('setBlockedBody'), [
+        { text: tr('xtAbrirAjustes'), onPress: () => Linking.openSettings() },
+        { text: tr('cancel'), style: 'cancel' },
       ]);
       return;
     }
@@ -99,17 +102,17 @@ export default function NotificacionesScreen() {
     setDiagRunning(false);
   }, []);
 
-  const pushStatus = pushGranted ? '✅ Activadas' : '⚠️ Sin configurar';
+  const pushStatus = pushGranted ? '✅ Activadas' : tr('xtSinConfigurar');
 
   return (
-    <SettingsLayout title="Notificaciones">
+    <SettingsLayout title={t('notifTitle')}>
 
       {/* ── Permiso del sistema ─────────────────── */}
-      <SettingsSection label="Permiso del sistema" />
+      <SettingsSection label={t('systemPermission')} />
       <SettingsCard>
         <View style={st.pushRow}>
           <View style={{ flex: 1 }}>
-            <Text style={[st.pushLabel, { color: C.textPrimary }]}>Notificaciones push</Text>
+            <Text style={[st.pushLabel, { color: C.textPrimary }]}>{t('pushNotifications')}</Text>
             <Text style={[st.pushStatus, { color: pushGranted ? Colors.accent : '#f59e0b' }]}>
               {pushStatus}
             </Text>
@@ -122,7 +125,7 @@ export default function NotificacionesScreen() {
             >
               {activating
                 ? <ActivityIndicator color="#fff" size="small" />
-                : <Text style={st.activateTxt}>Activar</Text>
+                : <Text style={st.activateTxt}>{t('activate')}</Text>
               }
             </TouchableOpacity>
           )}
@@ -130,7 +133,7 @@ export default function NotificacionesScreen() {
       </SettingsCard>
 
       {/* ── Diagnóstico ─────────────────────────── */}
-      <SettingsSection label="Diagnóstico" />
+      <SettingsSection label={tr('xtDiagnostico')} />
       <SettingsCard>
         <TouchableOpacity style={st.diagRow} onPress={runDiag} disabled={diagRunning}>
           {diagRunning
@@ -138,7 +141,7 @@ export default function NotificacionesScreen() {
             : <MaterialIcons name="notifications" size={22} color="#8b5cf6" style={{ width: 28 }} />
           }
           <View style={{ flex: 1 }}>
-            <Text style={[st.diagLabel, { color: C.textPrimary }]}>Diagnóstico push</Text>
+            <Text style={[st.diagLabel, { color: C.textPrimary }]}>{tr('xtDiagnosticoPush')}</Text>
             <Text style={[st.diagSub, { color: C.textSecondary }]}>
               Token, permisos, canales y registro en servidor
             </Text>
@@ -147,67 +150,63 @@ export default function NotificacionesScreen() {
       </SettingsCard>
 
       {/* ── Mensajes y grupos ───────────────────── */}
-      <SettingsSection label="Mensajes y grupos" />
+      <SettingsSection label={t('messagesGroups')} />
       <SettingsCard>
-        <SettingsToggleRow label="Mensajes privados"    value={msgs}      onValueChange={v => { setMsgs(v);      setCfgBool(CFG.notifMessages, v); }} />
+        <SettingsToggleRow label={t('privateMessages')}   value={msgs}      onValueChange={v => { setMsgs(v);      setCfgBool(CFG.notifMessages, v); }} />
         <SettingsDivider />
-        <SettingsToggleRow label="Grupos"               value={groups}    onValueChange={v => { setGroups(v);    setCfgBool(CFG.notifGroups,   v); }} />
+        <SettingsToggleRow label={t('groups')}            value={groups}    onValueChange={v => { setGroups(v);    setCfgBool(CFG.notifGroups,   v); }} />
         <SettingsDivider />
-        <SettingsToggleRow label="Reacciones a mensajes" value={reactions} onValueChange={v => { setReactions(v); setCfgBool('notif_reactions', v); }} />
+        <SettingsToggleRow label={t('messageReactions')}  value={reactions} onValueChange={v => { setReactions(v); setCfgBool('notif_reactions', v); }} />
         <SettingsDivider />
-        <SettingsToggleRow label="Vista previa del mensaje" value={preview} onValueChange={v => { setPreview(v); setCfgBool(CFG.notifPreview, v); }} />
+        <SettingsToggleRow label={t('messagePreview')}    value={preview}   onValueChange={v => { setPreview(v);  setCfgBool(CFG.notifPreview,  v); }} />
       </SettingsCard>
 
-      {/* ── Llamadas y estados ──────────────────── */}
-      <SettingsSection label="Llamadas y estados" />
+      <SettingsSection label={t('callsStories')} />
       <SettingsCard>
-        <SettingsToggleRow label="Llamadas entrantes" value={calls}   onValueChange={v => { setCalls(v);   setCfgBool(CFG.notifCalls,   v); }} />
+        <SettingsToggleRow label={t('incomingCalls')}    value={calls}   onValueChange={v => { setCalls(v);   setCfgBool(CFG.notifCalls,   v); }} />
         <SettingsDivider />
-        <SettingsToggleRow label="Historias / Estados" value={stories} onValueChange={v => { setStories(v); setCfgBool(CFG.notifStories, v); }} />
+        <SettingsToggleRow label={t('storiesStatus')}   value={stories} onValueChange={v => { setStories(v); setCfgBool(CFG.notifStories, v); }} />
         <SettingsDivider />
-        <SettingsToggleRow label="Moments nuevos"      value={moments} onValueChange={v => { setMoments(v); setCfgBool('notif_moments',  v); }} />
+        <SettingsToggleRow label={t('newMoments')}      value={moments} onValueChange={v => { setMoments(v); setCfgBool('notif_moments',  v); }} />
       </SettingsCard>
 
-      {/* ── Pagos y Djangue ─────────────────────── */}
-      <SettingsSection label="Pagos y Djangue" />
+      <SettingsSection label={t('paymentsDjangue')} />
       <SettingsCard>
         <SettingsToggleRow
-          label="Transferencias recibidas"
-          description="Notificación al recibir dinero"
+          label={t('receivedTransfers')}
+          description={t('notifyOnReceive')}
           value={transfers}
           onValueChange={v => { setTransfers(v); setCfgBool('notif_transfers', v); }}
         />
         <SettingsDivider />
         <SettingsToggleRow
-          label="Djangue — recordatorios"
-          description="Cuotas pendientes y pagos del turno"
+          label={t('djangueReminders')}
+          description={t('pendingQuotas')}
           value={djangue}
           onValueChange={v => { setDjangue(v); setCfgBool('notif_djangue', v); }}
         />
       </SettingsCard>
 
-      {/* ── Sonido y vibración ──────────────────── */}
-      <SettingsSection label="Sonido y vibración" />
+      <SettingsSection label={t('soundVibration')} />
       <SettingsCard>
         <SettingsRow
-          label="Volumen y tonos"
+          label={t('volumeTones')}
           value={`${Math.round(volume * 100)}%`}
           onPress={() => router.push('/ajustes/sonidos' as any)}
         />
         <SettingsDivider />
         <SettingsToggleRow
-          label="Vibración"
+          label={t('vibration')}
           value={vibration}
           onValueChange={v => { setVibration(v); saveSoundSettings({ vibrationEnabled: v }); }}
         />
       </SettingsCard>
 
-      {/* ── No molestar ─────────────────────────── */}
-      <SettingsSection label="No molestar" />
+      <SettingsSection label={t('doNotDisturb')} />
       <SettingsCard>
         <SettingsRow
-          label="Programar silencio"
-          value={dndActive ? '🔇 Activo ahora' : dndLabel}
+          label={t('scheduleSilence')}
+          value={dndActive ? `🔇 ${t('activeNow')}` : dndLabel}
           onPress={() => setShowDND(true)}
         />
       </SettingsCard>

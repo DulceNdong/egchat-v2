@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Share,
 } from 'react-native';
+import { useTranslation } from '../../context/LanguageContext';
 
 export interface InformeData {
   tipo: 'usuario' | 'negocio';
@@ -30,6 +31,8 @@ export interface InformeData {
   serviciosActivos?: string[];
   // Común
   observaciones?: string;
+  /** Clave de traducción para las observaciones (usada cuando el texto debe traducirse) */
+  observacionesKey?: string;
 }
 
 interface InformeModalProps {
@@ -38,10 +41,17 @@ interface InformeModalProps {
   data: InformeData | null;
 }
 
-const fmt = (n?: number) =>
+const LOCALES: Record<string, string> = {
+  es: 'es-ES',
+  fr: 'fr-FR',
+  en: 'en-GB',
+  pt: 'pt-PT',
+};
+
+const fmtNumber = (n?: number, locale = 'es-ES') =>
   n !== undefined
-    ? new Intl.NumberFormat('es-GQ', { style: 'currency', currency: 'XAF', maximumFractionDigits: 0 }).format(n)
-    : 'N/D';
+    ? new Intl.NumberFormat(locale, { style: 'currency', currency: 'XAF', maximumFractionDigits: 0 }).format(n)
+    : undefined;
 
 function ScoreBar({ score }: { score: number }) {
   const color = score >= 70 ? '#00FF88' : score >= 40 ? '#FFD700' : '#FF4444';
@@ -65,61 +75,78 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 export function InformeModal({ visible, onClose, data }: InformeModalProps) {
+  const { language, t } = useTranslation();
   if (!data) return null;
 
-  const fechaGeneracion = new Date().toLocaleDateString('es-GQ', {
+  const locale = LOCALES[language] || 'es-ES';
+  const nd = t('mznInfNotAvailable');
+  const fmt = (n?: number) => fmtNumber(n, locale) ?? nd;
+  const sep = '================================';
+  const thin = '--------------------------------';
+
+  const fechaGeneracion = new Date().toLocaleDateString(locale, {
     day: '2-digit', month: 'long', year: 'numeric',
   });
 
+  const obsTexto = data.observacionesKey ? t(data.observacionesKey) : data.observaciones;
+  const serviciosUsados = (data.serviciosUsados ?? []).map(s => t(s)).join(', ');
+  const serviciosActivos = (data.serviciosActivos ?? []).map(s => t(s)).join(', ');
+
+  const bloqueObs = obsTexto
+    ? `${t('mznInfSectionObs')}\n${obsTexto}\n${thin}\n`
+    : '';
+
   const informeTexto = data.tipo === 'usuario'
-    ? `INFORME FINANCIERO - USUARIO
-================================
-Generado por: EGChat App
-Fecha: ${fechaGeneracion}
-Periodo: ${data.periodo}
---------------------------------
-DATOS DEL TITULAR
-Nombre: ${data.nombre}
-Score financiero: ${data.scoreFinanciero ?? 'N/D'}/100
-Meses activo: ${data.mesesActivo ?? 0}
---------------------------------
-ACTIVIDAD TRANSACCIONAL
-Total transacciones: ${data.numTransacciones ?? 0}
-Total movido: ${fmt(data.totalMovido)}
-Promedio mensual: ${fmt(data.montoPromedio)}
-Servicios usados: ${(data.serviciosUsados ?? []).join(', ') || 'N/D'}
---------------------------------
-${data.observaciones ? `OBSERVACIONES\n${data.observaciones}\n--------------------------------\n` : ''}
-Este informe fue generado automáticamente por EGChat
-y refleja la actividad real del usuario en la plataforma.`
-    : `INFORME FINANCIERO - NEGOCIO
-================================
-Generado por: EGChat App
-Fecha: ${fechaGeneracion}
-Periodo: ${data.periodo}
---------------------------------
-DATOS DE LA EMPRESA
-Razón Social: ${data.razonSocial ?? data.nombre}
-NIF: ${data.nif ?? 'N/D'}
-Sector: ${data.sector ?? 'N/D'}
-Score financiero: ${data.scoreFinanciero ?? 'N/D'}/100
-Meses en operación: ${data.mesesOperacion ?? 0}
---------------------------------
-ACTIVIDAD FINANCIERA
-Facturación mensual promedio: ${fmt(data.facturacionMensualPromedio)}
-Facturación total acumulada: ${fmt(data.facturacionTotal)}
-Total transacciones: ${data.numTransacciones ?? 0}
-Servicios activos: ${(data.serviciosActivos ?? []).join(', ') || 'N/D'}
---------------------------------
-${data.observaciones ? `OBSERVACIONES\n${data.observaciones}\n--------------------------------\n` : ''}
-Este informe fue generado automáticamente por EGChat
-y refleja la actividad real del negocio en la plataforma.`;
+    ? [
+        t('mznInfHeaderUser'),
+        sep,
+        `${t('mznInfGeneratedBy')}: EGChat App`,
+        `${t('mznInfDateLabel')}: ${fechaGeneracion}`,
+        `${t('mznInfPeriod')}: ${data.periodo}`,
+        thin,
+        t('mznInfSectionHolder'),
+        `${t('nameField')}: ${data.nombre}`,
+        `${t('mznInfFinancialScore')}: ${data.scoreFinanciero ?? nd}/100`,
+        `${t('mznInfMonthsActiveLabel')}: ${data.mesesActivo ?? 0}`,
+        thin,
+        t('mznInfSectionTxActivity'),
+        `${t('mznTotalTransactions')}: ${data.numTransacciones ?? 0}`,
+        `${t('mznInfTotalMoved')}: ${fmt(data.totalMovido)}`,
+        `${t('mznMonthlyAverage')}: ${fmt(data.montoPromedio)}`,
+        `${t('mznInfServicesUsed')}: ${serviciosUsados || nd}`,
+        thin,
+        bloqueObs,
+        t('mznInfAutoUser'),
+      ].join('\n')
+    : [
+        t('mznInfHeaderBusiness'),
+        sep,
+        `${t('mznInfGeneratedBy')}: EGChat App`,
+        `${t('mznInfDateLabel')}: ${fechaGeneracion}`,
+        `${t('mznInfPeriod')}: ${data.periodo}`,
+        thin,
+        t('mznInfSectionCompany'),
+        `${t('mznInfReasonSocial')}: ${data.razonSocial ?? data.nombre}`,
+        `${t('mznInfNif')}: ${data.nif || nd}`,
+        `${t('mznSector')}: ${data.sector || nd}`,
+        `${t('mznInfFinancialScore')}: ${data.scoreFinanciero ?? nd}/100`,
+        `${t('mznMonthsInOperation')}: ${data.mesesOperacion ?? 0}`,
+        thin,
+        t('mznInfSectionActivity'),
+        `${t('mznInfAvgMonthlyBilling')}: ${fmt(data.facturacionMensualPromedio)}`,
+        `${t('mznInfAccumulatedBilling')}: ${fmt(data.facturacionTotal)}`,
+        `${t('mznTotalTransactions')}: ${data.numTransacciones ?? 0}`,
+        `${t('mznActiveServices')}: ${serviciosActivos || nd}`,
+        thin,
+        bloqueObs,
+        t('mznInfAutoBusiness'),
+      ].join('\n');
 
   const handleShare = async () => {
     try {
       await Share.share({
         message: informeTexto,
-        title: `Informe Financiero - ${data.nombre}`,
+        title: `${t('mznInfShareTitle')} ${data.nombre}`,
       });
     } catch {
       // silencio
@@ -133,8 +160,8 @@ y refleja la actividad real del negocio en la plataforma.`;
           {/* Header */}
           <View style={styles.header}>
             <View>
-              <Text style={styles.headerTitle}>📊 Informe Financiero</Text>
-              <Text style={styles.headerSub}>Generado el {fechaGeneracion}</Text>
+              <Text style={styles.headerTitle}>{t('mznInfTitle')}</Text>
+              <Text style={styles.headerSub}>{t('mznInfGeneratedOn')} {fechaGeneracion}</Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
               <Text style={styles.closeBtnText}>✕</Text>
@@ -147,80 +174,78 @@ y refleja la actividad real del negocio en la plataforma.`;
               <Text style={styles.selloLogo}>EG</Text>
               <View>
                 <Text style={styles.selloTitle}>EGChat Platform</Text>
-                <Text style={styles.selloSub}>Informe oficial de actividad financiera</Text>
+                <Text style={styles.selloSub}>{t('mznInfOfficialReport')}</Text>
               </View>
             </View>
 
             {/* Info general */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>DATOS DEL TITULAR</Text>
-              <Row label="Nombre" value={data.nombre} />
-              <Row label="Tipo" value={data.tipo === 'usuario' ? 'Usuario particular' : 'Empresa / Negocio'} />
-              <Row label="Período" value={data.periodo} />
-              {data.tipo === 'negocio' && data.nif && <Row label="NIF" value={data.nif} />}
-              {data.tipo === 'negocio' && data.sector && <Row label="Sector" value={data.sector} />}
+              <Text style={styles.sectionTitle}>{t('mznInfSectionHolder')}</Text>
+              <Row label={t('nameField')} value={data.nombre} />
+              <Row label={t('mznType')} value={data.tipo === 'usuario' ? t('mznInfTypeUser') : t('mznInfTypeBusiness')} />
+              <Row label={t('mznInfPeriod')} value={data.periodo} />
+              {data.tipo === 'negocio' && data.nif && <Row label={t('mznInfNif')} value={data.nif} />}
+              {data.tipo === 'negocio' && data.sector && <Row label={t('mznSector')} value={data.sector} />}
             </View>
 
             {/* Score */}
             {data.scoreFinanciero !== undefined && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>SCORE FINANCIERO</Text>
+                <Text style={styles.sectionTitle}>{t('mznInfSectionScore')}</Text>
                 <ScoreBar score={data.scoreFinanciero} />
                 <Text style={styles.scoreDesc}>
                   {data.scoreFinanciero >= 70
-                    ? '✓ Perfil financiero excelente. Recomendado para crédito.'
+                    ? t('mznInfScoreHigh')
                     : data.scoreFinanciero >= 40
-                    ? '⚠ Perfil financiero moderado. Evaluar condiciones.'
-                    : '✗ Perfil financiero bajo. Se recomienda mayor historial.'}
+                    ? t('mznInfScoreMedium')
+                    : t('mznInfScoreLow')}
                 </Text>
               </View>
             )}
 
             {/* Métricas */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>ACTIVIDAD FINANCIERA</Text>
+              <Text style={styles.sectionTitle}>{t('mznInfSectionActivity')}</Text>
               {data.numTransacciones !== undefined && (
-                <Row label="Total transacciones" value={`${data.numTransacciones}`} />
+                <Row label={t('mznTotalTransactions')} value={`${data.numTransacciones}`} />
               )}
               {data.totalMovido !== undefined && (
-                <Row label="Total movido" value={fmt(data.totalMovido)} />
+                <Row label={t('mznInfTotalMoved')} value={fmt(data.totalMovido)} />
               )}
               {data.montoPromedio !== undefined && (
-                <Row label="Promedio mensual" value={fmt(data.montoPromedio)} />
+                <Row label={t('mznMonthlyAverage')} value={fmt(data.montoPromedio)} />
               )}
               {data.facturacionMensualPromedio !== undefined && (
-                <Row label="Facturación mensual" value={fmt(data.facturacionMensualPromedio)} />
+                <Row label={t('mznBillingMonth')} value={fmt(data.facturacionMensualPromedio)} />
               )}
               {data.facturacionTotal !== undefined && (
-                <Row label="Facturación total" value={fmt(data.facturacionTotal)} />
+                <Row label={t('mznTotalBilling')} value={fmt(data.facturacionTotal)} />
               )}
               {data.mesesActivo !== undefined && (
-                <Row label="Meses activo" value={`${data.mesesActivo} meses`} />
+                <Row label={t('mznInfMonthsActiveLabel')} value={`${data.mesesActivo} ${t('mznMonthsSuffix')}`} />
               )}
               {data.mesesOperacion !== undefined && (
-                <Row label="Meses en operación" value={`${data.mesesOperacion} meses`} />
+                <Row label={t('mznMonthsInOperation')} value={`${data.mesesOperacion} ${t('mznMonthsSuffix')}`} />
               )}
               {(data.serviciosUsados ?? data.serviciosActivos) && (
                 <Row
-                  label="Servicios"
-                  value={(data.serviciosUsados ?? data.serviciosActivos ?? []).join(', ')}
+                  label={t('mznSvcServices')}
+                  value={serviciosUsados || serviciosActivos}
                 />
               )}
             </View>
 
-            {data.observaciones && (
+            {obsTexto && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>OBSERVACIONES</Text>
-                <Text style={styles.observaciones}>{data.observaciones}</Text>
+                <Text style={styles.sectionTitle}>{t('mznInfSectionObs')}</Text>
+                <Text style={styles.observaciones}>{obsTexto}</Text>
               </View>
             )}
 
             {/* Pie */}
             <View style={styles.footer}>
               <Text style={styles.footerText}>
-                Este documento ha sido generado automáticamente por EGChat y refleja datos
-                reales de actividad en la plataforma. Válido como referencia financiera ante
-                entidades bancarias.
+                {t('mznInfFooter')}
               </Text>
             </View>
           </ScrollView>
@@ -228,10 +253,10 @@ y refleja la actividad real del negocio en la plataforma.`;
           {/* Botones */}
           <View style={styles.actions}>
             <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
-              <Text style={styles.shareBtnText}>📤 Compartir Informe</Text>
+              <Text style={styles.shareBtnText}>{t('mznInfShare')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.closeAction} onPress={onClose}>
-              <Text style={styles.closeActionText}>Cerrar</Text>
+              <Text style={styles.closeActionText}>{t('close')}</Text>
             </TouchableOpacity>
           </View>
         </View>

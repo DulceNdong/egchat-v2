@@ -12,6 +12,7 @@ import Svg, { Line, Polyline } from 'react-native-svg';
 import { chatAPI } from '../../api';
 import { ImageViewer } from '../ImageViewer';
 import { VideoViewerModal } from './VideoViewerModal';
+import { useTranslation } from '../../context/LanguageContext';
 
 const { width: W } = Dimensions.get('window');
 const CELL = (W - 4) / 3;
@@ -30,6 +31,7 @@ interface MediaItem {
 }
 
 export function ChatMediaGallery({ visible, chatId, chatName, onClose }: Props) {
+  const { t } = useTranslation();
   const [items, setItems] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -82,7 +84,7 @@ export function ChatMediaGallery({ visible, chatId, chatName, onClose }: Props) 
             </Svg>
           </TouchableOpacity>
           <View>
-            <Text style={s.title}>Archivos multimedia</Text>
+            <Text style={s.title}>{t('mediaFiles')}</Text>
             <Text style={s.subtitle}>{chatName}</Text>
           </View>
         </View>
@@ -92,7 +94,7 @@ export function ChatMediaGallery({ visible, chatId, chatName, onClose }: Props) 
         ) : items.length === 0 ? (
           <View style={s.empty}>
             <Text style={s.emptyIcon}>🖼️</Text>
-            <Text style={s.emptyText}>No hay fotos ni videos compartidos</Text>
+            <Text style={s.emptyText}>{t('chtNoMediaShared')}</Text>
           </View>
         ) : (
           <FlatList

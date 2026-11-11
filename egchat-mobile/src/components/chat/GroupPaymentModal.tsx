@@ -16,6 +16,7 @@ import { chatAPI } from '../../api';
 import { useThemeContext } from '../../theme/ThemeContext';
 import { Colors } from '../../theme/colors';
 import { DarkColors } from '../../theme/darkMode';
+import { t as tr } from '../../translations';
 
 export interface GroupMember {
   user_id: string;
@@ -69,14 +70,14 @@ export function GroupPaymentModal({ visible, chatId, members, currentUserId, onC
   const handleSend = useCallback(async () => {
     if (selectedMembers.length === 0) { toast.error('Selecciona al menos un miembro'); return; }
     const total = getTotal();
-    if (total <= 0) { toast.error('El importe debe ser mayor que 0'); return; }
+    if (total <= 0) { toast.error(tr('xtElImporteDebeSerMayorQue0')); return; }
 
     setSending(true);
     try {
       const perPerson = splitMode === 'equal' ? getAmountPerPerson() : null;
       const lines = selectedMembers.map(uid => {
         const member = members.find(m => m.user_id === uid);
-        const name = member?.full_name || 'Usuario';
+        const name = member?.full_name || tr('setUser');
         const amount = splitMode === 'equal'
           ? perPerson!
           : (parseFloat(customAmounts[uid] || '0') || 0);
@@ -101,7 +102,7 @@ export function GroupPaymentModal({ visible, chatId, members, currentUserId, onC
       setSelectedMembers([]);
       setCustomAmounts({});
     } catch (e: any) {
-      toast.error(e?.message || 'No se pudo enviar la solicitud');
+      toast.error(e?.message || tr('xtNoSePudoEnviarLaSolicitud'));
     } finally {
       setSending(false);
     }
@@ -128,7 +129,7 @@ export function GroupPaymentModal({ visible, chatId, members, currentUserId, onC
                   <Path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                 </Svg>
               </View>
-              <Text style={[s.title, { color: C.textPrimary }]}>Dividir pago</Text>
+              <Text style={[s.title, { color: C.textPrimary }]}>{tr('xtDividirPago')}</Text>
               <TouchableOpacity onPress={onClose}>
                 <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={C.textTertiary} strokeWidth={2} strokeLinecap="round">
                   <Line x1="18" y1="6" x2="6" y2="18"/><Line x1="6" y1="6" x2="18" y2="18"/>
@@ -138,7 +139,7 @@ export function GroupPaymentModal({ visible, chatId, members, currentUserId, onC
 
             {/* Importe total */}
             <View style={[s.inputRow, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
-              <Text style={[s.inputLabel, { color: C.textTertiary }]}>Importe total (XAF)</Text>
+              <Text style={[s.inputLabel, { color: C.textTertiary }]}>{tr('xtImporteTotalXAF')}</Text>
               <TextInput
                 style={[s.amountInput, { color: C.textPrimary }]}
                 value={totalAmount}
@@ -151,12 +152,12 @@ export function GroupPaymentModal({ visible, chatId, members, currentUserId, onC
 
             {/* Concepto */}
             <View style={[s.inputRow, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
-              <Text style={[s.inputLabel, { color: C.textTertiary }]}>Concepto (opcional)</Text>
+              <Text style={[s.inputLabel, { color: C.textTertiary }]}>{tr('xtConceptoOpcional')}</Text>
               <TextInput
                 style={[s.conceptInput, { color: C.textPrimary }]}
                 value={concept}
                 onChangeText={setConcept}
-                placeholder="Cena, viaje, compras..."
+                placeholder={tr('xtCenaViajeCompras')}
                 placeholderTextColor={C.textTertiary}
                 maxLength={60}
               />
@@ -182,10 +183,10 @@ export function GroupPaymentModal({ visible, chatId, members, currentUserId, onC
               <Text style={[s.membersTitle, { color: C.textTertiary }]}>PARTICIPANTES</Text>
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 <TouchableOpacity onPress={selectAll}>
-                  <Text style={{ color: '#00C8A0', fontSize: 12, fontWeight: '700' }}>Todos</Text>
+                  <Text style={{ color: '#00C8A0', fontSize: 12, fontWeight: '700' }}>{tr('svcAll')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={deselectAll}>
-                  <Text style={{ color: '#ef4444', fontSize: 12, fontWeight: '700' }}>Ninguno</Text>
+                  <Text style={{ color: '#ef4444', fontSize: 12, fontWeight: '700' }}>{tr('mznNone')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -209,7 +210,7 @@ export function GroupPaymentModal({ visible, chatId, members, currentUserId, onC
                     </View>
                     <EGAvatar src={item.avatar_url} name={item.full_name || 'U'} size={36} />
                     <Text style={[s.memberName, { color: C.textPrimary }]} numberOfLines={1}>
-                      {item.full_name || 'Usuario'}
+                      {item.full_name || tr('setUser')}
                     </Text>
                     {sel && splitMode === 'equal' && totalAmount && (
                       <Text style={s.amount}>{amountPerPerson.toLocaleString('es-ES')} XAF</Text>
@@ -246,7 +247,7 @@ export function GroupPaymentModal({ visible, chatId, members, currentUserId, onC
               <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.sendGrad}>
                 {sending
                   ? <ActivityIndicator color="#fff" />
-                  : <Text style={s.sendText}>Enviar solicitud al grupo</Text>
+                  : <Text style={s.sendText}>{tr('xtEnviarSolicitudAlGrupo')}</Text>
                 }
               </LinearGradient>
             </TouchableOpacity>

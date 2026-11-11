@@ -6,12 +6,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { SpinningLogo } from '../../src/components/SpinningLogo';
 import { useKycStore } from '../../src/store/kycStore';
 import { getKycStatus } from '../../src/services/kycService';
+import { t as tr } from '../../src/translations';
 
 const STEPS = [
-  { label: '📄 Documentos recibidos',         delay: 0    },
-  { label: '🔍 Comparando biometría...',       delay: 2000 },
-  { label: '🛡 Revisando historial...',        delay: 4000 },
-  { label: '✅ Finalizando verificación...',   delay: 6000 },
+  { get label() { return tr('xtDocumentosRecibidos'); },         delay: 0    },
+  { get label() { return tr('xtComparandoBiometria'); },       delay: 2000 },
+  { get label() { return tr('xtRevisandoHistorial'); },        delay: 4000 },
+  { get label() { return tr('xtFinalizandoVerificacion'); },   delay: 6000 },
 ];
 
 export default function ProcessingScreen() {
@@ -42,7 +43,7 @@ export default function ProcessingScreen() {
           router.replace('/kyc/result?type=manual_review');
         } else if (status === 'PENDING_INFO') {
           clearInterval(interval);
-          store.setRejectReason(rejectReason ?? 'BANGE necesita información adicional.', false);
+          store.setRejectReason(rejectReason ?? tr('xtBANGENecesitaInformacionAdicional'), false);
           router.replace('/kyc/result?type=rejected_fixable');
         } else if (status === 'rejected' || status === 'REJECTED' || status === 'BLOCKED') {
           clearInterval(interval);
@@ -65,8 +66,8 @@ export default function ProcessingScreen() {
     <SafeAreaView style={st.container}>
       <Animated.View style={[st.content, { opacity: fadeAnim }]}>
         <SpinningLogo size={80} glow />
-        <Text style={st.title}>Verificando tu identidad...</Text>
-        <Text style={st.sub}>Esto puede tardar unos segundos</Text>
+        <Text style={st.title}>{tr('xtVerificandoTuIdentidad')}</Text>
+        <Text style={st.sub}>{tr('xtEstoPuedeTardarUnosSegundos')}</Text>
 
         <View style={st.stepsWrap}>
           {STEPS.map((s, i) => (

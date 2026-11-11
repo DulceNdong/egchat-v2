@@ -15,6 +15,7 @@ import {
   type MiniAppCategory, searchMiniApps, type MiniApp,
 } from '../src/miniapps/miniAppsStore';
 import { MiniAppIcon } from '../src/miniapps/MiniAppIcon';
+import { t as tr } from '../src/translations';
 
 const NATIVE_MINI_APP_ROUTES: Record<string, any> = {
   djangue:      '/mi-djangue',
@@ -99,7 +100,7 @@ export default function MiniAppsScreen() {
             </Svg>
             <TextInput
               style={s.searchInput}
-              placeholder="Buscar aplicación..."
+              placeholder={tr('xtBuscarAplicacion')}
               placeholderTextColor="rgba(255,255,255,0.5)"
               value={search}
               onChangeText={setSearch}
@@ -126,7 +127,7 @@ export default function MiniAppsScreen() {
         <View style={s.catSection}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {[
-              { id: 'all', label: 'Todo' },
+              { id: 'all', label: tr('xtTodo') },
               ...Object.entries(CATEGORIES).map(([id, c]) => ({ id, label: c.label })),
             ].map(cat => (
               <TouchableOpacity

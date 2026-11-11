@@ -4,6 +4,7 @@
  */
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { t as tr } from '../translations';
 
 interface State {
   hasError: boolean;
@@ -35,10 +36,10 @@ export class TabErrorBoundary extends React.Component<Props, State> {
         <View style={st.container}>
           <Text style={st.emoji}>⚠️</Text>
           <Text style={st.title}>
-            {this.props.tabName || 'Esta sección'} no está disponible
+            {this.props.tabName || tr('xtEstaSeccion')} no está disponible
           </Text>
           <Text style={st.subtitle}>
-            {this.state.error?.message || 'Error inesperado'}
+            {this.state.error?.message || tr('xtErrorInesperado')}
           </Text>
           <TouchableOpacity
             style={st.btn}

@@ -8,6 +8,7 @@ import { StatusBadge } from '../../src/components/monetizacion/StatusBadge';
 import { RevenueTable } from '../../src/components/monetizacion/RevenueTable';
 import { BarChart, BarChartDataPoint } from '../../src/components/monetizacion/BarChart';
 import { useBarcos } from '../../src/hooks/useMonetizacion';
+import { useTranslation } from '../../src/context/LanguageContext';
 import type { BarcoConStats } from '../../src/types/monetizacion';
 
 // ── Tipos ──────────────────────────────────────────────────────────────────
@@ -47,18 +48,19 @@ const BARCOS_DEMO: BarcoDemo[] = [
   { id: '4', nombre_operador: 'Servicios Marítimos GE', nombre_barco: 'Litoral GE', matricula: 'GQ-004-BTA', ruta: 'Bata → Cogo', origen: 'Bata', destino: 'Cogo', capacidad: 45, precio_base: 20000, activo: false, billetes_mes: 0, recaudacion_mes: 0 },
 ];
 
-const VENTAS_HISTORICO: VentaMensual[] = [
-  { mes: 'Abr', recaudacion: 3200000, billetes: 71 },
-  { mes: 'May', recaudacion: 3500000, billetes: 78 },
-  { mes: 'Jun', recaudacion: 3800000, billetes: 84 },
-  { mes: 'Jul', recaudacion: 4100000, billetes: 91 },
-  { mes: 'Ago', recaudacion: 4200000, billetes: 93 },
-  { mes: 'Sep', recaudacion: 4185000, billetes: 86 },
+const VENTAS_HISTORICO: (VentaMensual & { mesKey: string })[] = [
+  { mes: 'Abr', mesKey: 'mznMonAbr', recaudacion: 3200000, billetes: 71 },
+  { mes: 'May', mesKey: 'mznMonMay', recaudacion: 3500000, billetes: 78 },
+  { mes: 'Jun', mesKey: 'mznMonJun', recaudacion: 3800000, billetes: 84 },
+  { mes: 'Jul', mesKey: 'mznMonJul', recaudacion: 4100000, billetes: 91 },
+  { mes: 'Ago', mesKey: 'mznMonAgo', recaudacion: 4200000, billetes: 93 },
+  { mes: 'Sep', mesKey: 'mznMonSep', recaudacion: 4185000, billetes: 86 },
 ];
 
 
 // ── Pantalla ───────────────────────────────────────────────────────────────
 export default function BarcosScreen() {
+  const { t } = useTranslation();
   const { barcos, historico, loading, error, refresh } = useBarcos();
   const [detailBarco, setDetailBarco] = useState<BarcoConStats | null>(null);
 
@@ -66,7 +68,7 @@ export default function BarcosScreen() {
   const fuenteBarcos = barcos.length > 0 ? barcos : BARCOS_DEMO;
   const fuenteHistorico: BarChartDataPoint[] = historico.length > 0
     ? historico.map(h => ({ label: h.label, value: h.value }))
-    : VENTAS_HISTORICO.map(v => ({ label: v.mes, value: v.recaudacion }));
+    : VENTAS_HISTORICO.map(v => ({ label: t(v.mesKey), value: v.recaudacion }));
 
   const totalBilletes = fuenteBarcos.reduce((s, b) => s + b.billetes_mes, 0);
   const totalRecaudacion = fuenteBarcos.reduce((s, b) => s + b.recaudacion_mes, 0);
@@ -90,15 +92,15 @@ export default function BarcosScreen() {
 
         {/* Métricas */}
         <View style={styles.metricsRow}>
-          <MetricCard label="Billetes Mes" value={`${totalBilletes}`} icon="🎫" accentColor="#FF8800" trend={-7.5} subValue="Todos los barcos" />
-          <MetricCard label="Comisiones (1%)" value={fmt(totalComisiones)} icon="💰" accentColor="#00FF88" trend={-0.4} />
+          <MetricCard label={t('mznTicketsMonth')} value={`${totalBilletes}`} icon="🎫" accentColor="#FF8800" trend={-7.5} subValue={t('mznAllBoatsTotal')} />
+          <MetricCard label={`${t('mznCommissions')} (1%)`} value={fmt(totalComisiones)} icon="💰" accentColor="#00FF88" trend={-0.4} />
         </View>
         <View style={styles.metricsRow}>
-          <MetricCard label="Recaudación Total" value={fmt(totalRecaudacion)} icon="💵" accentColor="#FF8800" fullWidth />
+          <MetricCard label={t('mznTotalCollection')} value={fmt(totalRecaudacion)} icon="💵" accentColor="#FF8800" fullWidth />
         </View>
 
         {/* Gráfico evolución */}
-        <Text style={styles.sectionTitle}>📈 Evolución Ventas</Text>
+        <Text style={styles.sectionTitle}>{t('mznSalesTrend')}</Text>
         <View style={styles.chartCard}>
           <BarChart
             data={fuenteHistorico}
@@ -106,12 +108,12 @@ export default function BarcosScreen() {
             barColor="#FF8800"
             barColorSecondary="#884400"
             formatValue={v => `${(v / 1_000_000).toFixed(1)}M`}
-            title="Recaudación mensual de billetes (XAF)"
+            title={t('mznTicketRevenueChart')}
           />
         </View>
 
         {/* Lista barcos */}
-        <Text style={styles.sectionTitle}>⛵ Operadores Registrados</Text>
+        <Text style={styles.sectionTitle}>{t('mznRegisteredOperators')}</Text>
         {fuenteBarcos.map(barco => {
           const comision = barco.recaudacion_mes * COMISION_PCT / 100;
           const ocupacion = barco.billetes_mes > 0
@@ -136,31 +138,31 @@ export default function BarcosScreen() {
 
               <Text style={styles.barcoNombre}>{barco.nombre_barco}</Text>
               <Text style={styles.barcoSub}>🧑‍✈️ {barco.nombre_operador} · {barco.matricula}</Text>
-              <Text style={styles.barcoSub}>👥 Capacidad: {barco.capacidad} pasajeros · Tarifa: {fmt(barco.precio_base)}</Text>
+              <Text style={styles.barcoSub}>👥 {t('mznCapacityLabel')} {barco.capacidad} {t('mznPassengersWord')} · {t('mznFareLabel')} {fmt(barco.precio_base)}</Text>
 
               <View style={styles.cardDivider} />
 
               <View style={styles.statsRow}>
                 <View style={styles.statItem}>
                   <Text style={styles.statVal}>{barco.billetes_mes}</Text>
-                  <Text style={styles.statLabel}>Billetes</Text>
+                  <Text style={styles.statLabel}>{t('mznTicketsStat')}</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
                   <Text style={[styles.statVal, { color: '#FF8800' }]}>{fmt(barco.recaudacion_mes)}</Text>
-                  <Text style={styles.statLabel}>Recaudación</Text>
+                  <Text style={styles.statLabel}>{t('mznCollectionStat')}</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
                   <Text style={[styles.statVal, { color: '#00FF88' }]}>{fmt(comision)}</Text>
-                  <Text style={styles.statLabel}>Comisión 1%</Text>
+                  <Text style={styles.statLabel}>{t('mznCommissionOnePct')}</Text>
                 </View>
               </View>
 
               {/* Barra de ocupación */}
               {barco.activo && (
                 <View style={styles.ocupacionRow}>
-                  <Text style={styles.ocupacionLabel}>Ocupación est.: {ocupacion}%</Text>
+                  <Text style={styles.ocupacionLabel}>{t('mznEstOccupancy')} {ocupacion}%</Text>
                   <View style={styles.ocupacionBar}>
                     <View style={[styles.ocupacionFill, {
                       width: `${ocupacion}%`,
@@ -174,17 +176,17 @@ export default function BarcosScreen() {
         })}
 
         {/* Desglose por ruta */}
-        <Text style={styles.sectionTitle}>📊 Desglose por Ruta</Text>
+        <Text style={styles.sectionTitle}>{t('mznRouteBreakdown')}</Text>
         <View style={{ marginHorizontal: 16 }}>
           <RevenueTable
             rows={fuenteBarcos.filter(b => b.activo).map(b => ({
               label: b.ruta,
-              subLabel: `${b.billetes_mes} billetes`,
+              subLabel: `${b.billetes_mes} ${t('mznTicketsStat').toLowerCase()}`,
               value: fmt(b.recaudacion_mes * COMISION_PCT / 100),
               color: '#FF8800',
               percentage: Math.round((b.recaudacion_mes / totalRecaudacion) * 100),
             }))}
-            title="Comisiones por ruta"
+            title={t('mznFeesPerRoute')}
           />
         </View>
 
@@ -210,21 +212,21 @@ export default function BarcosScreen() {
                   <RevenueTable
                     showBars={false}
                     rows={[
-                      { label: 'Operador', value: detailBarco.nombre_operador },
-                      { label: 'Matrícula', value: detailBarco.matricula ?? '—' },
-                      { label: 'Ruta', value: detailBarco.ruta },
-                      { label: 'Capacidad', value: `${detailBarco.capacidad} pasajeros` },
-                      { label: 'Precio base billete', value: fmt(detailBarco.precio_base) },
-                      { label: 'Billetes vendidos mes', value: `${detailBarco.billetes_mes}` },
-                      { label: 'Recaudación bruta mes', value: fmt(detailBarco.recaudacion_mes) },
-                      { label: `Comisión EGChat (${COMISION_PCT}%)`, value: fmt(detailBarco.recaudacion_mes * COMISION_PCT / 100), color: '#00FF88' },
-                      { label: 'Estado', value: detailBarco.activo ? 'Activo' : 'Inactivo' },
+                      { label: t('mznOperatorLabel'), value: detailBarco.nombre_operador },
+                      { label: t('mznRegistrationNumber'), value: detailBarco.matricula ?? '—' },
+                      { label: t('mznRouteLabel'), value: detailBarco.ruta },
+                      { label: t('mznCapacityField'), value: `${detailBarco.capacidad} ${t('mznPassengersWord')}` },
+                      { label: t('mznBaseFare'), value: fmt(detailBarco.precio_base) },
+                      { label: t('mznTicketsSoldMonth'), value: `${detailBarco.billetes_mes}` },
+                      { label: t('mznGrossCollectionMonth'), value: fmt(detailBarco.recaudacion_mes) },
+                      { label: `${t('mznEgchatCommission')} (${COMISION_PCT}%)`, value: fmt(detailBarco.recaudacion_mes * COMISION_PCT / 100), color: '#00FF88' },
+                      { label: t('mznStatusField'), value: detailBarco.activo ? t('active') : t('mznInactive') },
                     ]}
                   />
                 </ScrollView>
                 <View style={styles.sheetActions}>
                   <TouchableOpacity style={styles.btnSecondary} onPress={() => setDetailBarco(null)}>
-                    <Text style={styles.btnSecondaryText}>Cerrar</Text>
+                    <Text style={styles.btnSecondaryText}>{t('close')}</Text>
                   </TouchableOpacity>
                 </View>
               </>

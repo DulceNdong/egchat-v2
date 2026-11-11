@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import Svg, { Path, Circle, Rect, G, Line } from 'react-native-svg';
 import * as ImageManipulator from 'expo-image-manipulator';
+import { t as tr } from '../translations';
 
 interface PhotoEditorModalProps {
   visible: boolean;
@@ -29,9 +30,9 @@ interface Filter {
 const FILTERS: Filter[] = [
   { id: 'none',  label: 'Original' },
   { id: 'bw',   label: 'B&N',   saturation: 0 },
-  { id: 'warm', label: 'Cálido', brightness: 1.1, saturation: 1.3 },
-  { id: 'cool', label: 'Frío',   brightness: 0.95, saturation: 0.8 },
-  { id: 'vivid',label: 'Vívido', contrast: 1.2, saturation: 1.8 },
+  { id: 'warm', label: tr('xtCalido'), brightness: 1.1, saturation: 1.3 },
+  { id: 'cool', label: tr('xtFrio'),   brightness: 0.95, saturation: 0.8 },
+  { id: 'vivid',label: tr('xtVivido'), contrast: 1.2, saturation: 1.8 },
   { id: 'fade', label: 'Fade',   brightness: 1.05, contrast: 0.85, saturation: 0.7 },
   { id: 'drama',label: 'Drama',  contrast: 1.4, brightness: 0.9 },
 ];
@@ -110,7 +111,7 @@ const TOOLS: { id: Tool; label: string; Icon: React.FC<{ active: boolean }> }[] 
   { id: 'filters', label: 'Filtros',  Icon: IcFilters },
   { id: 'adjust',  label: 'Ajustar',  Icon: IcAdjust  },
   { id: 'rotate',  label: 'Rotar',    Icon: IcRotate  },
-  { id: 'text',    label: 'Texto',    Icon: IcText    },
+  { id: 'text',    label: tr('xtTexto'),    Icon: IcText    },
 ];
 
 export const PhotoEditorModal: React.FC<PhotoEditorModalProps> = ({
@@ -177,7 +178,7 @@ export const PhotoEditorModal: React.FC<PhotoEditorModalProps> = ({
           <TouchableOpacity onPress={onClose} style={s.iconBtn} hitSlop={8}>
             <IcBack/>
           </TouchableOpacity>
-          <Text style={s.headerTitle}>Editar foto</Text>
+          <Text style={s.headerTitle}>{tr('xtEditarFoto')}</Text>
           <TouchableOpacity
             style={[s.sendBtn, processing && s.sendBtnDisabled]}
             onPress={handleSend}
@@ -188,7 +189,7 @@ export const PhotoEditorModal: React.FC<PhotoEditorModalProps> = ({
               ? <ActivityIndicator color="#fff" size="small"/>
               : <>
                   <IcSend/>
-                  <Text style={s.sendBtnText}>Enviar</Text>
+                  <Text style={s.sendBtnText}>{tr('liaChipSend')}</Text>
                 </>
             }
           </TouchableOpacity>
@@ -244,7 +245,7 @@ export const PhotoEditorModal: React.FC<PhotoEditorModalProps> = ({
             <View style={s.adjustPanel}>
               <SimpleSlider label="Brillo"    value={brightness} onChange={setBrightness}/>
               <SimpleSlider label="Contraste" value={contrast}   onChange={setContrast}/>
-              <SimpleSlider label="Saturación" value={saturation} onChange={setSaturation}/>
+              <SimpleSlider label={tr('xtSaturacion')} value={saturation} onChange={setSaturation}/>
             </View>
           )}
 
@@ -278,7 +279,7 @@ export const PhotoEditorModal: React.FC<PhotoEditorModalProps> = ({
                     style={s.textInput}
                     value={textInput}
                     onChangeText={setTextInput}
-                    placeholder="Escribe el texto..."
+                    placeholder={tr('xtEscribeElTexto')}
                     placeholderTextColor="rgba(255,255,255,0.35)"
                     autoFocus
                   />
@@ -296,7 +297,7 @@ export const PhotoEditorModal: React.FC<PhotoEditorModalProps> = ({
                   <TouchableOpacity style={s.addTextBtn}
                     onPress={() => { setTextInput(overlayText); setShowTextInput(true); }}>
                     <Text style={s.addTextBtnText}>
-                      {overlayText ? 'Editar texto' : '+ Añadir texto'}
+                      {overlayText ? 'Editar texto' : tr('xtAnadirTexto2')}
                     </Text>
                   </TouchableOpacity>
                   {overlayText ? (
@@ -336,7 +337,7 @@ export const PhotoEditorModal: React.FC<PhotoEditorModalProps> = ({
               style={s.captionInput}
               value={caption}
               onChangeText={setCaption}
-              placeholder="Añade un pie de foto..."
+              placeholder={tr('cmpPhotoCaptionPh')}
               placeholderTextColor="rgba(255,255,255,0.35)"
             />
             <TouchableOpacity style={s.sendFab} onPress={handleSend} disabled={processing} activeOpacity={0.8}>

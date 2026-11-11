@@ -14,6 +14,7 @@ import { EGAvatar } from '../ui';
 import { useThemeContext } from '../../theme/ThemeContext';
 import { Colors } from '../../theme/colors';
 import { DarkColors } from '../../theme/darkMode';
+import { t as tr } from '../../translations';
 
 interface ReadReceipt {
   user_id: string;
@@ -89,7 +90,7 @@ export function MessageReadReceiptsModal({ visible, messageId, chatParticipants,
         {items.map(r => (
           <View key={r.user_id} style={[s.row, { borderBottomColor: C.borderLight }]}>
             <EGAvatar src={r.avatar_url} name={r.full_name || 'U'} size={40} />
-            <Text style={[s.name, { color: C.textPrimary }]}>{r.full_name || 'Usuario'}</Text>
+            <Text style={[s.name, { color: C.textPrimary }]}>{r.full_name || tr('setUser')}</Text>
             {r.read_at && <Text style={[s.time, { color: C.textTertiary }]}>{formatTime(r.read_at)}</Text>}
           </View>
         ))}
@@ -103,7 +104,7 @@ export function MessageReadReceiptsModal({ visible, messageId, chatParticipants,
         <Pressable style={[s.sheet, { backgroundColor: C.bgPrimary }]} onPress={e => e.stopPropagation()}>
           <View style={s.handle} />
           <View style={s.header}>
-            <Text style={[s.headerTitle, { color: C.textPrimary }]}>Visto por</Text>
+            <Text style={[s.headerTitle, { color: C.textPrimary }]}>{tr('xtVistoPor')}</Text>
             <TouchableOpacity onPress={onClose}>
               <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={C.textTertiary} strokeWidth={2} strokeLinecap="round">
                 <Line x1="18" y1="6" x2="6" y2="18"/><Line x1="6" y1="6" x2="18" y2="18"/>
@@ -120,7 +121,7 @@ export function MessageReadReceiptsModal({ visible, messageId, chatParticipants,
               renderItem={null}
               ListHeaderComponent={
                 <>
-                  <Section title="✓✓ Leído" items={read} color="#00C8A0" />
+                  <Section title={tr('xtLeido')} items={read} color="#00C8A0" />
                   <Section title="✓✓ Entregado" items={delivered} color="#9ca3af" />
                   {pending.length > 0 && (
                     <>
@@ -130,13 +131,13 @@ export function MessageReadReceiptsModal({ visible, messageId, chatParticipants,
                       {pending.map(p => (
                         <View key={p.user_id} style={[s.row, { borderBottomColor: C.borderLight }]}>
                           <EGAvatar src={p.avatar_url} name={p.full_name || 'U'} size={40} />
-                          <Text style={[s.name, { color: C.textPrimary }]}>{p.full_name || 'Usuario'}</Text>
+                          <Text style={[s.name, { color: C.textPrimary }]}>{p.full_name || tr('setUser')}</Text>
                         </View>
                       ))}
                     </>
                   )}
                   {read.length === 0 && delivered.length === 0 && pending.length === 0 && (
-                    <Text style={[s.empty, { color: C.textTertiary }]}>Sin datos de lectura</Text>
+                    <Text style={[s.empty, { color: C.textTertiary }]}>{tr('xtSinDatosDeLectura')}</Text>
                   )}
                 </>
               }

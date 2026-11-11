@@ -12,16 +12,23 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { cemacAPI, walletAPI } from '../src/api';
 import { toast } from '../src/components/Toast';
+import { useLanguage } from '../src/context/LanguageContext';
+import { usePaymentPin } from '../src/context/PaymentPinContext';
 import { CemacLogo } from '../src/components/CemacLogo';
 import {
   LANGS, COUNTRIES, T, SERVICES, LEISURE, CAT_ICON, ATMS, NEWS, RATES, HISTORY, NEWS_COLOR,
   type Lang, type CountryCode, type CemacTab,
 } from '../src/data/cemacData';
+import { t as tr } from '../src/translations';
 
 export default function CemacScreen() {
+  const { runWithPin } = usePaymentPin();
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
   const insets = useSafeAreaInsets();
+  // CEMAC usa su propio selector (ES/FR/EN/AR); arranca con el idioma de la app.
+  const { language: appLanguage } = useLanguage();
+  const appLang: Lang = appLanguage === 'fr' ? 'FR' : appLanguage === 'en' ? 'EN' : appLanguage === 'pt' ? 'FR' : 'ES';
   const [lang, setLang] = useState<Lang | null>(null);
   const [country, setCountry] = useState<CountryCode | null>(null);
   const [tab, setTab] = useState<CemacTab>('servicios');
@@ -30,18 +37,29 @@ export default function CemacScreen() {
   const [transferOpen, setTransferOpen] = useState(false);
   const [xfer, setXfer] = useState({ from: 'GQ', to: 'CM', name: '', account: '', amount: '' });
   const [xferLoading, setXferLoading] = useState(false);
+  const [transferRef, setTransferRef] = useState('');
   const [fromCur, setFromCur] = useState('XAF');
   const [toCur, setToCur] = useState('EUR');
   const [amt, setAmt] = useState('');
+  // La comision CEMAC vive en service_tariffs; el 750 literal de antes podia
+  // quedarse corto si el operador la cambiaba.
+  const [comision, setComision] = useState<number | null>(null);
+  const [limites, setLimites] = useState<{ min: number; max: number }>({ min: 1000, max: 1000000 });
 
-  const t = T[lang || 'ES'];
+  const t = T[lang || appLang];
 
   useEffect(() => {
     walletAPI.getBalance().then(r => setBalance(r.balance || 0)).catch(() => {});
+    cemacAPI.getRates().then(r => {
+      if (r?.transfer_fee_flat != null) setComision(Number(r.transfer_fee_flat));
+      if (r?.min_amount || r?.max_amount) {
+        setLimites({ min: Number(r.min_amount) || 0, max: Number(r.max_amount) || Infinity });
+      }
+    }).catch(() => {});
   }, []);
 
   const enterCountry = (code: CountryCode) => {
-    setLang(prev => prev || 'ES');
+    setLang(prev => prev || appLang);
     setCountry(code);
   };
 
@@ -61,26 +79,49 @@ export default function CemacScreen() {
 
   const sendTransfer = async () => {
     const amount = parseInt(xfer.amount, 10);
-    if (!xfer.name.trim() || !xfer.account.trim() || !amount || amount > balance) {
-      toast.error('Datos incompletos o saldo insuficiente');
+    if (!xfer.name.trim() || !xfer.account.trim() || !amount) {
+      toast.error(tr('xtDatosIncompletosOSaldoInsuficiente'));
       return;
     }
+    if (comision == null) {
+      toast.error('No se pudo leer la comisión CEMAC. Revisa la conexión e inténtalo de nuevo.');
+      return;
+    }
+    if (amount < limites.min || amount > limites.max) {
+      toast.error(`El importe debe estar entre ${limites.min.toLocaleString()} y ${limites.max.toLocaleString()} XAF.`);
+      return;
+    }
+    const total = amount + comision;
+    if (total > balance) {
+      toast.error(`Necesitas ${total.toLocaleString()} XAF (importe + comisión) y tienes ${balance.toLocaleString()}.`);
+      return;
+    }
+    // Misma referencia en un reintento: el servidor devuelve la transferencia ya
+    // creada en vez de volver a cobrar.
+    const ref = transferRef || `CEM-${Date.now()}`;
+    if (!transferRef) setTransferRef(ref);
     setXferLoading(true);
     try {
-      await cemacAPI.createTransfer({
-        from_country: xfer.from,
-        to_country: xfer.to,
-        beneficiary_name: xfer.name.trim(),
-        beneficiary_account: xfer.account.trim(),
-        amount,
-      });
-      toast.success('Transferencia enviada');
+      const enviada = await runWithPin(
+        pin => cemacAPI.createTransfer({
+          from_country: xfer.from,
+          to_country: xfer.to,
+          beneficiary_name: xfer.name.trim(),
+          beneficiary_account: xfer.account.trim(),
+          amount,
+          external_id: ref,
+        }, pin),
+        tr('xtIntroduceTuPIN'),
+      );
+      if (!enviada) return;
+      toast.success(`Transferencia enviada — ${total.toLocaleString()} XAF`);
       setTransferOpen(false);
+      setTransferRef('');
       setXfer({ from: 'GQ', to: 'CM', name: '', account: '', amount: '' });
       const r = await walletAPI.getBalance();
       setBalance(r.balance || 0);
-    } catch {
-      toast.error('No se pudo enviar la transferencia');
+    } catch (e: any) {
+      toast.error(e?.message || tr('xtNoSePudoEnviarLaTransferencia'));
     } finally {
       setXferLoading(false);
     }
@@ -98,13 +139,13 @@ export default function CemacScreen() {
         <SafeAreaView style={{ flex: 1 }} edges={['left', 'right', 'bottom']}>
         <TouchableOpacity onPress={() => router.back()} style={[s.welcomeBack, { paddingTop: insets.top + 12 }]}>
           <Text style={{ color: '#fff', fontSize: 28, lineHeight: 32 }}>‹</Text>
-          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>Volver</Text>
+          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>{tr('djhBack')}</Text>
         </TouchableOpacity>
         <ScrollView contentContainerStyle={s.welcomeScroll} showsVerticalScrollIndicator={false}>
             <View style={s.welcomeHero}>
               <CemacLogo size={80} />
-              <Text style={s.welcomeTitle}>Bienvenido a la CEMAC</Text>
-              <Text style={s.welcomeSub}>Comunidad Económica y Monetaria de África Central</Text>
+              <Text style={s.welcomeTitle}>{tr('xtBienvenidoALaCEMAC')}</Text>
+              <Text style={s.welcomeSub}>{tr('cmcFullName')}</Text>
               <View style={s.statsRow}>
                 {[{ v: '6', l: 'Países' }, { v: 'XAF', l: 'Moneda' }, { v: '60M+', l: 'Personas' }].map(st => (
                   <View key={st.l} style={s.statItem}>
@@ -116,7 +157,7 @@ export default function CemacScreen() {
             </View>
 
             <View style={s.glassCard}>
-              <Text style={s.glassLabel}>TOCA UN PAÍS PARA ENTRAR</Text>
+              <Text style={s.glassLabel}>{tr('xtTOCAUNPAISPARAENTRAR')}</Text>
               <View style={s.countryGrid}>
                 {COUNTRIES.map(c => (
                   <TouchableOpacity key={c.code} style={s.countryCell} onPress={() => enterCountry(c.code)} activeOpacity={0.85}>
@@ -131,7 +172,7 @@ export default function CemacScreen() {
             </View>
 
             <View style={[s.glassCard, { marginBottom: 24 }]}>
-              <Text style={s.glassLabel}>ELIGE TU IDIOMA</Text>
+              <Text style={s.glassLabel}>{tr('xtELIGETUIDIOMA')}</Text>
               <View style={s.langGrid}>
                 {LANGS.map(l => (
                   <TouchableOpacity
@@ -171,7 +212,7 @@ export default function CemacScreen() {
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={s.headerTitle}>CEMAC</Text>
-          <Text style={s.headerSub}>{ctry?.nameES || 'Zona CEMAC'} · {lang}</Text>
+          <Text style={s.headerSub}>{ctry?.nameES || tr('svcCemacZone')} · {lang}</Text>
         </View>
         <TouchableOpacity onPress={() => setTransferOpen(true)} style={s.sendBtn}>
           <Text style={s.sendBtnText}>💸</Text>
@@ -251,7 +292,7 @@ export default function CemacScreen() {
                 <Text style={s.primaryBtnText}>{t.sendMoney}</Text>
               </TouchableOpacity>
             </View>
-            <Text style={s.sectionLabel}>HISTORIAL</Text>
+            <Text style={s.sectionLabel}>{tr('xtHISTORIAL')}</Text>
             {HISTORY.map(h => (
               <View key={h.id} style={s.histRow}>
                 <Text style={{ fontSize: 18 }}>{h.type === 'in' ? '📥' : '📤'}</Text>
@@ -335,13 +376,28 @@ export default function CemacScreen() {
               ))}
             </ScrollView>
             <TextInput style={s.search} value={xfer.name} onChangeText={v => setXfer(p => ({ ...p, name: v }))} placeholder={t.recipient} placeholderTextColor="#888" />
-            <TextInput style={s.search} value={xfer.account} onChangeText={v => setXfer(p => ({ ...p, account: v }))} placeholder="Cuenta / IBAN" placeholderTextColor="#888" />
+            <TextInput style={s.search} value={xfer.account} onChangeText={v => setXfer(p => ({ ...p, account: v }))} placeholder={tr('xtCuentaIBAN')} placeholderTextColor="#888" />
             <TextInput style={s.search} value={xfer.amount} onChangeText={v => setXfer(p => ({ ...p, amount: v }))} placeholder={t.amount} keyboardType="numeric" placeholderTextColor="#888" />
+            <View style={s.feeBox}>
+              <Text style={s.feeLine}>
+                Comisión CEMAC: {comision == null ? '—' : `${comision.toLocaleString()} XAF`}
+              </Text>
+              <Text style={s.feeTotal}>
+                A debitar del monedero:{` ${comision == null ? '—' : (Math.max(0, parseInt(xfer.amount, 10) || 0) + comision).toLocaleString()} XAF`}
+              </Text>
+              <Text style={s.feeHint}>
+                Saldo: {balance.toLocaleString()} XAF · permitido {limites.min.toLocaleString()}–{limites.max.toLocaleString()} XAF
+              </Text>
+            </View>
             <View style={s.modalBtns}>
               <TouchableOpacity style={s.cancelBtn} onPress={() => setTransferOpen(false)}>
                 <Text style={s.cancelBtnText}>{t.cancel}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={s.primaryBtn} onPress={sendTransfer} disabled={xferLoading}>
+              <TouchableOpacity
+                style={s.primaryBtn}
+                onPress={sendTransfer}
+                disabled={xferLoading || comision == null || (parseInt(xfer.amount, 10) || 0) + comision > balance}
+              >
                 {xferLoading ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryBtnText}>{t.send}</Text>}
               </TouchableOpacity>
             </View>
@@ -478,4 +534,8 @@ const s = StyleSheet.create({
   modalBtns: { flexDirection: 'row', gap: 10, marginTop: 8 },
   cancelBtn: { flex: 1, padding: 14, borderRadius: 12, backgroundColor: '#f3f4f6', alignItems: 'center' },
   cancelBtnText: { color: '#666', fontWeight: '700' },
+  feeBox: { backgroundColor: '#F0FAF5', borderRadius: 12, padding: 12, marginTop: 10 },
+  feeLine: { fontSize: 12, color: '#374151', fontWeight: '600' },
+  feeTotal: { fontSize: 14, color: '#065F46', fontWeight: '900', marginTop: 4 },
+  feeHint: { fontSize: 11, color: '#6B7280', marginTop: 4 },
 });

@@ -4,6 +4,7 @@ import { View, Text, TouchableOpacity, StyleSheet, TextInput } from 'react-nativ
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Polygon, Circle, Path } from 'react-native-svg';
 import { PAY_METHODS, UtilityVariant } from '../../data/serviciosPublicos';
+import { t as tr } from '../../translations';
 
 export const SegesaLogo = ({ size = 56 }: { size?: number }) => (
   <View style={[pb.logoBox, { width: size, height: size }]}>
@@ -34,7 +35,7 @@ export const UtilityProviderBanner = ({
   activeStep: number;
 }) => {
   const cfg = variant === 'elec'
-    ? { gradient: ['#1A3A6B', '#2A5298'] as [string, string], steps: ['Contrato', 'Factura', 'Pago', 'Confirmación'] }
+    ? { gradient: ['#1A3A6B', '#2A5298'] as [string, string], steps: ['Contrato', tr('xtFactura'), tr('xtPago2'), tr('xtConfirmacion')] }
     : { gradient: ['#0A4A8A', '#1565C0'] as [string, string], steps: [] as string[] };
 
   return (
@@ -117,7 +118,7 @@ export const PayMethodPicker = ({
 }) => {
   return (
     <View>
-      <Text style={pb.sectionLbl}>Método de pago</Text>
+      <Text style={pb.sectionLbl}>{tr('svcPaymentMethod')}</Text>
 
       {/* ── EGPAY — única opción ── */}
       {PAY_METHODS.map(m => {
@@ -139,7 +140,7 @@ export const PayMethodPicker = ({
                 <View style={[pb.egpayBadge, active && { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
                   <Text style={[pb.egpayBadgeTxt, active && { color: '#fff' }]}>EGPAY</Text>
                 </View>
-                <Text style={[pb.egpayTitle, active && { color: '#fff' }]}>Pagar con EGPAY</Text>
+                <Text style={[pb.egpayTitle, active && { color: '#fff' }]}>{tr('xtPagarConEGPAY')}</Text>
                 <Text style={[pb.egpaySub, active && { color: 'rgba(255,255,255,0.85)' }]}>
                   Monedero · Instantáneo · Sin comisión
                 </Text>
@@ -181,19 +182,19 @@ export const FacturaResultCard = ({
 }) => (
   <View style={[pb.facturaCard, { borderColor: accent + '40' }]}>
     <View style={pb.facturaTop}>
-      <Text style={[pb.facturaTitle, { color: accent }]}>Factura encontrada</Text>
+      <Text style={[pb.facturaTitle, { color: accent }]}>{tr('xtFacturaEncontrada')}</Text>
       <View style={[pb.badge, estado === 'Pendiente' ? pb.badgeWarn : pb.badgeOk]}>
         <Text style={[pb.badgeText, estado === 'Pendiente' ? { color: '#92400E' } : { color: '#16A34A' }]}>{estado}</Text>
       </View>
     </View>
-    {([['Período', periodo], ['Vencimiento', vencimiento], ['Importe', `${importe.toLocaleString()} XAF`]] as const).map(([l, v]) => (
+    {([[tr('mznInfPeriod'), periodo], [tr('xtVencimiento'), vencimiento], [tr('walAmount'), `${importe.toLocaleString()} XAF`]] as const).map(([l, v]) => (
       <View key={l} style={pb.facturaRow}>
         <Text style={pb.facturaLbl}>{l}</Text>
         <Text style={pb.facturaVal}>{v}</Text>
       </View>
     ))}
     <View style={pb.facturaTotal}>
-      <Text style={[pb.facturaTotalLbl, { color: accent }]}>Total a pagar</Text>
+      <Text style={[pb.facturaTotalLbl, { color: accent }]}>{tr('xtTotalAPagar')}</Text>
       <Text style={[pb.facturaTotalVal, { color: accent }]}>{importe.toLocaleString()} XAF</Text>
     </View>
   </View>

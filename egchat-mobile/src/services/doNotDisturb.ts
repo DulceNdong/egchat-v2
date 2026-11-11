@@ -3,6 +3,7 @@
 // Silencia todas las notificaciones entre horaInicio y horaFin
 // ══════════════════════════════════════════════════════════════════
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { t as tr } from '../translations';
 
 const KEY = 'egchat_dnd_settings';
 
@@ -59,4 +60,7 @@ export function formatTime(h: number, m: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
-export const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+export const dayNames = (): string[] => [
+  tr('dndDaySun'), tr('dndDayMon'), tr('dndDayTue'), tr('dndDayWed'),
+  tr('dndDayThu'), tr('dndDayFri'), tr('dndDaySat'),
+];

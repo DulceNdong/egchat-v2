@@ -6,6 +6,7 @@ import React from 'react';
 import {
   View, Text, Modal, Pressable, StyleSheet, FlatList, useColorScheme,
 } from 'react-native';
+import { t as tr } from '../../translations';
 
 interface EditEntry {
   text: string;
@@ -47,7 +48,7 @@ export function EditHistoryModal({ visible, history, currentText, onClose }: Pro
       <Pressable style={s.overlay} onPress={onClose}>
         <Pressable style={[s.sheet, { backgroundColor: sheetBg }]} onPress={e => e.stopPropagation()}>
           <View style={s.handle} />
-          <Text style={[s.title, { color: textColor }]}>✏️ Historial de ediciones</Text>
+          <Text style={[s.title, { color: textColor }]}>{tr('xtHistorialDeEdiciones')}</Text>
           <FlatList
             data={versions}
             keyExtractor={(_, i) => String(i)}

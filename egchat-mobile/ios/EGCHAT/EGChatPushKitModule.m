@@ -10,4 +10,8 @@
 /// Registra el dispositivo para recibir notificaciones VoIP push
 RCT_EXTERN_METHOD(registerVoIP)
 
+/// Lee el token VoIP ya generado por iOS (el JS puede llegar después del push)
+RCT_EXTERN_METHOD(getCurrentVoIPToken:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
 @end

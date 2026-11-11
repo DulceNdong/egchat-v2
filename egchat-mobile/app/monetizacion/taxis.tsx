@@ -7,7 +7,9 @@ import { StatusBadge } from '../../src/components/monetizacion/StatusBadge';
 import { MetricCard } from '../../src/components/monetizacion/MetricCard';
 import { RevenueTable } from '../../src/components/monetizacion/RevenueTable';
 import { useTaxistas } from '../../src/hooks/useMonetizacion';
+import { useTranslation } from '../../src/context/LanguageContext';
 import type { TaxistaConIngresos } from '../../src/types/monetizacion';
+import { t as tr } from '../../src/translations';
 
 // ── Utilidades ─────────────────────────────────────────────────────────────
 const hoy = new Date();
@@ -27,12 +29,12 @@ function docColor(status: string) {
   return '#00FF88';
 }
 
-function daysLeft(fechaStr: string | null) {
-  if (!fechaStr) return 'Sin fecha';
+function daysLeft(fechaStr: string | null, tr: (key: string) => string) {
+  if (!fechaStr) return tr('mznNoDate');
   const diff = Math.ceil((new Date(fechaStr).getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
-  if (diff < 0) return `Venció hace ${Math.abs(diff)}d`;
-  if (diff === 0) return 'Vence hoy';
-  return `${diff} días`;
+  if (diff < 0) return `${tr('mznExpiredAgo')} ${Math.abs(diff)} ${tr('mznDaysUnit')}`;
+  if (diff === 0) return tr('mznExpiresToday');
+  return `${diff} ${tr('mznDaysUnit')}`;
 }
 
 const fmt = (n: number) =>
@@ -52,6 +54,7 @@ const TAXISTAS_DEMO: TaxistaConIngresos[] = [
 
 // ── Pantalla ───────────────────────────────────────────────────────────────
 export default function TaxisScreen() {
+  const { t } = useTranslation();
   const { taxistas, loading, error, refresh } = useTaxistas();
   const [detailTaxista, setDetailTaxista] = useState<TaxistaConIngresos | null>(null);
   const [filtro, setFiltro] = useState<'todos' | 'activo' | 'alerta'>('todos');
@@ -62,16 +65,16 @@ export default function TaxisScreen() {
   const taxistasFiltrados = filtro === 'todos'
     ? fuenteDatos
     : filtro === 'activo'
-    ? fuenteDatos.filter(t => t.activo && t.verificado)
-    : fuenteDatos.filter(t =>
-        docStatus(t.fecha_venc_carnet) !== 'vigente' ||
-        docStatus(t.fecha_venc_seguro) !== 'vigente' ||
-        docStatus(t.fecha_venc_revision) !== 'vigente'
+    ? fuenteDatos.filter(tx => tx.activo && tx.verificado)
+    : fuenteDatos.filter(tx =>
+        docStatus(tx.fecha_venc_carnet) !== 'vigente' ||
+        docStatus(tx.fecha_venc_seguro) !== 'vigente' ||
+        docStatus(tx.fecha_venc_revision) !== 'vigente'
       );
 
-  const totalViajes = fuenteDatos.reduce((s, t) => s + t.total_viajes_mes, 0);
-  const totalHoras = fuenteDatos.reduce((s, t) => s + t.horas_activo_mes, 0);
-  const totalIngresos = fuenteDatos.reduce((s, t) => s + t.ingresos_viajes_mes, 0);
+  const totalViajes = fuenteDatos.reduce((s, tx) => s + tx.total_viajes_mes, 0);
+  const totalHoras = fuenteDatos.reduce((s, tx) => s + tx.horas_activo_mes, 0);
+  const totalIngresos = fuenteDatos.reduce((s, tx) => s + tx.ingresos_viajes_mes, 0);
   const totalComisiones = totalIngresos * COMISION_PCT / 100;
 
   return (
@@ -92,20 +95,20 @@ export default function TaxisScreen() {
 
       {/* Métricas */}
       <View style={styles.metricsRow}>
-        <MetricCard label="Viajes Mes" value={`${totalViajes}`} icon="🚗" accentColor="#FFD700" trend={7.5} subValue="Total todos los taxistas" />
-        <MetricCard label="Comisiones (5%)" value={fmt(totalComisiones)} icon="💰" accentColor="#00FF88" trend={7.5} />
+        <MetricCard label={t('mznTripsMonth')} value={`${totalViajes}`} icon="🚗" accentColor="#FFD700" trend={7.5} subValue={t('mznAllDriversTotal')} />
+        <MetricCard label={`${t('mznCommissions')} (5%)`} value={fmt(totalComisiones)} icon="💰" accentColor="#00FF88" trend={7.5} />
       </View>
       <View style={styles.metricsRow}>
-        <MetricCard label="Horas Activas" value={`${totalHoras}h`} icon="⏱️" accentColor="#FF8800" subValue="Este mes" />
-        <MetricCard label="Taxistas Activos" value={`${fuenteDatos.filter(t => t.activo).length}`} icon="🚖" accentColor="#00D4FF" subValue={`de ${fuenteDatos.length} registrados`} />
+        <MetricCard label={t('mznActiveHours')} value={`${totalHoras}h`} icon="⏱️" accentColor="#FF8800" subValue={t('mznThisMonth')} />
+        <MetricCard label={t('mznActiveDrivers')} value={`${fuenteDatos.filter(tx => tx.activo).length}`} icon="🚖" accentColor="#00D4FF" subValue={`${t('mznRegisteredCountPrefix')} ${fuenteDatos.length} ${t('mznRegisteredWord')}`} />
       </View>
 
       {/* Filtros */}
       <View style={styles.filterRow}>
         {([
-          { key: 'todos', label: 'Todos' },
-          { key: 'activo', label: '✓ Activos' },
-          { key: 'alerta', label: '⚠ Alertas' },
+          { key: 'todos', labelKey: 'everyone' },
+          { key: 'activo', labelKey: 'mznFilterActive' },
+          { key: 'alerta', labelKey: 'mznFilterAlerts' },
         ] as const).map(f => (
           <TouchableOpacity
             key={f.key}
@@ -113,7 +116,7 @@ export default function TaxisScreen() {
             onPress={() => setFiltro(f.key)}
           >
             <Text style={[styles.filterBtnText, filtro === f.key && styles.filterBtnTextActive]}>
-              {f.label}
+              {t(f.labelKey)}
             </Text>
           </TouchableOpacity>
         ))}
@@ -153,7 +156,7 @@ export default function TaxisScreen() {
                 </View>
                 <View style={styles.cardHeaderRight}>
                   <StatusBadge status={taxista.activo ? 'activo' : 'inactivo'} size="sm" />
-                  {taxista.verificado && <Text style={styles.verificado}>✓ Ver.</Text>}
+                  {taxista.verificado && <Text style={styles.verificado}>{t('mznVerifiedShort')}</Text>}
                 </View>
               </View>
 
@@ -161,31 +164,31 @@ export default function TaxisScreen() {
               <View style={styles.statsRow}>
                 <View style={styles.statItem}>
                   <Text style={styles.statVal}>{taxista.total_viajes_mes}</Text>
-                  <Text style={styles.statLabel}>Viajes</Text>
+                  <Text style={styles.statLabel}>{t('mznTrips')}</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
                   <Text style={styles.statVal}>{taxista.horas_activo_mes}h</Text>
-                  <Text style={styles.statLabel}>Horas activo</Text>
+                  <Text style={styles.statLabel}>{t('mznHoursActive')}</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
                   <Text style={[styles.statVal, { color: '#00FF88' }]}>{fmt(comision)}</Text>
-                  <Text style={styles.statLabel}>Comisión (5%)</Text>
+                  <Text style={styles.statLabel}>{`${t('fee')} (5%)`}</Text>
                 </View>
               </View>
 
               {/* Documentación */}
               <View style={styles.docRow}>
                 {[
-                  { label: '🪪 Carnet', status: carnetStatus, fecha: taxista.fecha_venc_carnet },
-                  { label: '🛡 Seguro', status: seguroStatus, fecha: taxista.fecha_venc_seguro },
-                  { label: '🔧 Revisión', status: revStatus, fecha: taxista.fecha_venc_revision },
+                  { label: '🪪 Carnet', labelKey: 'mznDocLicense', status: carnetStatus, fecha: taxista.fecha_venc_carnet },
+                  { label: tr('mznDocInsurance'), labelKey: 'mznDocInsurance', status: seguroStatus, fecha: taxista.fecha_venc_seguro },
+                  { label: tr('mznDocInspection'), labelKey: 'mznDocInspection', status: revStatus, fecha: taxista.fecha_venc_revision },
                 ].map(doc => (
-                  <View key={doc.label} style={[styles.docItem, { borderColor: docColor(doc.status) + '44' }]}>
-                    <Text style={styles.docLabel}>{doc.label}</Text>
+                  <View key={doc.labelKey} style={[styles.docItem, { borderColor: docColor(doc.status) + '44' }]}>
+                    <Text style={styles.docLabel}>{t(doc.labelKey)}</Text>
                     <Text style={[styles.docStatus, { color: docColor(doc.status) }]}>
-                      {daysLeft(doc.fecha)}
+                      {daysLeft(doc.fecha, t)}
                     </Text>
                   </View>
                 ))}
@@ -211,30 +214,30 @@ export default function TaxisScreen() {
                   </TouchableOpacity>
                 </View>
                 <ScrollView style={{ maxHeight: 460 }} showsVerticalScrollIndicator={false}>
-                  <Text style={styles.detailSection}>📊 Actividad del Mes</Text>
+                  <Text style={styles.detailSection}>{t('mznMonthActivity')}</Text>
                   <RevenueTable
                     showBars={false}
                     rows={[
-                      { label: 'Total viajes', value: `${detailTaxista.total_viajes_mes}` },
-                      { label: 'Horas activo', value: `${detailTaxista.horas_activo_mes} horas` },
-                      { label: 'Ingresos brutos viajes', value: fmt(detailTaxista.ingresos_viajes_mes) },
-                      { label: 'Comisión EGChat (5%)', value: fmt(detailTaxista.ingresos_viajes_mes * COMISION_PCT / 100), color: '#00FF88' },
-                      { label: 'Promedio por viaje', value: fmt(detailTaxista.ingresos_viajes_mes / Math.max(detailTaxista.total_viajes_mes, 1)) },
+                      { label: t('mznTotalTrips'), value: `${detailTaxista.total_viajes_mes}` },
+                      { label: t('mznHoursActive'), value: `${detailTaxista.horas_activo_mes} ${t('mznHoursUnit')}` },
+                      { label: t('mznGrossTripIncome'), value: fmt(detailTaxista.ingresos_viajes_mes) },
+                      { label: `${t('mznEgchatCommission')} (5%)`, value: fmt(detailTaxista.ingresos_viajes_mes * COMISION_PCT / 100), color: '#00FF88' },
+                      { label: t('mznAvgPerTrip'), value: fmt(detailTaxista.ingresos_viajes_mes / Math.max(detailTaxista.total_viajes_mes, 1)) },
                     ]}
                   />
-                  <Text style={[styles.detailSection, { marginTop: 16 }]}>📋 Documentación</Text>
+                  <Text style={[styles.detailSection, { marginTop: 16 }]}>{t('mznDocumentation')}</Text>
                   <RevenueTable
                     showBars={false}
                     rows={[
-                      { label: '🪪 Carnet conducir', value: `${detailTaxista.fecha_venc_carnet ?? 'Sin fecha'} (${daysLeft(detailTaxista.fecha_venc_carnet)})`, color: docColor(docStatus(detailTaxista.fecha_venc_carnet)) },
-                      { label: '🛡 Seguro vehículo', value: `${detailTaxista.fecha_venc_seguro ?? 'Sin fecha'} (${daysLeft(detailTaxista.fecha_venc_seguro)})`, color: docColor(docStatus(detailTaxista.fecha_venc_seguro)) },
-                      { label: '🔧 Revisión técnica', value: `${detailTaxista.fecha_venc_revision ?? 'Sin fecha'} (${daysLeft(detailTaxista.fecha_venc_revision)})`, color: docColor(docStatus(detailTaxista.fecha_venc_revision)) },
+                      { label: t('mznDriverLicense'), value: `${detailTaxista.fecha_venc_carnet ?? t('mznNoDate')} (${daysLeft(detailTaxista.fecha_venc_carnet, t)})`, color: docColor(docStatus(detailTaxista.fecha_venc_carnet)) },
+                      { label: t('mznVehicleInsurance'), value: `${detailTaxista.fecha_venc_seguro ?? t('mznNoDate')} (${daysLeft(detailTaxista.fecha_venc_seguro, t)})`, color: docColor(docStatus(detailTaxista.fecha_venc_seguro)) },
+                      { label: t('mznTechInspection'), value: `${detailTaxista.fecha_venc_revision ?? t('mznNoDate')} (${daysLeft(detailTaxista.fecha_venc_revision, t)})`, color: docColor(docStatus(detailTaxista.fecha_venc_revision)) },
                     ]}
                   />
                 </ScrollView>
                 <View style={styles.sheetActions}>
                   <TouchableOpacity style={styles.btnSecondary} onPress={() => setDetailTaxista(null)}>
-                    <Text style={styles.btnSecondaryText}>Cerrar</Text>
+                    <Text style={styles.btnSecondaryText}>{t('close')}</Text>
                   </TouchableOpacity>
                 </View>
               </>

@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { HOME_NEWS, NEWS_SOURCES, type HomeNewsItem } from '../../data/homeNews';
 import { fetchLiveHomeNews } from '../../services/newsRss';
 import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../../theme';
+import { t as tr } from '../../translations';
 
 const Sheet = ({
   visible, title, onClose, children,
@@ -38,7 +39,7 @@ export function HomeNoticiasModal({
 
   return (
     <Sheet visible={visible} title="📰 Noticias" onClose={onClose}>
-      <Text style={s.sectionLabel}>ÚLTIMAS NOTICIAS</Text>
+      <Text style={s.sectionLabel}>{tr('xtULTIMASNOTICIAS')}</Text>
       {loading && <ActivityIndicator color="#00b4e6" style={{ marginVertical: 12 }} />}
       {items.map(item => (
         <TouchableOpacity
@@ -99,19 +100,19 @@ export function HomeIdDigitalModal({
         style={s.idCard}
       >
         <Text style={s.idCardEmoji}>🪪</Text>
-        <Text style={s.idCardName}>{userName || 'Usuario EGCHAT'}</Text>
+        <Text style={s.idCardName}>{userName || tr('xtUsuarioEGCHAT')}</Text>
         {!!userPhone && <Text style={s.idCardPhone}>{userPhone}</Text>}
         <Text style={s.idCardCode}>{idShort}</Text>
         <View style={[s.idBadge, verified && s.idBadgeOk]}>
-          <Text style={s.idBadgeText}>{verified ? '✓ Identidad verificada' : 'Pendiente de verificación'}</Text>
+          <Text style={s.idBadgeText}>{verified ? tr('xtIdentidadVerificada') : tr('xtPendienteDeVerificacion')}</Text>
         </View>
       </LinearGradient>
 
       {[
-        { icon: '✅', label: 'DNI verificado', desc: 'Documento de identidad vinculado' },
-        { icon: '📱', label: 'Número verificado', desc: userPhone ? `Tel: ${userPhone}` : 'Teléfono pendiente' },
-        { icon: '🔒', label: 'Cuenta segura', desc: 'Mensajes cifrados de extremo a extremo' },
-        { icon: '🌍', label: 'Zona CEMAC', desc: 'Válido en los 6 países CEMAC' },
+        { icon: '✅', label: 'DNI verificado', desc: tr('xtDocumentoDeIdentidadVinculado') },
+        { icon: '📱', label: tr('svcNumberVerified'), desc: userPhone ? `Tel: ${userPhone}` : tr('cmpPhonePending') },
+        { icon: '🔒', label: tr('svcSecureAccount'), desc: tr('xtMensajesCifradosDeExtremoAExtremo') },
+        { icon: '🌍', label: tr('svcCemacZone'), desc: tr('xtValidoEnLos6PaisesCEMAC') },
       ].map(item => (
         <View key={item.label} style={s.featureRow}>
           <Text style={s.featureIcon}>{item.icon}</Text>
@@ -125,10 +126,10 @@ export function HomeIdDigitalModal({
       <TouchableOpacity
         style={s.verifyBtn}
         activeOpacity={0.85}
-        onPress={() => Alert.alert('ID Digital', 'La verificación biométrica estará disponible en una próxima actualización.')}
+        onPress={() => Alert.alert(tr('digitalId'), tr('cmpBiometricSoon'))}
       >
         <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.verifyBtnGrad}>
-          <Text style={s.verifyBtnText}>Verificar mi identidad</Text>
+          <Text style={s.verifyBtnText}>{tr('xtVerificarMiIdentidad')}</Text>
         </LinearGradient>
       </TouchableOpacity>
       <View style={{ height: 20 }} />

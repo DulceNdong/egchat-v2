@@ -8,6 +8,7 @@ import { EGAvatar } from '../ui';
 import { useThemeContext } from '../../theme/ThemeContext';
 import { Colors } from '../../theme/colors';
 import { DarkColors } from '../../theme/darkMode';
+import { t as tr } from '../../translations';
 
 export interface MentionUser {
   user_id: string;
@@ -49,7 +50,7 @@ export function MentionSuggestions({ visible, users, query, onSelect }: Props) {
           >
             <EGAvatar src={item.avatar_url} name={item.full_name || 'U'} size={32} />
             <View style={s.info}>
-              <Text style={[s.name, { color: C.textPrimary }]}>{item.full_name || 'Usuario'}</Text>
+              <Text style={[s.name, { color: C.textPrimary }]}>{item.full_name || tr('setUser')}</Text>
             </View>
             <Text style={s.atSign}>@</Text>
           </TouchableOpacity>

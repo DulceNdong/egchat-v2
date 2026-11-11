@@ -6,6 +6,7 @@ import {
 } from '../../src/components/settings/SettingsUI';
 import { Colors } from '../../src/theme';
 import { authAPI, getToken, getApiBase } from '../../src/api';
+import { useLanguage } from '../../src/context/LanguageContext';
 import { toast } from '../../src/components/Toast';
 import {
   isBiometricAvailable, getBiometricType,
@@ -13,8 +14,10 @@ import {
   authenticateWithBiometrics,
 } from '../../src/biometrics';
 import { SetupPINModal } from '../../src/components/wallet/SetupPINModal';
+import { t as tr } from '../../src/translations';
 
 export default function SeguridadCuentaScreen() {
+  const { translate: t } = useLanguage();
   const [activity, setActivity] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showChangePwd, setShowChangePwd] = useState(false);
@@ -25,7 +28,7 @@ export default function SeguridadCuentaScreen() {
   // Biometría
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
-  const [biometricType, setBiometricType] = useState('Biometría');
+  const [biometricType, setBiometricType] = useState(tr('setBiometrics'));
   // PIN
   const [showSetupPIN, setShowSetupPIN] = useState(false);
 
@@ -60,9 +63,9 @@ export default function SeguridadCuentaScreen() {
   }, []);
 
   const changePassword = async () => {
-    if (!oldPwd || !newPwd || !confirmPwd) { Alert.alert('Error', 'Rellena todos los campos'); return; }
-    if (newPwd !== confirmPwd) { Alert.alert('Error', 'Las contraseñas nuevas no coinciden'); return; }
-    if (newPwd.length < 6) { Alert.alert('Error', 'La nueva contraseña debe tener al menos 6 caracteres'); return; }
+    if (!oldPwd || !newPwd || !confirmPwd) { Alert.alert(tr('error'), tr('setFillAllFields')); return; }
+    if (newPwd !== confirmPwd) { Alert.alert(t('error'), t('setNewPasswordsNoMatch')); return; }
+    if (newPwd.length < 6) { Alert.alert(tr('error'), 'La nueva contraseña debe tener al menos 6 caracteres'); return; }
     setSaving(true);
     try {
       const token = await getToken();
@@ -74,13 +77,13 @@ export default function SeguridadCuentaScreen() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success('✓ Contraseña cambiada');
+        toast.success(tr('xtContrasenaCambiada'));
         setShowChangePwd(false); setOldPwd(''); setNewPwd(''); setConfirmPwd('');
       } else {
-        Alert.alert('Error', data.message || 'No se pudo cambiar la contraseña');
+        Alert.alert(tr('error'), data.message || 'No se pudo cambiar la contraseña');
       }
     } catch {
-      Alert.alert('Error', 'Sin conexión');
+      Alert.alert(tr('error'), 'Sin conexión');
     }
     setSaving(false);
   };
@@ -88,8 +91,8 @@ export default function SeguridadCuentaScreen() {
   const toggleBiometric = async () => {
     if (biometricEnabled) {
       // Desactivar: pedir confirmación biométrica primero
-      const ok = await authenticateWithBiometrics('Confirma para desactivar biometría');
-      if (!ok) { toast.error('Autenticación fallida'); return; }
+      const ok = await authenticateWithBiometrics(tr('setConfirmDisableBiometrics'));
+      if (!ok) { toast.error(tr('setAuthFailed')); return; }
       await disableBiometricLogin();
       setBiometricEnabled(false);
       toast.success(`✓ ${biometricType} desactivado`);
@@ -99,7 +102,7 @@ export default function SeguridadCuentaScreen() {
         `Activar ${biometricType}`,
         `Para activar el inicio de sesión con ${biometricType}, ingresa tu contraseña actual para guardarla de forma segura en este dispositivo.`,
         [
-          { text: 'Cancelar', style: 'cancel' },
+          { text: tr('cancel'), style: 'cancel' },
           {
             text: 'Continuar',
             onPress: () => setShowChangePwd(true), // reusar el formulario para obtener contraseña
@@ -111,7 +114,7 @@ export default function SeguridadCuentaScreen() {
 
   const activateBiometricWithPassword = async (password: string) => {
     const ok = await authenticateWithBiometrics(`Activa ${biometricType} para EGCHAT`);
-    if (!ok) { toast.error('Autenticación biométrica fallida'); return; }
+    if (!ok) { toast.error(tr('setBiometricAuthFailed')); return; }
     try {
       const me = await authAPI.me();
       if (me?.phone) {
@@ -126,56 +129,55 @@ export default function SeguridadCuentaScreen() {
 
   return (
     <>
-    <SettingsLayout title="Seguridad de la cuenta">
+    <SettingsLayout title={t('securityTitle')}>
       {/* Cambiar contraseña */}
-      <SettingsSection label="Contraseña y acceso" />
+      <SettingsSection label={t('passwordAccess')} />
       <SettingsCard>
         <SettingsRow
-          label="Cambiar contraseña"
+          label={t('changePassword')}
           onPress={() => setShowChangePwd(v => !v)}
         />
         {showChangePwd && (
           <View style={st.pwdForm}>
-            <TextInput style={st.input} value={oldPwd} onChangeText={setOldPwd} placeholder="Contraseña actual" secureTextEntry placeholderTextColor="#94a3b8"/>
-            <TextInput style={st.input} value={newPwd} onChangeText={setNewPwd} placeholder="Nueva contraseña" secureTextEntry placeholderTextColor="#94a3b8"/>
-            <TextInput style={st.input} value={confirmPwd} onChangeText={setConfirmPwd} placeholder="Confirmar nueva contraseña" secureTextEntry placeholderTextColor="#94a3b8"/>
+            <TextInput style={st.input} value={oldPwd} onChangeText={setOldPwd} placeholder={tr('xtContrasenaActual')} secureTextEntry placeholderTextColor="#94a3b8"/>
+            <TextInput style={st.input} value={newPwd} onChangeText={setNewPwd} placeholder={tr('xtNuevaContrasena')} secureTextEntry placeholderTextColor="#94a3b8"/>
+            <TextInput style={st.input} value={confirmPwd} onChangeText={setConfirmPwd} placeholder={tr('xtConfirmarNuevaContrasena')} secureTextEntry placeholderTextColor="#94a3b8"/>
             <TouchableOpacity style={st.saveBtn} onPress={changePassword} disabled={saving}>
-              {saving ? <ActivityIndicator color="#fff"/> : <Text style={st.saveTxt}>Guardar contraseña</Text>}
+              {saving ? <ActivityIndicator color="#fff"/> : <Text style={st.saveTxt}>{tr('xtGuardarContrasena')}</Text>}
             </TouchableOpacity>
           </View>
         )}
         <SettingsDivider />
-        <SettingsRow label="PIN de pagos" onPress={() => setShowSetupPIN(true)} />
+        <SettingsRow label={t('paymentPin')} onPress={() => setShowSetupPIN(true)} />
         <SettingsDivider />
-        <SettingsRow label="Límites de transacción" onPress={() => router.push('/ajustes/security' as any)} />
+        <SettingsRow label={t('transactionLimits')} onPress={() => router.push('/ajustes/security' as any)} />
         <SettingsDivider />
         {biometricAvailable ? (
           <SettingsToggleRow
             label={biometricType}
-            description={biometricEnabled ? 'Inicio de sesión activado' : 'Toca para activar'}
+            description={biometricEnabled ? tr('setLoginEnabled') : tr('setTapToEnable')}
             value={biometricEnabled}
             onValueChange={toggleBiometric}
           />
         ) : (
-          <SettingsRow label="Biometría" value="No disponible en este dispositivo" />
+          <SettingsRow label={tr('xtBiometria')} value="No disponible en este dispositivo" />
         )}
       </SettingsCard>
 
       {/* Sesiones */}
-      <SettingsSection label="Sesiones" />
+      <SettingsSection label={t('sessions')} />
       <SettingsCard>
-        <SettingsRow label="Sesión activa" value="Este dispositivo" onPress={() => Alert.alert('Sesiones', 'Solo hay 1 sesión activa.')} />
+        <SettingsRow label={t('activeSession')} value={t('thisDevice')} onPress={() => Alert.alert(t('sessions'), t('onlyOneSession'))} />
         <SettingsDivider />
-        <SettingsRow label="Login QR desde PC" onPress={() => router.push('/_qr-scanner' as any)} />
+        <SettingsRow label={t('qrLoginFromPC')} onPress={() => router.push('/_qr-scanner' as any)} />
       </SettingsCard>
 
-      {/* Actividad reciente real */}
-      <SettingsSection label="Actividad reciente" />
+      <SettingsSection label={t('recentActivity')} />
       <SettingsCard>
         {loading ? (
           <ActivityIndicator color={Colors.accent} style={{ padding: 20 }}/>
         ) : activity.length === 0 ? (
-          <SettingsRow label="Sin actividad registrada"/>
+          <SettingsRow label={t('noActivityRegistered')}/>
         ) : (
           activity.map((log, i) => (
             <React.Fragment key={log.id}>
@@ -194,12 +196,12 @@ export default function SeguridadCuentaScreen() {
           ))
         )}
         <SettingsDivider/>
-        <SettingsRow label="Ver historial completo" onPress={() => router.push('/ajustes/actividad' as any)}/>
+        <SettingsRow label={t('viewFullHistory')} onPress={() => router.push('/ajustes/actividad' as any)}/>
       </SettingsCard>
     </SettingsLayout>
     <SetupPINModal
       visible={showSetupPIN}
-      onDone={() => { setShowSetupPIN(false); toast.success('✓ PIN de pagos configurado'); }}
+      onDone={() => { setShowSetupPIN(false); toast.success(tr('xtPINDePagosConfigurado')); }}
       onCancel={() => setShowSetupPIN(false)}
     />
   </> );

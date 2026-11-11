@@ -9,6 +9,7 @@ import { useThemeContext } from '../../theme/ThemeContext';
 import { Colors } from '../../theme/colors';
 import { DarkColors } from '../../theme/darkMode';
 import type { ChatMessage } from '../../types/chat';
+import { t as tr } from '../../translations';
 
 interface Props {
   message: ChatMessage;
@@ -35,9 +36,9 @@ export function EditMessageBar({ message, editText, onChangeText, onConfirm, onC
       <View style={s.indicator}>
         <View style={s.indicatorBar} />
         <View style={s.indicatorText}>
-          <Text style={s.editLabel}>Editando mensaje</Text>
+          <Text style={s.editLabel}>{tr('xtEditandoMensaje')}</Text>
           <Text style={[s.originalText, { color: C.textTertiary }]} numberOfLines={1}>
-            {message.text || 'Mensaje'}
+            {message.text || tr('msgMessage')}
           </Text>
         </View>
         <TouchableOpacity onPress={onCancel} style={s.cancelBtn}>
@@ -58,7 +59,7 @@ export function EditMessageBar({ message, editText, onChangeText, onConfirm, onC
           multiline
           maxLength={4096}
           placeholderTextColor={C.textTertiary}
-          placeholder="Escribe el nuevo texto..."
+          placeholder={tr('xtEscribeElNuevoTexto')}
           returnKeyType="default"
         />
         <TouchableOpacity

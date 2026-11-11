@@ -3,11 +3,14 @@
 import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView, StyleSheet,
-  Modal, SafeAreaView, Switch, Alert, Image, TextInput,
+  Modal, SafeAreaView, Switch, Alert, Image, TextInput, ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Avatar } from './Avatar';
 import Svg, { Path, Rect, Circle, Line, Polyline, Polygon, G } from 'react-native-svg';
+import { blockAPI, reportAPI, contactsAPI } from '../api';
+import { useLanguage } from '../context/LanguageContext';
+import { t as tr } from '../translations';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 interface Msg { id: string; from: 'me' | 'them'; text: string; time: string }
@@ -35,6 +38,8 @@ interface Props {
   onAddContact?: () => void;
   groupMembers?: any[];
   currentUserId?: string;
+  /** user_id real del otro participante — necesario para bloquear/reportar en backend */
+  targetUserId?: string;
   onRemoveGroupMember?: (userId: string) => void;
   onLeaveGroup?: () => void;
   onDeleteGroup?: () => void;
@@ -245,6 +250,7 @@ export const ContactProfileModal: React.FC<Props> = ({
   onDeleteContact, onSendMoney, onStartCall, onFavoriteToggle,
   isInContacts = true, onAddContact,
   groupMembers = [], currentUserId,
+  targetUserId,
   onRemoveGroupMember, onLeaveGroup, onDeleteGroup,
 }) => {
   const [tab, setTab] = useState<'info' | 'media' | 'grupos'>('info');
@@ -252,6 +258,8 @@ export const ContactProfileModal: React.FC<Props> = ({
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [note, setNote] = useState('');
   const [editingNote, setEditingNote] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const { translate: t } = useLanguage();
 
   if (!cp) return null;
 
@@ -262,6 +270,115 @@ export const ContactProfileModal: React.FC<Props> = ({
   const isPinned = pinnedChats.includes(cpId);
   const msgs = chatMessages[cpId] || [];
   const mediaItems = msgs.filter((m: any) => m.imageUrl || m.fileUrl);
+
+  // ─── Acciones reales ─────────────────────────────────────────────
+  const handleBlock = () => {
+    const name = cp.title || cp.name || tr('setThisContact');
+    if (isBlocked) {
+      // Desbloquear — no necesita advertencia de irreversibilidad
+      Alert.alert(
+        t('unblockContact'),
+        `¿Quieres volver a recibir mensajes de ${name}?`,
+        [
+          { text: t('cancel'), style: 'cancel' },
+          {
+            text: t('unblockContact'),
+            onPress: async () => {
+              setActionLoading(true);
+              try {
+                const uid = targetUserId || cpId;
+                await blockAPI.unblock(uid);
+                onBlockToggle?.(cpId);
+              } catch {
+                Alert.alert(tr('error'), 'No se pudo desbloquear. Verifica tu conexión.');
+              } finally {
+                setActionLoading(false);
+              }
+            },
+          },
+        ]
+      );
+    } else {
+      Alert.alert(
+        t('blockContact'),
+        `¿Bloquear a ${name}?\n\nYa no podrá enviarte mensajes ni llamarte.`,
+        [
+          { text: t('cancel'), style: 'cancel' },
+          {
+            text: t('blockContact'),
+            style: 'destructive',
+            onPress: async () => {
+              setActionLoading(true);
+              try {
+                const uid = targetUserId || cpId;
+                await blockAPI.block(uid);
+                onBlockToggle?.(cpId);
+              } catch {
+                Alert.alert(tr('error'), 'No se pudo bloquear. Verifica tu conexión.');
+              } finally {
+                setActionLoading(false);
+              }
+            },
+          },
+        ]
+      );
+    }
+  };
+
+  const handleReport = () => {
+    const name = cp.title || cp.name || tr('setThisContact');
+    Alert.alert(
+      t('reportContact'),
+      `¿Reportar a ${name} por comportamiento inapropiado?\n\n⚠️ Esta acción es irreversible. El equipo de EGChat revisará el reporte.`,
+      [
+        { text: t('cancel'), style: 'cancel' },
+        {
+          text: t('reportContact'),
+          style: 'destructive',
+          onPress: async () => {
+            setActionLoading(true);
+            try {
+              const uid = targetUserId || cpId;
+              await reportAPI.reportUser(uid, 'comportamiento_inapropiado');
+              Alert.alert('Reporte enviado', `Gracias. Hemos recibido tu reporte sobre ${name}. Lo revisaremos pronto.`);
+            } catch {
+              Alert.alert(tr('error'), 'No se pudo enviar el reporte. Verifica tu conexión.');
+            } finally {
+              setActionLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteContact = () => {
+    const name = cp.title || cp.name || tr('setThisContact');
+    Alert.alert(
+      t('deleteContact'),
+      `¿Eliminar a ${name} de tu lista de contactos?\n\n⚠️ Esta acción es irreversible.`,
+      [
+        { text: t('cancel'), style: 'cancel' },
+        {
+          text: t('deleteContact'),
+          style: 'destructive',
+          onPress: async () => {
+            setActionLoading(true);
+            try {
+              const uid = targetUserId || cpId;
+              await contactsAPI.removeByUserId(uid);
+              await onDeleteContact?.(cpId);
+              onClose();
+            } catch {
+              Alert.alert(tr('error'), 'No se pudo eliminar el contacto. Verifica tu conexión.');
+            } finally {
+              setActionLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const sharedGroups = allGroups.filter((g: any) => {
     const members = g.members_list || g.participants || [];
@@ -280,13 +397,13 @@ export const ContactProfileModal: React.FC<Props> = ({
     : '15/03/2026';
 
   const phone = cp.phone || cp.phone_number || `+240 222 *** ***`;
-  const email = cp.email || 'No disponible';
+  const email = cp.email || tr('chtGcNoDisponible');
   const location = cp.location || cp.address || 'Malabo, Guinea Ecuatorial';
   const username = cp.username ? `@${cp.username}` : `@${(cp.title || cp.name || 'usuario').toLowerCase().replace(/\s/g, '')}`;
 
   const TABS: [string, string][] = isGroup
-    ? [['info', 'Información'], ['media', 'Multimedia'], ['grupos', 'Integrantes']]
-    : [['info', 'Información'], ['media', 'Multimedia'], ['grupos', 'Grupos']];
+    ? [['info', tr('xtInformacion')], ['media', tr('xtMultimedia')], ['grupos', 'Integrantes']]
+    : [['info', tr('xtInformacion')], ['media', tr('xtMultimedia')], ['grupos', 'Grupos']];
 
   return (
     <>
@@ -298,7 +415,7 @@ export const ContactProfileModal: React.FC<Props> = ({
             <TouchableOpacity onPress={onClose} style={styles.headerBtn}>
               <IcoBack />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Información del contacto</Text>
+            <Text style={styles.headerTitle}>{t('ctsContactInfoTitle')}</Text>
             <TouchableOpacity onPress={handleStarToggle} style={styles.headerBtn}>
               <IcoStar filled={starred} />
             </TouchableOpacity>
@@ -352,10 +469,10 @@ export const ContactProfileModal: React.FC<Props> = ({
               {/* Acciones rápidas */}
               <View style={styles.quickActions}>
                 {[
-                  { icon: <IcoPhone color="#00C8A0" size={22} />, label: 'Llamar',   action: () => onStartCall?.('audio', cp) },
-                  { icon: <IcoVideoCall color="#00C8A0" size={22} />, label: 'Video', action: () => onStartCall?.('video', cp) },
-                  { icon: <IcoMessage color="#00C8A0" size={22} />,  label: 'Mensaje', action: onClose },
-                  { icon: <IcoSend color="#00C8A0" size={22} />,     label: 'Enviar',  action: () => { onClose(); onSendMoney?.(cp); } },
+                  { icon: <IcoPhone color="#00C8A0" size={22} />, label: tr('xtLlamar'),   action: () => onStartCall?.('audio', cp) },
+                  { icon: <IcoVideoCall color="#00C8A0" size={22} />, label: tr('liaAttachVideo'), action: () => onStartCall?.('video', cp) },
+                  { icon: <IcoMessage color="#00C8A0" size={22} />,  label: tr('msgMessage'), action: onClose },
+                  { icon: <IcoSend color="#00C8A0" size={22} />,     label: tr('transfer'),  action: () => { onClose(); onSendMoney?.(cp); } },
                 ].map(a => (
                   <TouchableOpacity key={a.label} style={styles.quickAction} onPress={a.action} activeOpacity={0.7}>
                     <View style={styles.quickActionCircle}>{a.icon}</View>
@@ -366,7 +483,7 @@ export const ContactProfileModal: React.FC<Props> = ({
 
               {!isGroup && !isInContacts && onAddContact && (
                 <TouchableOpacity style={styles.addContactBtn} onPress={onAddContact}>
-                  <Text style={styles.addContactBtnText}>+ Añadir a mis contactos</Text>
+                  <Text style={styles.addContactBtnText}>{t('ctsAddToContacts')}</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -392,19 +509,19 @@ export const ContactProfileModal: React.FC<Props> = ({
                 <View style={styles.section}>
                   {isGroup ? (
                     <>
-                      <Row iconNode={<IcoUsers />} label={`${cp.members || groupMembers.length || 0} miembros`} sub="Integrantes del grupo" />
+                      <Row iconNode={<IcoUsers />} label={`${cp.members || groupMembers.length || 0} miembros`} sub={tr('xtIntegrantesDelGrupo')} />
                       <Divider />
-                      <Row iconNode={<IcoAlignLeft />} label={cp.description || cp.subtitle || 'Sin descripción'} sub="Descripción" />
+                      <Row iconNode={<IcoAlignLeft />} label={cp.description || cp.subtitle || tr('xtSinDescripcion')} sub="Descripción" />
                     </>
                   ) : (
                     <>
-                      <Row iconNode={<IcoPhone />} label={phone} sub="Teléfono móvil" />
+                      <Row iconNode={<IcoPhone />} label={phone} sub={tr('xtTelefonoMovil')} />
                       <Divider />
                       <Row iconNode={<IcoMail />} label={email} sub="Email" />
                       <Divider />
-                      <Row iconNode={<IcoMapPin />} label={location} sub="Ubicación" />
+                      <Row iconNode={<IcoMapPin />} label={location} sub={tr('liaAttachLocation')} />
                       <Divider />
-                      <Row iconNode={<IcoCalendar />} label={contactSince} sub="Contacto desde" />
+                      <Row iconNode={<IcoCalendar />} label={contactSince} sub={tr('xtContactoDesde')} />
                       <Divider />
                       <Row iconNode={<IcoAt />} label={username} sub="ID EGCHAT" />
                     </>
@@ -421,7 +538,7 @@ export const ContactProfileModal: React.FC<Props> = ({
                         style={styles.noteInput}
                         value={note}
                         onChangeText={setNote}
-                        placeholder="Escribe una nota sobre este contacto..."
+                        placeholder={tr('xtEscribeUnaNotaSobreEsteContacto')}
                         placeholderTextColor="#9CA3AF"
                         multiline
                         autoFocus
@@ -430,23 +547,23 @@ export const ContactProfileModal: React.FC<Props> = ({
                     ) : (
                       <TouchableOpacity style={{ flex: 1 }} onPress={() => setEditingNote(true)}>
                         <Text style={note ? styles.noteText : styles.notePlaceholder}>
-                          {note || 'Toca para añadir una nota...'}
+                          {note || t('tapToAddNote')}
                         </Text>
                       </TouchableOpacity>
                     )}
                   </View>
                   <TouchableOpacity onPress={() => setEditingNote(true)} style={styles.editNoteBtn}>
-                    <Text style={styles.editNoteBtnText}>Editar nota</Text>
+                    <Text style={styles.editNoteBtnText}>{t('editNote')}</Text>
                   </TouchableOpacity>
                 </View>
 
                 {/* Configuración del chat */}
-                <SectionHeader label="CONFIGURACIÓN DEL CHAT" />
+                <SectionHeader label={t('chatSettings')} />
                 <View style={styles.section}>
                   <Row
                     iconNode={<IcoBell />}
-                    label="Silenciar notificaciones"
-                    sub={isMuted ? 'Silenciado' : 'Activo'}
+                    label={t('muteNotifications')}
+                    sub={isMuted ? t('muted') : t('active')}
                     isSwitch
                     switchValue={isMuted}
                     onSwitchChange={() => onMuteToggle?.(cpId)}
@@ -454,8 +571,8 @@ export const ContactProfileModal: React.FC<Props> = ({
                   <Divider />
                   <Row
                     iconNode={<IcoPin />}
-                    label="Fijar chat"
-                    sub={isPinned ? 'Fijado' : 'No fijado'}
+                    label={t('pinChat')}
+                    sub={isPinned ? t('pinned') : t('notPinned')}
                     isSwitch
                     switchValue={isPinned}
                     onSwitchChange={() => onPinToggle?.(cpId)}
@@ -463,39 +580,39 @@ export const ContactProfileModal: React.FC<Props> = ({
                   <Divider />
                   <Row
                     iconNode={<IcoImage />}
-                    label="Fondo de pantalla"
-                    sub="Personalizar fondo del chat"
+                    label={t('wallpaper')}
+                    sub={t('customizeWallpaper')}
                     chevron
                     onPress={() => {/* TODO: wallpaper picker */}}
                   />
                   <Divider />
                   <Row
                     iconNode={<IcoShield color="#00C8A0" />}
-                    label="Cifrado extremo a extremo"
-                    sub="Los mensajes están cifrados"
+                    label={t('e2eEncryption')}
+                    sub={t('messagesEncrypted')}
                   />
                 </View>
 
                 {/* Acciones */}
-                <SectionHeader label="ACCIONES" />
+                <SectionHeader label={t('actions')} />
                 <View style={styles.section}>
                   <Row
                     iconNode={<IcoTrash />}
-                    label="Vaciar chat"
-                    sub="Eliminar todos los mensajes"
+                    label={t('clearChat')}
+                    sub={t('deleteAllMessages')}
                     chevron
                     onPress={() =>
-                      Alert.alert('Vaciar chat', '¿Eliminar todos los mensajes?', [
-                        { text: 'Cancelar', style: 'cancel' },
-                        { text: 'Vaciar', style: 'destructive', onPress: () => onClearChat?.(cpId) },
+                      Alert.alert(t('clearChat'), t('deleteAllMessagesConfirm'), [
+                        { text: t('cancel'), style: 'cancel' },
+                        { text: t('clear'), style: 'destructive', onPress: () => onClearChat?.(cpId) },
                       ])
                     }
                   />
                   <Divider />
                   <Row
                     iconNode={<IcoShare />}
-                    label="Compartir contacto"
-                    sub="Enviar a otro chat"
+                    label={t('shareContact')}
+                    sub={t('sendToAnotherChat')}
                     chevron
                     onPress={() => {/* TODO: share contact */}}
                   />
@@ -503,40 +620,36 @@ export const ContactProfileModal: React.FC<Props> = ({
 
                 {/* Acciones peligrosas */}
                 <View style={[styles.section, { marginBottom: 32 }]}>
+                  {actionLoading && (
+                    <View style={styles.loadingOverlay}>
+                      <ActivityIndicator size="small" color="#EF4444" />
+                      <Text style={styles.loadingText}>{t('processing')}</Text>
+                    </View>
+                  )}
                   <Row
                     iconNode={<IcoBlock />}
-                    label={isBlocked ? 'Desbloquear contacto' : 'Bloquear contacto'}
-                    sub="No recibirás más mensajes"
+                    label={isBlocked ? t('unblockContact') : t('blockContact')}
+                    sub={isBlocked ? t('allowMessagesAgain') : t('noMoreMessages')}
                     danger
-                    onPress={() => onBlockToggle?.(cpId)}
+                    onPress={handleBlock}
                   />
                   <Divider />
                   <Row
                     iconNode={<IcoFlag />}
-                    label="Reportar contacto"
-                    sub="Reportar comportamiento inapropiado"
+                    label={t('reportContact')}
+                    sub={t('reportInappropriate')}
                     danger
-                    onPress={() =>
-                      Alert.alert('Reportar contacto', '¿Deseas reportar este contacto?', [
-                        { text: 'Cancelar', style: 'cancel' },
-                        { text: 'Reportar', style: 'destructive' },
-                      ])
-                    }
+                    onPress={handleReport}
                   />
                   {!isGroup && (
                     <>
                       <Divider />
                       <Row
                         iconNode={<IcoUserX />}
-                        label="Eliminar contacto"
-                        sub="Eliminar de tu lista de contactos"
+                        label={t('deleteContact')}
+                        sub={t('deletePermanently')}
                         danger
-                        onPress={() =>
-                          Alert.alert('Eliminar contacto', '¿Estás seguro?', [
-                            { text: 'Cancelar', style: 'cancel' },
-                            { text: 'Eliminar', style: 'destructive', onPress: () => { onDeleteContact?.(cpId); onClose(); } },
-                          ])
-                        }
+                        onPress={handleDeleteContact}
                       />
                     </>
                   )}
@@ -545,13 +658,13 @@ export const ContactProfileModal: React.FC<Props> = ({
                       <Divider />
                       <Row
                         iconNode={<IcoUserX />}
-                        label="Salir del grupo"
-                        sub="Dejarás de recibir mensajes"
+                        label={t('leaveGroup')}
+                        sub={t('stopReceivingMessages')}
                         danger
                         onPress={() =>
-                          Alert.alert('Salir del grupo', '¿Salir de este grupo?', [
-                            { text: 'Cancelar', style: 'cancel' },
-                            { text: 'Salir', style: 'destructive', onPress: () => { onLeaveGroup?.(); onClose(); } },
+                          Alert.alert(t('leaveGroup'), t('ctsLeaveGroupConfirm'), [
+                            { text: t('cancel'), style: 'cancel' },
+                            { text: t('leaveGroup'), style: 'destructive', onPress: () => { onLeaveGroup?.(); onClose(); } },
                           ])
                         }
                       />
@@ -573,7 +686,7 @@ export const ContactProfileModal: React.FC<Props> = ({
                 ) : (
                   <View style={styles.emptyState}>
                     <IcoImage color="#D1D5DB" size={48} />
-                    <Text style={styles.emptyText}>Sin archivos multimedia</Text>
+                    <Text style={styles.emptyText}>{tr('xtSinArchivosMultimedia')}</Text>
                   </View>
                 )}
               </View>
@@ -585,9 +698,9 @@ export const ContactProfileModal: React.FC<Props> = ({
                 {isGroup ? (
                   groupMembers.length > 0 ? groupMembers.map((m: any) => (
                     <View key={m.user_id || m.id} style={styles.memberItem}>
-                      <Avatar name={m.full_name || 'Usuario'} size={42} photo={m.avatar_url} />
+                      <Avatar name={m.full_name || tr('setUser')} size={42} photo={m.avatar_url} />
                       <View style={styles.memberInfo}>
-                        <Text style={styles.memberName}>{m.full_name || 'Usuario'}</Text>
+                        <Text style={styles.memberName}>{m.full_name || tr('setUser')}</Text>
                         <Text style={styles.memberRole}>
                           {m.role === 'admin' ? 'Admin' : 'Miembro'}
                         </Text>
@@ -595,9 +708,9 @@ export const ContactProfileModal: React.FC<Props> = ({
                       {m.user_id?.toString() !== currentUserId && onRemoveGroupMember && (
                         <TouchableOpacity
                           onPress={() =>
-                            Alert.alert('Eliminar miembro', `¿Eliminar a ${m.full_name}?`, [
-                              { text: 'Cancelar', style: 'cancel' },
-                              { text: 'Eliminar', style: 'destructive', onPress: () => onRemoveGroupMember(m.user_id) },
+                            Alert.alert(tr('chtRemoveMemberTitle'), `¿Eliminar a ${m.full_name}?`, [
+                              { text: t('cancel'), style: 'cancel' },
+                              { text: tr('delete'), style: 'destructive', onPress: () => onRemoveGroupMember(m.user_id) },
                             ])
                           }
                           style={styles.removeMemberBtn}
@@ -609,7 +722,7 @@ export const ContactProfileModal: React.FC<Props> = ({
                   )) : (
                     <View style={styles.emptyState}>
                       <IcoUsers color="#D1D5DB" size={48} />
-                      <Text style={styles.emptyText}>Sin integrantes</Text>
+                      <Text style={styles.emptyText}>{tr('xtSinIntegrantes')}</Text>
                     </View>
                   )
                 ) : (
@@ -626,7 +739,7 @@ export const ContactProfileModal: React.FC<Props> = ({
                   )) : (
                     <View style={styles.emptyState}>
                       <IcoUsers color="#D1D5DB" size={48} />
-                      <Text style={styles.emptyText}>Sin grupos en común</Text>
+                      <Text style={styles.emptyText}>{tr('xtSinGruposEnComun')}</Text>
                     </View>
                   )
                 )}
@@ -812,6 +925,15 @@ const styles = StyleSheet.create({
   },
   photoPlaceholderLetter: { fontSize: 80, color: '#fff', fontWeight: '800' },
   photoName: { fontSize: 20, color: '#fff', fontWeight: '700', marginTop: 20 },
+
+  // Loading overlay en sección de acciones
+  loadingOverlay: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 16, paddingVertical: 10,
+    backgroundColor: '#FEF2F2',
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#FECACA',
+  },
+  loadingText: { fontSize: 13, color: '#EF4444', fontWeight: '600' },
 });
 
 export default ContactProfileModal;

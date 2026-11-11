@@ -13,18 +13,21 @@ import { useKycSession } from '../../src/hooks/useKycSession';
 import { useKycStore } from '../../src/store/kycStore';
 import { clearKycDraft } from '../../src/services/kycStorage';
 import { authAPI } from '../../src/api';
+import { useTranslation } from '../../src/context/LanguageContext';
 
-const FEATURES: { icon: keyof typeof MaterialCommunityIcons.glyphMap; text: string }[] = [
-  { icon: 'shield-lock',    text: 'Cifrado AES-256 — tus datos están protegidos' },
-  { icon: 'clipboard-list', text: '5 pasos sencillos · aproximadamente 10 minutos' },
-  { icon: 'content-save',   text: 'Guardado automático — retoma donde lo dejaste' },
-  { icon: 'bank',           text: 'Verificación cumple normativa COBAC y CEMAC' },
+// `textKey` es la clave i18n; se resuelve en el render.
+const FEATURES: { icon: keyof typeof MaterialCommunityIcons.glyphMap; textKey: string }[] = [
+  { icon: 'shield-lock',    textKey: 'kyFeatureEncryption' },
+  { icon: 'clipboard-list', textKey: 'kyFeatureSteps' },
+  { icon: 'content-save',   textKey: 'kyFeatureAutosave' },
+  { icon: 'bank',           textKey: 'kyFeatureRegulation' },
 ];
 
 export default function KycEntryScreen() {
   const { checking, hasDraft, resumeStep } = useKycSession();
   const store = useKycStore();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
 
   useEffect(() => {
     authAPI.me().then(user => {
@@ -48,12 +51,12 @@ export default function KycEntryScreen() {
   const handleStart = () => {
     if (hasDraft) {
       Alert.alert(
-        'Verificación en progreso',
-        'Tienes una verificación en progreso. ¿Qué deseas hacer?',
+        t('kyInProgressTitle'),
+        t('kyInProgressBody'),
         [
-          { text: 'Continuar', onPress: continueExisting },
-          { text: 'Empezar de nuevo', style: 'destructive', onPress: startNew },
-          { text: 'Cancelar', style: 'cancel' },
+          { text: t('continue'), onPress: continueExisting },
+          { text: t('kyStartOver'), style: 'destructive', onPress: startNew },
+          { text: t('cancel'), style: 'cancel' },
         ],
       );
     } else {
@@ -83,18 +86,18 @@ export default function KycEntryScreen() {
         <View style={st.logoWrapper}>
           <SpinningLogo size={64} glow={false} />
         </View>
-        <Text style={st.headerTitle}>Activa tu monedero</Text>
-        <Text style={st.headerSub}>Verifica tu identidad en pocos minutos</Text>
+        <Text style={st.headerTitle}>{t('kyActivateWallet')}</Text>
+        <Text style={st.headerSub}>{t('kyVerifyIdentityInMinutes')}</Text>
       </LinearGradient>
 
       {/* Body */}
       <View style={[st.body, { paddingBottom: insets.bottom + 16 }]}>
         {/* Tarjeta de beneficios */}
         <View style={st.infoBox}>
-          {FEATURES.map(({ icon, text }) => (
-            <View key={text} style={st.infoRow}>
+          {FEATURES.map(({ icon, textKey }) => (
+            <View key={textKey} style={st.infoRow}>
               <MaterialCommunityIcons name={icon} size={22} color="#00B4A0" style={st.infoIcon} />
-              <Text style={st.infoText}>{text}</Text>
+              <Text style={st.infoText}>{t(textKey)}</Text>
             </View>
           ))}
         </View>
@@ -104,7 +107,7 @@ export default function KycEntryScreen() {
           style={st.btnPrimary}
           onPress={handleStart}
           activeOpacity={0.85}
-          accessibilityLabel="Comenzar verificación de identidad"
+          accessibilityLabel={t('kyStartAccessibility')}
         >
           <LinearGradient
             colors={['#00C8A0', '#00B4E6']}
@@ -119,7 +122,7 @@ export default function KycEntryScreen() {
               style={st.btnIcon}
             />
             <Text style={st.btnPrimaryText}>
-              {hasDraft ? 'Continuar verificación' : 'Comenzar verificación'}
+              {hasDraft ? t('kyContinueVerification') : t('kyStartVerification')}
             </Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -127,12 +130,12 @@ export default function KycEntryScreen() {
         {hasDraft && (
           <TouchableOpacity onPress={startNew} style={st.btnSecondary} activeOpacity={0.7}>
             <Ionicons name="refresh" size={17} color="#374151" style={st.btnIcon} />
-            <Text style={st.btnSecondaryText}>Empezar de nuevo</Text>
+            <Text style={st.btnSecondaryText}>{t('kyStartOver')}</Text>
           </TouchableOpacity>
         )}
 
         <TouchableOpacity onPress={() => router.back()} style={st.btnCancel} activeOpacity={0.6}>
-          <Text style={st.btnCancelText}>Ahora no</Text>
+          <Text style={st.btnCancelText}>{t('setNotNow')}</Text>
         </TouchableOpacity>
       </View>
     </View>

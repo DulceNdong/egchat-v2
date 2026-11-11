@@ -12,10 +12,12 @@ import { Colors } from '../../src/theme/colors';
 import { DarkColors } from '../../src/theme/darkMode';
 import { runPushDiagnostic } from '../../src/pushDiagnostic';
 import { toast } from '../../src/components/Toast';
+import { useLanguage } from '../../src/context/LanguageContext';
 
 export default function AcercaScreen() {
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
+  const { translate: t } = useLanguage();
 
   const [checking, setChecking] = useState(false);
   const [runningDiag, setRunningDiag] = useState(false);
@@ -27,63 +29,59 @@ export default function AcercaScreen() {
     (Constants.expoConfig?.android as any)?.versionCode ??
     '—';
   const runtimeVer   = Constants.expoConfig?.runtimeVersion ?? '—';
-  const updateId     = Updates.updateId ? Updates.updateId.substring(0, 8) + '...' : 'Canal local';
+  const updateId     = Updates.updateId ? Updates.updateId.substring(0, 8) + '...' : t('setLocalChannel');
   const updateChan   = Updates.channel ?? 'development';
-  const isExpoGo     = !Constants.isDevice;
 
   const info = [
-    { label: 'Versión',          value: appVersion },
+    { label: t('version'),          value: appVersion },
     { label: 'Build',            value: String(buildNumber) },
     { label: 'Runtime',          value: String(runtimeVer) },
-    { label: 'Canal OTA',        value: updateChan },
+    { label: `${t('channel')} OTA`, value: updateChan },
     { label: 'Update ID',        value: updateId },
-    { label: 'Plataforma',       value: 'React Native + Expo ~54' },
-    { label: 'Desarrollador',    value: 'EGCHAT Team' },
-    { label: 'País',             value: 'Guinea Ecuatorial 🇬🇶' },
+    { label: t('setPlatform'),      value: 'React Native + Expo ~54' },
+    { label: t('setDeveloper'),     value: 'EGCHAT Team' },
+    { label: t('country'),          value: `${t('hdrEquatorialGuinea')} 🇬🇶` },
     { label: 'Backend',          value: 'Supabase + Render' },
-    { label: 'EAS Project',      value: '6200ec00' },
+    { label: 'EAS Project',      value: String(Constants.expoConfig?.extra?.eas?.projectId ?? '—').substring(0, 8) },
   ];
 
   // ── Buscar actualización OTA ──────────────────────────────────
   const checkUpdate = useCallback(async () => {
-    if (isExpoGo) {
-      toast.info('OTA no disponible en Expo Go');
-      return;
-    }
     setChecking(true);
     try {
       const update = await Updates.checkForUpdateAsync();
       if (update.isAvailable) {
         Alert.alert(
-          '🆕 Actualización disponible',
-          'Hay una nueva versión de EGCHAT. ¿Descargar e instalar ahora?',
+          `🆕 ${t('setUpdateAvailable')}`,
+          t('setUpdateAvailableBody'),
           [
-            { text: 'Ahora no', style: 'cancel' },
+            { text: t('setNotNow'), style: 'cancel' },
             {
-              text: 'Actualizar',
+              text: t('setUpdate'),
               onPress: async () => {
                 try {
                   await Updates.fetchUpdateAsync();
                   Alert.alert(
-                    '✅ Actualización descargada',
-                    'La app se reiniciará para aplicar los cambios.',
-                    [{ text: 'Reiniciar', onPress: () => Updates.reloadAsync() }],
+                    `✅ ${t('setUpdateDownloaded')}`,
+                    t('setUpdateDownloadedBody'),
+                    [{ text: t('setRestart'), onPress: () => Updates.reloadAsync() }],
                   );
                 } catch (e: any) {
-                  toast.error('Error descargando actualización');
+                  toast.error(t('setUpdateDownloadError'));
                 }
               },
             },
           ],
         );
       } else {
-        toast.success('✓ Tienes la versión más reciente');
+        toast.success(`✓ ${t('setLatestVersion')}`);
       }
-    } catch {
-      toast.error('No se pudo verificar actualizaciones');
+    } catch (e: any) {
+      const msg = String(e?.message ?? '');
+      toast.error(msg.includes('Expo Go') ? t('setOtaUnavailable') : t('setUpdateCheckError'));
     }
     setChecking(false);
-  }, [isExpoGo]);
+  }, [t]);
 
   // ── Diagnóstico push ──────────────────────────────────────────
   const pushDiagnostic = useCallback(async () => {
@@ -91,23 +89,21 @@ export default function AcercaScreen() {
     try {
       await runPushDiagnostic();
     } catch {
-      toast.error('Error en diagnóstico');
+      toast.error(t('setDiagnosticError'));
     }
     setRunningDiag(false);
-  }, []);
+  }, [t]);
 
   return (
-    <SettingsLayout title="Acerca de EGCHAT">
+    <SettingsLayout title={t('aboutTitle')}>
 
-      {/* ── Hero ──────────────────────────────────── */}
       <View style={[styles.hero, { backgroundColor: C.bgPrimary }]}>
         <SpinningLogo size={90} glow />
         <Text style={[styles.appName, { color: C.textPrimary }]}>EGCHAT</Text>
         <Text style={styles.version}>v{appVersion} (build {buildNumber})</Text>
-        <Text style={styles.channel}>Canal: {updateChan}</Text>
+        <Text style={styles.channel}>{t('channel')}: {updateChan}</Text>
       </View>
 
-      {/* ── Info técnica ──────────────────────────── */}
       <SettingsCard>
         {info.map((r, i) => (
           <React.Fragment key={r.label}>
@@ -120,8 +116,7 @@ export default function AcercaScreen() {
         ))}
       </SettingsCard>
 
-      {/* ── Actualización OTA ─────────────────────── */}
-      <SettingsSection label="Actualizaciones" />
+      <SettingsSection label={t('updates')} />
       <SettingsCard>
         <TouchableOpacity
           style={styles.updateBtn}
@@ -134,17 +129,16 @@ export default function AcercaScreen() {
           }
           <View style={{ flex: 1 }}>
             <Text style={[styles.updateLabel, { color: C.textPrimary }]}>
-              Buscar actualización
+              {t('checkForUpdates')}
             </Text>
             <Text style={[styles.updateSub, { color: C.textSecondary }]}>
-              Actualización en segundo plano (OTA)
+              {t('otaUpdate')}
             </Text>
           </View>
         </TouchableOpacity>
       </SettingsCard>
 
-      {/* ── Diagnóstico push ──────────────────────── */}
-      <SettingsSection label="Diagnóstico" />
+      <SettingsSection label={t('diagnostic')} />
       <SettingsCard>
         <TouchableOpacity
           style={styles.updateBtn}
@@ -157,32 +151,31 @@ export default function AcercaScreen() {
           }
           <View style={{ flex: 1 }}>
             <Text style={[styles.updateLabel, { color: C.textPrimary }]}>
-              Diagnóstico de notificaciones push
+              {t('pushDiagnosticTitle')}
             </Text>
             <Text style={[styles.updateSub, { color: C.textSecondary }]}>
-              Verifica permisos, token FCM/APNs y registro en servidor
+              {t('pushDiagnosticSub')}
             </Text>
           </View>
         </TouchableOpacity>
       </SettingsCard>
 
-      {/* ── Legal ─────────────────────────────────── */}
-      <SettingsSection label="Legal" />
+      <SettingsSection label={t('legal')} />
       <SettingsCard>
         <SettingsRow
-          label="Términos de servicio"
+          label={t('termsOfService')}
           onPress={() => Linking.openURL('https://egchat-v2.vercel.app/terms').catch(() => {})}
         />
         <SettingsDivider />
         <SettingsRow
-          label="Política de privacidad"
+          label={t('privacyPolicy')}
           onPress={() => Linking.openURL('https://egchat-v2.vercel.app/privacy').catch(() => {})}
         />
         <SettingsDivider />
         <SettingsRow
-          label="Licencias de código abierto"
+          label={t('openSourceLicenses')}
           onPress={() => Alert.alert(
-            'Licencias',
+            t('licenses'),
             'React Native (MIT)\nExpo (MIT)\nSupabase (Apache 2.0)\nTweetNaCl (Public Domain)\nFirebase (Apache 2.0)',
           )}
         />

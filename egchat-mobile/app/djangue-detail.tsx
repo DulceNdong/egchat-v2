@@ -12,6 +12,7 @@ import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Image } from 'expo-image';
 import Svg, { Path, Circle, Line, Rect, Polyline } from 'react-native-svg';
 import { apiFetch } from '../src/api';
+import { t as tr } from '../src/translations';
 
 // ── Tipos ─────────────────────────────────────────────────────────
 interface DjangueDetail {
@@ -56,10 +57,10 @@ interface Contribution {
 
 // ── Helpers ───────────────────────────────────────────────────────
 const FREQ: Record<string, { label: string; color: string }> = {
-  daily:   { label: 'Diario',   color: '#f59e0b' },
-  weekly:  { label: 'Semanal',  color: '#10b981' },
-  monthly: { label: 'Mensual',  color: '#6366f1' },
-  annual:  { label: 'Anual',    color: '#ec4899' },
+  daily:   { label: tr('setDaily'),   color: '#f59e0b' },
+  weekly:  { label: tr('setWeekly'),  color: '#10b981' },
+  monthly: { label: tr('setMonthly'),  color: '#6366f1' },
+  annual:  { label: tr('xtAnual'),    color: '#ec4899' },
 };
 
 const initials = (name: string) =>
@@ -155,7 +156,7 @@ export default function DjangueDetailScreen() {
       const data = await apiFetch(`/api/djangue/${djangueId}`);
       setDjangue(data);
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'No se pudo cargar el djangue');
+      Alert.alert(tr('error'), e.message || 'No se pudo cargar el djangue');
       router.back();
     } finally {
       setLoading(false);
@@ -166,19 +167,19 @@ export default function DjangueDetailScreen() {
   useFocusEffect(useCallback(() => { loadDjangue(); }, [loadDjangue]));
 
   const handleAddMember = async () => {
-    if (!newMemberPhone.trim()) return Alert.alert('Error', 'Ingresa el teléfono del nuevo miembro');
+    if (!newMemberPhone.trim()) return Alert.alert(tr('error'), 'Ingresa el teléfono del nuevo miembro');
     setAddingMember(true);
     try {
       await apiFetch(`/api/djangue/${djangueId}/members`, {
         method: 'POST',
         body: JSON.stringify({ phone: newMemberPhone.trim() }),
       });
-      Alert.alert('✅ Miembro agregado', 'Usuario agregado exitosamente');
+      Alert.alert('✅ Miembro agregado', tr('xtUsuarioAgregadoExitosamente'));
       setNewMemberPhone('');
       setShowAddMember(false);
       loadDjangue(true);
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'No se pudo agregar el miembro');
+      Alert.alert(tr('error'), e.message || 'No se pudo agregar el miembro');
     } finally {
       setAddingMember(false);
     }
@@ -191,12 +192,12 @@ export default function DjangueDetailScreen() {
     }
     // Intentar crear el chat directamente desde el cliente
     Alert.alert(
-      'Crear chat del grupo',
-      'Este djangue no tiene chat aún. ¿Crear uno ahora?',
+      tr('xtCrearChatDelGrupo'),
+      tr('xtEsteDjangueNoTieneChatAunCrearUnoAhora'),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: tr('cancel'), style: 'cancel' },
         {
-          text: 'Crear chat',
+          text: tr('xtCrearChat'),
           onPress: async () => {
             try {
               // Crear grupo de chat usando el endpoint estándar
@@ -217,7 +218,7 @@ export default function DjangueDetailScreen() {
                 router.push(`/chat/${chatGroup.id}` as any);
               }
             } catch (e: any) {
-              Alert.alert('Error', e.message || 'No se pudo crear el chat');
+              Alert.alert(tr('error'), e.message || 'No se pudo crear el chat');
             }
           },
         },
@@ -314,7 +315,7 @@ export default function DjangueDetailScreen() {
         {/* ── Progreso de turnos ── */}
         <View style={s.card}>
           <View style={s.cardTitleRow}>
-            <Text style={s.cardTitle}>Progreso del ciclo</Text>
+            <Text style={s.cardTitle}>{tr('xtProgresoDelCiclo')}</Text>
             <Text style={s.cardSub}>Turno {djangue.current_turn} de {djangue.total_turns || '?'}</Text>
           </View>
           <View style={s.progressTrack}>
@@ -327,7 +328,7 @@ export default function DjangueDetailScreen() {
             </View>
             <View style={[s.statItem, s.statBorder]}>
               <Text style={[s.statNum, { color: '#1e293b' }]}>{members.length}/{djangue.max_members}</Text>
-              <Text style={s.statLbl}>Integrantes</Text>
+              <Text style={s.statLbl}>{tr('xtIntegrantes')}</Text>
             </View>
             <View style={s.statItem}>
               <Text style={[s.statNum, { color: '#1e293b' }]}>{Math.round(progress * 100)}%</Text>
@@ -344,7 +345,7 @@ export default function DjangueDetailScreen() {
                 <IconWallet />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={s.walletLabel}>Balance del Djangue</Text>
+                <Text style={s.walletLabel}>{tr('xtBalanceDelDjangue')}</Text>
                 <Text style={s.walletBalance}>
                   {djangue.wallet.balance.toLocaleString()} {currency}
                 </Text>
@@ -358,12 +359,12 @@ export default function DjangueDetailScreen() {
               <View style={s.walletBarDiv} />
               <View style={s.walletBarItem}>
                 <Text style={[s.walletBarNum, { color: '#f59e0b' }]}>{members.length - paidCount}</Text>
-                <Text style={s.walletBarLbl}>Pendientes</Text>
+                <Text style={s.walletBarLbl}>{tr('djhPendingWord')}</Text>
               </View>
               <View style={s.walletBarDiv} />
               <View style={s.walletBarItem}>
                 <Text style={[s.walletBarNum, { color: freq.color }]}>{djangue.current_turn}</Text>
-                <Text style={s.walletBarLbl}>Turno actual</Text>
+                <Text style={s.walletBarLbl}>{tr('xtTurnoActual2')}</Text>
               </View>
             </View>
           </View>
@@ -380,7 +381,7 @@ export default function DjangueDetailScreen() {
                 activeOpacity={0.8}
               >
                 <IconAdd />
-                <Text style={s.addBtnTxt}>Añadir</Text>
+                <Text style={s.addBtnTxt}>{tr('xtAnadir')}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -403,7 +404,7 @@ export default function DjangueDetailScreen() {
               >
                 {addingMember
                   ? <ActivityIndicator size="small" color="#fff" />
-                  : <Text style={s.addConfirmTxt}>Agregar</Text>
+                  : <Text style={s.addConfirmTxt}>{tr('djhAdd')}</Text>
                 }
               </TouchableOpacity>
             </View>
@@ -429,7 +430,7 @@ export default function DjangueDetailScreen() {
 
                 {/* Info */}
                 <View style={s.memberInfo}>
-                  <Text style={s.memberName} numberOfLines={1}>{member.users?.full_name || 'Usuario'}</Text>
+                  <Text style={s.memberName} numberOfLines={1}>{member.users?.full_name || tr('setUser')}</Text>
                   <Text style={s.memberPhone}>{member.users?.phone}</Text>
                 </View>
 
@@ -437,10 +438,10 @@ export default function DjangueDetailScreen() {
                 <View style={s.memberRight}>
                   <Text style={[s.turnNum, { color: freq.color }]}>#{member.turn_number}</Text>
                   {isCurrentTurn
-                    ? <View style={s.statusChipActive}><IconTarget /><Text style={[s.statusChipTxt, { color: '#6366f1' }]}>Su turno</Text></View>
+                    ? <View style={s.statusChipActive}><IconTarget /><Text style={[s.statusChipTxt, { color: '#6366f1' }]}>{tr('xtSuTurno')}</Text></View>
                     : hasPaid
                     ? <View style={s.statusChipPaid}><IconCheck /><Text style={[s.statusChipTxt, { color: '#10b981' }]}>Pagado</Text></View>
-                    : <View style={s.statusChipPending}><IconClock /><Text style={[s.statusChipTxt, { color: '#f59e0b' }]}>Pendiente</Text></View>
+                    : <View style={s.statusChipPending}><IconClock /><Text style={[s.statusChipTxt, { color: '#f59e0b' }]}>{tr('kyPending')}</Text></View>
                   }
                 </View>
               </View>
@@ -451,7 +452,7 @@ export default function DjangueDetailScreen() {
         {/* ── Acciones de administrador ── */}
         {isAdmin && (
           <View style={s.card}>
-            <Text style={s.cardTitle}>Gestión</Text>
+            <Text style={s.cardTitle}>{tr('xtGestion')}</Text>
 
             <TouchableOpacity
               style={s.actionRow}
@@ -460,8 +461,8 @@ export default function DjangueDetailScreen() {
             >
               <View style={s.actionIcon}><IconSettings /></View>
               <View style={{ flex: 1 }}>
-                <Text style={s.actionTitle}>Configuración</Text>
-                <Text style={s.actionSub}>Editar nombre, cuota y frecuencia</Text>
+                <Text style={s.actionTitle}>{tr('xtConfiguracion')}</Text>
+                <Text style={s.actionSub}>{tr('xtEditarNombreCuotaYFrecuencia')}</Text>
               </View>
               <IconChevron />
             </TouchableOpacity>
@@ -475,8 +476,8 @@ export default function DjangueDetailScreen() {
             >
               <View style={s.actionIcon}><IconDoc /></View>
               <View style={{ flex: 1 }}>
-                <Text style={s.actionTitle}>Panel del Secretario</Text>
-                <Text style={s.actionSub}>Gestionar pagos y ausencias</Text>
+                <Text style={s.actionTitle}>{tr('djhSecretaryPanel')}</Text>
+                <Text style={s.actionSub}>{tr('xtGestionarPagosYAusencias')}</Text>
               </View>
               <IconChevron />
             </TouchableOpacity>
@@ -490,8 +491,8 @@ export default function DjangueDetailScreen() {
             >
               <View style={s.actionIcon}><IconStats /></View>
               <View style={{ flex: 1 }}>
-                <Text style={s.actionTitle}>Estadísticas</Text>
-                <Text style={s.actionSub}>Reportes y análisis del ciclo</Text>
+                <Text style={s.actionTitle}>{tr('djhStatsTab')}</Text>
+                <Text style={s.actionSub}>{tr('xtReportesYAnalisisDelCiclo')}</Text>
               </View>
               <IconChevron />
             </TouchableOpacity>
@@ -501,8 +502,8 @@ export default function DjangueDetailScreen() {
         {/* ── Orden de turnos / calendario de repartos ── */}
         {members.length > 0 && (
           <View style={s.card}>
-            <Text style={s.cardTitle}>Orden de cobros</Text>
-            <Text style={[s.cardSub, { marginBottom: 4 }]}>Quién recibe el fondo en cada turno</Text>
+            <Text style={s.cardTitle}>{tr('xtOrdenDeCobros')}</Text>
+            <Text style={[s.cardSub, { marginBottom: 4 }]}>{tr('djnFundEachTurn')}</Text>
             {members
               .slice()
               .sort((a, b) => (a.turn_number ?? a.turn_order ?? 0) - (b.turn_number ?? b.turn_order ?? 0))
@@ -539,19 +540,19 @@ export default function DjangueDetailScreen() {
                     {/* Info */}
                     <View style={{ flex: 1 }}>
                       <Text style={[s.turnName, isCurrent && { fontWeight: '800', color: '#1e293b' }]}>
-                        {m.users?.full_name || 'Integrante'}
+                        {m.users?.full_name || tr('xtIntegrante')}
                       </Text>
                       <Text style={s.turnPhone}>{m.users?.phone}</Text>
                     </View>
                     {/* Estado */}
                     {isCurrent && (
                       <View style={[s.turnChip, { backgroundColor: freq.color + '18' }]}>
-                        <Text style={[s.turnChipTxt, { color: freq.color }]}>🎯 Turno actual</Text>
+                        <Text style={[s.turnChipTxt, { color: freq.color }]}>{tr('xtTurnoActual')}</Text>
                       </View>
                     )}
                     {isPast && (
                       <View style={[s.turnChip, { backgroundColor: '#f0fdf4' }]}>
-                        <Text style={[s.turnChipTxt, { color: '#10b981' }]}>✓ Ya cobró</Text>
+                        <Text style={[s.turnChipTxt, { color: '#10b981' }]}>{tr('xtYaCobro')}</Text>
                       </View>
                     )}
                     {!isCurrent && !isPast && (

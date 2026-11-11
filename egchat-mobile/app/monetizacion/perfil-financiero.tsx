@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  StatusBar, RefreshControl, TextInput,
+  StatusBar, RefreshControl, TextInput, ActivityIndicator,
 } from 'react-native';
 import { InformeModal, InformeData } from '../../src/components/monetizacion/InformeModal';
 import { RevenueTable } from '../../src/components/monetizacion/RevenueTable';
 import { MetricCard } from '../../src/components/monetizacion/MetricCard';
+import { usePerfilFinanciero } from '../../src/hooks/useMonetizacion';
+import { useTranslation } from '../../src/context/LanguageContext';
+import type { PerfilFinancieroUsuario, HistorialTxUsuario } from '../../src/types/monetizacion';
 
-// ── Tipos ──────────────────────────────────────────────────────────────────
-interface PerfilUsuario {
+// ── Tipos locales ──────────────────────────────────────────────────────────
+interface PerfilUsuarioDemo {
   id: string;
   nombre: string;
   telefono: string;
@@ -22,15 +25,13 @@ interface PerfilUsuario {
   usaServicios: boolean;
   usaWallet: boolean;
   ultimaTransaccion: string;
-  historial: HistorialItem[];
-}
-
-interface HistorialItem {
-  tipo: string;
-  descripcion: string;
-  monto: number;
-  fecha: string;
-  estado: 'completado' | 'pendiente' | 'cancelado';
+  historial: {
+    tipo: string;
+    descripcion: string;
+    monto: number;
+    fecha: string;
+    estado: 'completado' | 'pendiente' | 'cancelado';
+  }[];
 }
 
 const fmt = (n: number) =>
@@ -43,7 +44,7 @@ function scoreColor(s: number) {
 }
 
 // ── Datos demo ─────────────────────────────────────────────────────────────
-const PERFILES_DEMO: PerfilUsuario[] = [
+const PERFILES_DEMO: PerfilUsuarioDemo[] = [
   {
     id: '1', nombre: 'Inés Esono Abaga', telefono: '+240 222 555 001',
     mesesActivo: 14, totalMovido: 18500000, numTransacciones: 142,
@@ -106,50 +107,87 @@ const PERFILES_DEMO: PerfilUsuario[] = [
   },
 ];
 
-const totalUsuarios = PERFILES_DEMO.length;
-const scorePromedio = Math.round(PERFILES_DEMO.reduce((s, p) => s + p.scoreFinanciero, 0) / totalUsuarios);
-const totalMovido = PERFILES_DEMO.reduce((s, p) => s + p.totalMovido, 0);
-
 // ── Pantalla ───────────────────────────────────────────────────────────────
 export default function PerfilFinancieroScreen() {
-  const [refreshing, setRefreshing] = useState(false);
+  const { t } = useTranslation();
+  const { perfiles, loading, error, refresh, fetchHistorial } = usePerfilFinanciero();
+
   const [search, setSearch] = useState('');
-  const [selectedPerfil, setSelectedPerfil] = useState<PerfilUsuario | null>(null);
+  const [selectedPerfil, setSelectedPerfil] = useState<(PerfilFinancieroUsuario & { historial: HistorialTxUsuario[] }) | null>(null);
   const [informeVisible, setInformeVisible] = useState(false);
   const [informeData, setInformeData] = useState<InformeData | null>(null);
   const [filtroScore, setFiltroScore] = useState<'todos' | 'alto' | 'medio' | 'bajo'>('todos');
 
-  const perfilesFiltrados = PERFILES_DEMO
-    .filter(p => p.nombre.toLowerCase().includes(search.toLowerCase()))
+  // Fallback a demo si Supabase aún no devuelve datos
+  const fuentePerfiles: (PerfilFinancieroUsuario & { historial: HistorialTxUsuario[] })[] =
+    perfiles.length > 0
+      ? perfiles
+      : PERFILES_DEMO.map(p => ({
+          user_id: p.id,
+          nombre_completo: p.nombre,
+          score_financiero: p.scoreFinanciero,
+          total_movido: p.totalMovido,
+          num_transacciones: p.numTransacciones,
+          monto_promedio_mensual: p.montoPromedio,
+          meses_activo: p.mesesActivo,
+          usa_taxi: p.usaTaxi,
+          usa_barcos: p.usaBarcos,
+          usa_servicios: p.usaServicios,
+          usa_wallet: p.usaWallet,
+          ultima_transaccion: p.ultimaTransaccion,
+          historial: p.historial.map(h => ({
+            id: String(Math.random()),
+            user_id: p.id,
+            tipo: h.tipo,
+            descripcion: h.descripcion,
+            monto: h.monto,
+            estado: h.estado,
+            mes: new Date(h.fecha).getMonth() + 1,
+            anio: new Date(h.fecha).getFullYear(),
+            fecha: h.fecha,
+          })),
+        }));
+
+  // Métricas globales calculadas sobre la fuente activa
+  const totalUsuarios = fuentePerfiles.length;
+  const scorePromedio =
+    fuentePerfiles.length > 0
+      ? Math.round(fuentePerfiles.reduce((s, p) => s + p.score_financiero, 0) / fuentePerfiles.length)
+      : 0;
+  const totalMovido = fuentePerfiles.reduce((s, p) => s + p.total_movido, 0);
+
+  const perfilesFiltrados = fuentePerfiles
+    .filter(p => (p.nombre_completo ?? '').toLowerCase().includes(search.toLowerCase()))
     .filter(p => {
-      if (filtroScore === 'alto') return p.scoreFinanciero >= 70;
-      if (filtroScore === 'medio') return p.scoreFinanciero >= 40 && p.scoreFinanciero < 70;
-      if (filtroScore === 'bajo') return p.scoreFinanciero < 40;
+      if (filtroScore === 'alto') return p.score_financiero >= 70;
+      if (filtroScore === 'medio') return p.score_financiero >= 40 && p.score_financiero < 70;
+      if (filtroScore === 'bajo') return p.score_financiero < 40;
       return true;
     });
 
-  const handleGenerarInforme = (perfil: PerfilUsuario) => {
+  const handleGenerarInforme = (perfil: PerfilFinancieroUsuario & { historial: HistorialTxUsuario[] }) => {
     const servicios: string[] = [];
-    if (perfil.usaTaxi) servicios.push('Taxi');
-    if (perfil.usaBarcos) servicios.push('Barcos');
-    if (perfil.usaServicios) servicios.push('Servicios');
-    if (perfil.usaWallet) servicios.push('Monedero');
+    if (perfil.usa_taxi) servicios.push('mznSvcTaxi');
+    if (perfil.usa_barcos) servicios.push('mznSvcBoats');
+    if (perfil.usa_servicios) servicios.push('mznSvcServices');
+    if (perfil.usa_wallet) servicios.push('mznSvcWallet');
 
     setInformeData({
       tipo: 'usuario',
-      nombre: perfil.nombre,
-      periodo: `Últimos ${perfil.mesesActivo} meses`,
-      numTransacciones: perfil.numTransacciones,
-      totalMovido: perfil.totalMovido,
-      montoPromedio: perfil.montoPromedio,
-      scoreFinanciero: perfil.scoreFinanciero,
-      mesesActivo: perfil.mesesActivo,
+      nombre: perfil.nombre_completo ?? t('mznNoName'),
+      periodo: `${t('mznLastMonthsPrefix')} ${perfil.meses_activo} ${t('mznMonthsSuffix')}`,
+      numTransacciones: perfil.num_transacciones,
+      totalMovido: perfil.total_movido,
+      montoPromedio: perfil.monto_promedio_mensual,
+      scoreFinanciero: perfil.score_financiero,
+      mesesActivo: perfil.meses_activo,
       serviciosUsados: servicios,
-      observaciones: perfil.scoreFinanciero >= 70
-        ? 'Perfil financiero sólido con historial regular y volúmenes consistentes. Recomendado para productos de crédito.'
-        : perfil.scoreFinanciero >= 40
-        ? 'Perfil financiero moderado. Se recomienda evaluar condiciones específicas según el producto.'
-        : 'Historial financiero en desarrollo. Se recomienda monitorear la actividad antes de aprobar crédito.',
+      observacionesKey:
+        perfil.score_financiero >= 70
+          ? 'mznObsUserStrong'
+          : perfil.score_financiero >= 40
+          ? 'mznObsUserModerate'
+          : 'mznObsUserDeveloping',
     });
     setInformeVisible(true);
   };
@@ -163,16 +201,26 @@ export default function PerfilFinancieroScreen() {
         contentContainerStyle={{ paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); setTimeout(() => setRefreshing(false), 800); }} tintColor="#00FF88" />
+          <RefreshControl refreshing={loading} onRefresh={refresh} tintColor="#00FF88" />
         }
       >
+        {/* Loading inicial */}
+        {loading && perfiles.length === 0 && (
+          <ActivityIndicator color="#00FF88" style={{ marginTop: 40 }} />
+        )}
+
+        {/* Error inicial */}
+        {error && perfiles.length === 0 && !loading && (
+          <Text style={{ color: '#FF4444', textAlign: 'center', marginTop: 40 }}>{error}</Text>
+        )}
+
         {/* Métricas globales */}
         <View style={styles.metricsRow}>
-          <MetricCard label="Usuarios" value={`${totalUsuarios}`} icon="👥" accentColor="#00FF88" subValue="Con historial" />
-          <MetricCard label="Score Promedio" value={`${scorePromedio}/100`} icon="📊" accentColor={scoreColor(scorePromedio)} subValue="Promedio plataforma" />
+          <MetricCard label={t('mznUsers')} value={`${totalUsuarios}`} icon="👥" accentColor="#00FF88" subValue={t('mznWithHistory')} />
+          <MetricCard label={t('mznScoreAverage')} value={`${scorePromedio}/100`} icon="📊" accentColor={scoreColor(scorePromedio)} subValue={t('mznPlatformAverage')} />
         </View>
         <View style={styles.metricsRow}>
-          <MetricCard label="Volumen Total" value={fmt(totalMovido)} icon="💰" accentColor="#00D4FF" fullWidth />
+          <MetricCard label={t('mznTotalVolume')} value={fmt(totalMovido)} icon="💰" accentColor="#00D4FF" fullWidth />
         </View>
 
         {/* Barra de búsqueda */}
@@ -182,7 +230,7 @@ export default function PerfilFinancieroScreen() {
             style={styles.searchInput}
             value={search}
             onChangeText={setSearch}
-            placeholder="Buscar usuario..."
+            placeholder={t('mznSearchUser')}
             placeholderTextColor="#555577"
           />
           {search.length > 0 && (
@@ -195,10 +243,10 @@ export default function PerfilFinancieroScreen() {
         {/* Filtro por score */}
         <View style={styles.filterRow}>
           {([
-            { key: 'todos', label: 'Todos' },
-            { key: 'alto', label: '🟢 Alto (70+)' },
-            { key: 'medio', label: '🟡 Medio' },
-            { key: 'bajo', label: '🔴 Bajo' },
+            { key: 'todos', labelKey: 'everyone' },
+            { key: 'alto', labelKey: 'mznFilterHigh' },
+            { key: 'medio', labelKey: 'mznFilterMedium' },
+            { key: 'bajo', labelKey: 'mznFilterLow' },
           ] as const).map(f => (
             <TouchableOpacity
               key={f.key}
@@ -206,7 +254,7 @@ export default function PerfilFinancieroScreen() {
               onPress={() => setFiltroScore(f.key)}
             >
               <Text style={[styles.filterBtnText, filtroScore === f.key && styles.filterBtnTextActive]}>
-                {f.label}
+                {t(f.labelKey)}
               </Text>
             </TouchableOpacity>
           ))}
@@ -214,20 +262,32 @@ export default function PerfilFinancieroScreen() {
 
         {/* Lista perfiles */}
         {perfilesFiltrados.map(perfil => {
-          const sc = perfil.scoreFinanciero;
+          const sc = perfil.score_financiero;
           const sc_color = scoreColor(sc);
           const servicios = [
-            perfil.usaTaxi && '🚖',
-            perfil.usaBarcos && '⛵',
-            perfil.usaServicios && '🛒',
-            perfil.usaWallet && '💳',
+            perfil.usa_taxi && '🚖',
+            perfil.usa_barcos && '⛵',
+            perfil.usa_servicios && '🛒',
+            perfil.usa_wallet && '💳',
           ].filter(Boolean).join(' ');
 
           return (
             <TouchableOpacity
-              key={perfil.id}
+              key={perfil.user_id}
               style={styles.card}
-              onPress={() => setSelectedPerfil(selectedPerfil?.id === perfil.id ? null : perfil)}
+              onPress={async () => {
+                if (selectedPerfil?.user_id === perfil.user_id) {
+                  setSelectedPerfil(null);
+                } else {
+                  setSelectedPerfil({ ...perfil, historial: [] });
+                  try {
+                    const hist = await fetchHistorial(perfil.user_id);
+                    setSelectedPerfil(prev => (prev ? { ...prev, historial: hist } : null));
+                  } catch {
+                    /* keep empty historial */
+                  }
+                }
+              }}
               activeOpacity={0.85}
             >
               {/* Cabecera */}
@@ -237,14 +297,13 @@ export default function PerfilFinancieroScreen() {
                   <Text style={styles.avatarLabel}>score</Text>
                 </View>
                 <View style={styles.cardInfo}>
-                  <Text style={styles.cardNombre}>{perfil.nombre}</Text>
-                  <Text style={styles.cardSub}>📞 {perfil.telefono}</Text>
-                  <Text style={styles.cardSub}>📅 {perfil.mesesActivo} meses activo · {servicios}</Text>
+                  <Text style={styles.cardNombre}>{perfil.nombre_completo ?? t('mznNoName')}</Text>
+                  <Text style={styles.cardSub}>📅 {perfil.meses_activo} {t('mznMonthsActive')} · {servicios}</Text>
                 </View>
                 <View style={styles.cardRight}>
-                  <Text style={[styles.cardTotal, { color: '#00D4FF' }]}>{fmt(perfil.totalMovido)}</Text>
-                  <Text style={styles.cardTotalLabel}>total movido</Text>
-                  <Text style={styles.cardTx}>{perfil.numTransacciones} tx</Text>
+                  <Text style={[styles.cardTotal, { color: '#00D4FF' }]}>{fmt(perfil.total_movido)}</Text>
+                  <Text style={styles.cardTotalLabel}>{t('mznTotalMoved')}</Text>
+                  <Text style={styles.cardTx}>{perfil.num_transacciones} tx</Text>
                 </View>
               </View>
 
@@ -254,19 +313,22 @@ export default function PerfilFinancieroScreen() {
                   <View style={[styles.scoreBarFill, { width: `${sc}%`, backgroundColor: sc_color }]} />
                 </View>
                 <Text style={[styles.scoreLabel, { color: sc_color }]}>
-                  {sc >= 70 ? 'Excelente' : sc >= 40 ? 'Moderado' : 'En desarrollo'}
+                  {sc >= 70 ? t('mznScoreExcellent') : sc >= 40 ? t('mznScoreModerate') : t('mznScoreDeveloping')}
                 </Text>
               </View>
 
               {/* Detalle expandible */}
-              {selectedPerfil?.id === perfil.id && (
+              {selectedPerfil?.user_id === perfil.user_id && (
                 <View style={styles.expanded}>
-                  <Text style={styles.expandedTitle}>📋 Últimas Transacciones</Text>
-                  {perfil.historial.map((h, i) => (
+                  <Text style={styles.expandedTitle}>{t('mznLatestTransactions')}</Text>
+                  {selectedPerfil.historial.length === 0 && (
+                    <ActivityIndicator color="#00FF88" style={{ marginVertical: 12 }} />
+                  )}
+                  {selectedPerfil.historial.map((h, i) => (
                     <View key={i} style={styles.txRow}>
                       <Text style={styles.txTipo}>{h.tipo}</Text>
                       <View style={styles.txMiddle}>
-                        <Text style={styles.txDesc} numberOfLines={1}>{h.descripcion}</Text>
+                        <Text style={styles.txDesc} numberOfLines={1}>{h.descripcion ?? ''}</Text>
                         <Text style={styles.txFecha}>{h.fecha}</Text>
                       </View>
                       <Text style={[
@@ -280,9 +342,9 @@ export default function PerfilFinancieroScreen() {
                     <RevenueTable
                       showBars={false}
                       rows={[
-                        { label: 'Total transacciones', value: `${perfil.numTransacciones}` },
-                        { label: 'Promedio mensual', value: fmt(perfil.montoPromedio) },
-                        { label: 'Última actividad', value: perfil.ultimaTransaccion },
+                        { label: t('mznTotalTransactions'), value: `${perfil.num_transacciones}` },
+                        { label: t('mznMonthlyAverage'), value: fmt(perfil.monto_promedio_mensual) },
+                        { label: t('mznLastActivity'), value: perfil.ultima_transaccion ?? '—' },
                       ]}
                     />
                   </View>
@@ -291,7 +353,7 @@ export default function PerfilFinancieroScreen() {
                     style={styles.informeBtn}
                     onPress={() => handleGenerarInforme(perfil)}
                   >
-                    <Text style={styles.informeBtnText}>📄 Generar Informe Bancario</Text>
+                    <Text style={styles.informeBtnText}>{t('mznGenerateBankReport')}</Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -299,9 +361,9 @@ export default function PerfilFinancieroScreen() {
           );
         })}
 
-        {perfilesFiltrados.length === 0 && (
+        {perfilesFiltrados.length === 0 && !loading && (
           <View style={styles.empty}>
-            <Text style={styles.emptyText}>No se encontraron perfiles</Text>
+            <Text style={styles.emptyText}>{t('mznNoProfilesFound')}</Text>
           </View>
         )}
       </ScrollView>

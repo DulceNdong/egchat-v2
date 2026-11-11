@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, Share } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
+import { t as tr } from '../translations';
 
 interface QRGeneratorProps {
   userId?: string;
@@ -49,8 +50,8 @@ export const QRGenerator: React.FC<QRGeneratorProps> = ({
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `Agrégame en EGCHAT: ${userPhone || userId}`,
-        title: 'Mi código EGCHAT',
+        message: tr('qrAddMePrefix') + (userPhone || userId),
+        title: tr('qrShareTitle'),
       });
     } catch {}
   };
@@ -66,8 +67,8 @@ export const QRGenerator: React.FC<QRGeneratorProps> = ({
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Mi código QR</Text>
-      <Text style={styles.subtitle}>Comparte para que te agreguen en EGCHAT</Text>
+      <Text style={styles.title}>{tr('xtMiCodigoQR')}</Text>
+      <Text style={styles.subtitle}>{tr('xtComparteParaQueTeAgreguenEnEGCHAT')}</Text>
 
       {qrData ? (
         <View style={styles.qrWrap}>
@@ -88,7 +89,7 @@ export const QRGenerator: React.FC<QRGeneratorProps> = ({
           <Text style={styles.btnRefreshText}>↻ Regenerar</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.btnShare} onPress={handleShare}>
-          <Text style={styles.btnShareText}>Compartir</Text>
+          <Text style={styles.btnShareText}>{tr('share')}</Text>
         </TouchableOpacity>
       </View>
     </View>

@@ -37,6 +37,7 @@ import {
 } from '../../src/components/call/CallBackgroundPicker';
 import { useActiveCall } from '../../src/context/ActiveCallContext';
 import { callManager } from '../../src/call/CallManager';
+import { t as tr } from '../../src/translations';
 
 // Guard: si el módulo nativo no está disponible, no crashear
 const FACE_FILTER_AVAILABLE = (() => {
@@ -181,11 +182,11 @@ export default function CallScreen() {
   type CallParams = {
     callId: string; targetName: string; targetAvatar: string;
     callType: 'audio' | 'video'; role: 'caller' | 'callee';
-    targetUserId?: string; offer?: string; chatId?: string;
+    targetUserId?: string; offer?: string; chatId?: string; autoAccept?: string;
   };
   const {
     callId, targetName, targetAvatar, callType, role,
-    targetUserId, offer: offerParam, chatId,
+    targetUserId, offer: offerParam, chatId, autoAccept,
   } = useLocalSearchParams() as CallParams;
 
   // ── CallManager via hook fachada ──────────────────────────────
@@ -243,7 +244,7 @@ export default function CallScreen() {
   const dotAnims  = useRef([0, 1, 2].map(() => new Animated.Value(0.4))).current;
 
   const isVideo   = callType === 'video';
-  const name      = targetName || 'Usuario';
+  const name      = targetName || tr('setUser');
   const remoteUrl = remoteStream ? (remoteStream as any).toURL?.() || '' : '';
   const localUrl  = localStream  ? (localStream  as any).toURL?.() || '' : '';
 
@@ -292,7 +293,7 @@ export default function CallScreen() {
     if (role === 'caller' && targetUserId) {
       startCall(callType as 'audio' | 'video', targetUserId, callId, name, targetAvatar, chatId)
         .catch(err => {
-          Alert.alert('Error', err.message || 'No se pudo iniciar la llamada');
+          Alert.alert(tr('error'), err.message || 'No se pudo iniciar la llamada');
           router.back();
         });
     }
@@ -347,8 +348,10 @@ export default function CallScreen() {
 
   // ── CallKit handlers (callee) ─────────────────────────────────
   useEffect(() => {
-    // El CallManager ya llamó showIncomingCall si llegó vía registerIncoming.
-    // Aquí solo escuchamos los eventos de respuesta nativa (botones CallKit).
+    // En primer plano la llamada entrante se muestra con el overlay de la app;
+    // CallKit solo la presenta si llegó por VoIP push. Aquí solo escuchamos los
+    // eventos de respuesta nativa (botones CallKit), que no llegan si no se
+    // presentó la llamada en CallKit.
     const unsubAnswer = NativeCallKit.onAnswer((_cid) => acceptFromCallKit());
     const unsubReject = NativeCallKit.onReject((_cid) => rejectFromCallKit());
     return () => { unsubAnswer(); unsubReject(); };
@@ -405,9 +408,18 @@ export default function CallScreen() {
       await callManager.acceptCall();
     } catch (err: any) {
       setIsAccepting(false);
-      Alert.alert('No se pudo recibir la llamada', err?.message || 'Verifica tu conexión.');
+      Alert.alert(tr('xtNoSePudoRecibirLaLlamada'), err?.message || 'Verifica tu conexión.');
     }
   }, [callId, offerParam, callType, name, targetAvatar, chatId, isAccepting]);
+
+  // Android puede abrir la app desde el botón nativo "Contestar". En ese
+  // caso la intención explícita del usuario debe continuar la llamada sin
+  // exigir un segundo toque en la pantalla React Native.
+  useEffect(() => {
+    if (role !== 'callee' || autoAccept !== '1') return;
+    const timer = setTimeout(() => { accept().catch(() => {}); }, 120);
+    return () => clearTimeout(timer);
+  }, [role, autoAccept, accept]);
 
   // ── Aceptar desde botón nativo CallKit ────────────────────────
   const acceptFromCallKit = useCallback(() => {
@@ -441,6 +453,9 @@ export default function CallScreen() {
   const logCallToChat = useCallback(async (connected: boolean, secs: number) => {
     if (!chatId) return;
     if (loggedRef.current) return;
+    // El historial del chat lo escribe el llamante (CallManager), una sola vez.
+    // El contestado no duplica la tarjeta: en un hilo 1:1 ambos la ven igual.
+    if (role === 'callee') { loggedRef.current = true; return; }
     loggedRef.current = true;
     try {
       const isVid = callType === 'video';
@@ -453,9 +468,9 @@ export default function CallScreen() {
       if (connected && realSecs > 0) {
         const mm = Math.floor(realSecs / 60).toString().padStart(2, '0');
         const ss = (realSecs % 60).toString().padStart(2, '0');
-        text = `${emoji} ${isVid ? 'Videollamada' : 'Llamada'} (${mm}:${ss})`;
+        text = `${emoji} ${isVid ? tr('msgVideoCall') : tr('msgCall')} (${mm}:${ss})`;
       } else {
-        text = `${emoji} ${isVid ? 'Videollamada' : 'Llamada'} perdida`;
+        text = `${emoji} ${isVid ? tr('xtVideollamadaPerdida') : tr('msgMissedCall')}`;
       }
       await chatAPI.sendMessage(chatId, { text, type: 'call' });
     } catch { /* silencioso */ }
@@ -473,14 +488,14 @@ export default function CallScreen() {
       }
       const { mediaDevices } = require('react-native-webrtc');
       if (!mediaDevices?.getDisplayMedia) {
-        Alert.alert('No disponible', 'Requiere Android 10+ y build nativo.');
+        Alert.alert(tr('chtGcNoDisponible'), 'Requiere Android 10+ y build nativo.');
         return;
       }
       screenStreamRef.current = await mediaDevices.getDisplayMedia({ video: true });
       setIsSharingScreen(true);
     } catch (e: any) {
       if (e?.message?.includes('cancel') || e?.message?.includes('denied')) return;
-      Alert.alert('Error', 'No se pudo compartir la pantalla.');
+      Alert.alert(tr('error'), 'No se pudo compartir la pantalla.');
     }
   }, [isSharingScreen]);
 
@@ -560,7 +575,7 @@ export default function CallScreen() {
           <Text style={s.incomingName}>{name}</Text>
           <View style={s.incomingTypeRow}>
             {isVideo ? IC.video() : IC.phone()}
-            <Text style={s.incomingType}>{isVideo ? 'Videollamada entrante' : 'Llamada de voz entrante'}</Text>
+            <Text style={s.incomingType}>{isVideo ? 'Videollamada entrante' : tr('xtLlamadaDeVozEntrante')}</Text>
           </View>
 
           <View style={s.dotsRow}>
@@ -663,7 +678,7 @@ export default function CallScreen() {
             {isCalling    && <Animated.View style={[s.dot2, { transform: [{ scale: pulseAnim }] }]}/>}
             <Text style={s.statusText}>{statusLabel()}</Text>
           </View>
-          <Text style={s.callTypeLabel}>{isVideo ? 'Llamada de video' : 'Llamada de audio'}</Text>
+          <Text style={s.callTypeLabel}>{isVideo ? tr('xtLlamadaDeVideo') : tr('xtLlamadaDeAudio')}</Text>
         </View>
       )}
 
@@ -673,7 +688,7 @@ export default function CallScreen() {
           {/* Fila 1 */}
           <View style={s.ctrlRow}>
             <GlassBtn
-              onPress={isVideo ? toggleCamera : () => Alert.alert('Video', 'Activa el video durante la llamada.')}
+              onPress={isVideo ? toggleCamera : () => Alert.alert(tr('liaAttachVideo'), 'Activa el video durante la llamada.')}
               icon={IC.video(isCamOff)}
               label={isCamOff ? 'Video off' : 'Video'}
               active={isVideo && !isCamOff}
@@ -700,9 +715,9 @@ export default function CallScreen() {
               />
             ) : (
               <GlassBtn
-                onPress={() => Alert.alert('Añadir participante', 'Próximamente podrás añadir más personas.')}
+                onPress={() => Alert.alert(tr('cllAddParticipant'), tr('cllAddSoon'))}
                 icon={IC.addUser()}
-                label="Añadir"
+                label={tr('xtAnadir')}
               />
             )}
           </View>
@@ -712,7 +727,7 @@ export default function CallScreen() {
             <GlassBtn
               onPress={openMessageMode}
               icon={IC.chat()}
-              label="Mensaje"
+              label={tr('msgMessage')}
             />
             <View style={s.hangupWrap}>
               <TouchableOpacity style={s.hangupBtn} onPress={hangUp} activeOpacity={0.85}>
@@ -722,10 +737,10 @@ export default function CallScreen() {
             </View>
             <GlassBtn
               onPress={() => {
-                Alert.alert('Más opciones', '', [
-                  { text: 'Cambiar fondo', onPress: () => setShowBgPicker(true) },
+                Alert.alert(tr('moreOptions'), '', [
+                  { text: tr('xtCambiarFondo'), onPress: () => setShowBgPicker(true) },
                   {
-                    text: isVideo ? 'Filtros AR' : 'Compartir pantalla',
+                    text: isVideo ? 'Filtros AR' : tr('xtCompartirPantalla'),
                     onPress: isVideo ? () => setShowFilters(v => !v) : toggleScreenShare,
                   },
                   {
@@ -735,7 +750,7 @@ export default function CallScreen() {
                       if (Platform.OS === 'ios') {
                         Alert.alert(
                           'Bluetooth en iOS',
-                          'El audio Bluetooth es gestionado automáticamente por iOS. Conecta tus auriculares BT y el sistema los usará.',
+                          tr('xtElAudioBluetoothEsGestionadoAutomaticamentePorIOSC'),
                           [{ text: 'Entendido' }]
                         );
                       } else {
@@ -743,11 +758,11 @@ export default function CallScreen() {
                       }
                     },
                   },
-                  { text: 'Cancelar', style: 'cancel' },
+                  { text: tr('cancel'), style: 'cancel' },
                 ]);
               }}
               icon={IC.more()}
-              label="Más"
+              label={tr('xtMas')}
             />
           </View>
 

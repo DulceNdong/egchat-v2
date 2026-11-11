@@ -9,6 +9,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { taxiAPI } from '../src/api';
 import { toast } from '../src/components/Toast';
+import { t as tr } from '../src/translations';
 
 const ACCENT = '#6366F1';
 const TEXT   = '#0F172A';
@@ -23,17 +24,18 @@ type Tab = 'info' | 'vehicle' | 'docs';
 const VEHICLE_TYPES = ['Sedan', 'SUV', 'Van', 'Moto', 'Pickup'];
 
 const DOCS: { key: string; label: string; desc: string; req: boolean }[] = [
-  { key: 'license',     label: 'Licencia de conducir',   desc: 'Foto frontal y trasera',         req: true  },
-  { key: 'id',          label: 'Cedula / Pasaporte',     desc: 'Documento de identidad vigente', req: true  },
-  { key: 'vehicle_doc', label: 'Tarjeta de circulacion', desc: 'Documento del vehiculo',         req: true  },
-  { key: 'insurance',   label: 'Seguro del vehiculo',    desc: 'Poliza vigente',                 req: false },
-  { key: 'photo',       label: 'Foto del vehiculo',      desc: 'Vista frontal del vehiculo',     req: false },
+  { key: 'license',     get label() { return tr('xtLicenciaDeConducir'); },   get desc() { return tr('xtFotoFrontalYTrasera'); },         req: true  },
+  { key: 'id',          get label() { return tr('xtCedulaPasaporte'); },     get desc() { return tr('xtDocumentoDeIdentidadVigente'); }, req: true  },
+  { key: 'vehicle_doc', get label() { return tr('xtTarjetaDeCirculacion'); }, get desc() { return tr('xtDocumentoDelVehiculo'); },         req: true  },
+  { key: 'insurance',   get label() { return tr('xtSeguroDelVehiculo'); },    get desc() { return tr('xtPolizaVigente'); },                 req: false },
+  { key: 'photo',       get label() { return tr('xtFotoDelVehiculo'); },      get desc() { return tr('xtVistaFrontalDelVehiculo'); },     req: false },
 ];
 
 export default function TaxiDriverRegisterScreen() {
   const insets = useSafeAreaInsets();
   const [tab, setTab]          = useState<Tab>('info');
   const [submitted, setSubmit] = useState(false);
+  const [sentRef, setSentRef]  = useState('');
   const [loading, setLoading]  = useState(false);
 
   const [form, setForm] = useState({
@@ -47,7 +49,7 @@ export default function TaxiDriverRegisterScreen() {
   const pickDoc = async (key: string) => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galeria para subir documentos.');
+      Alert.alert(tr('kyPermRequired'), 'Necesitamos acceso a tu galeria para subir documentos.');
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -65,7 +67,7 @@ export default function TaxiDriverRegisterScreen() {
     if (!form.name || !form.phone || !form.plate || !reqDone) return;
     setLoading(true);
     try {
-      await taxiAPI.registerDriver({
+      const res = await taxiAPI.registerDriver({
         name:    form.name,
         phone:   form.phone,
         license: form.license,
@@ -76,11 +78,14 @@ export default function TaxiDriverRegisterScreen() {
           color: form.color,
           plate: form.plate,
           type:  form.type,
+          docs:  Object.keys(docs),
         },
       });
+      // Solo se confirma alta si el servidor registro la solicitud.
+      setSentRef(res.driverId);
       setSubmit(true);
     } catch (e: any) {
-      toast.error(e?.message || 'No se pudo enviar la solicitud');
+      toast.error(e?.message || tr('xtNoSePudoEnviarLaSolicitud'));
     }
     setLoading(false);
   };
@@ -92,12 +97,14 @@ export default function TaxiDriverRegisterScreen() {
           <View style={s.successIcon}>
             <MIcon name="check" size={40} color={GREEN} />
           </View>
-          <Text style={s.successTitle}>Solicitud enviada</Text>
+          <Text style={s.successTitle}>Solicitud registrada</Text>
           <Text style={s.successSub}>
-            Tu solicitud esta siendo revisada.{'\n'}Te contactaremos en 24-48 horas.
+            Queda como solicitud pendiente de revision.{'\n'}
+            Referencia: {sentRef}{'\n'}
+            El equipo de MiTaxi te contactara despues de revisarla.
           </Text>
           <TouchableOpacity style={s.successBtn} onPress={() => router.back()}>
-            <Text style={s.successBtnTxt}>Volver al inicio</Text>
+            <Text style={s.successBtnTxt}>{tr('backHome')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -111,8 +118,8 @@ export default function TaxiDriverRegisterScreen() {
           <MIcon name="arrow-back" size={20} color={TEXT} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={s.headerTitle}>Soy conductor</Text>
-          <Text style={s.headerSub}>Registrate en la flota MiTaxi</Text>
+          <Text style={s.headerTitle}>{tr('xtSoyConductor')}</Text>
+          <Text style={s.headerSub}>{tr('xtRegistrateEnLaFlotaMiTaxi')}</Text>
         </View>
         <View style={[s.stepBadge, { backgroundColor: ACCENT + '18' }]}>
           <Text style={[s.stepTxt, { color: ACCENT }]}>
@@ -143,9 +150,9 @@ export default function TaxiDriverRegisterScreen() {
         {tab === 'info' && (
           <>
             {[
-              { key: 'name',    label: 'NOMBRE COMPLETO',    placeholder: 'Carlos Nguema Obiang' },
+              { key: 'name',    label: tr('xtNOMBRECOMPLETO'),    placeholder: 'Carlos Nguema Obiang' },
               { key: 'phone',   label: 'TELEFONO',           placeholder: '+240 222 000 000'     },
-              { key: 'license', label: 'NUMERO DE LICENCIA', placeholder: 'GE-2024-001234'       },
+              { key: 'license', label: tr('xtNUMERODELICENCIA'), placeholder: 'GE-2024-001234'       },
             ].map(f => (
               <View key={f.key} style={s.field}>
                 <Text style={s.fieldLabel}>{f.label}</Text>
@@ -203,7 +210,7 @@ export default function TaxiDriverRegisterScreen() {
               />
             </View>
             <View style={s.field}>
-              <Text style={s.fieldLabel}>TIPO DE VEHICULO</Text>
+              <Text style={s.fieldLabel}>{tr('xtTIPODEVEHICULO')}</Text>
               <View style={s.typeRow}>
                 {VEHICLE_TYPES.map(t => (
                   <TouchableOpacity
@@ -232,7 +239,7 @@ export default function TaxiDriverRegisterScreen() {
           <>
             <View style={s.docsNote}>
               <Text style={s.docsNoteTitle}>Documentos requeridos</Text>
-              <Text style={s.docsNoteSub}>Los marcados con * son obligatorios.</Text>
+              <Text style={s.docsNoteSub}>{tr('xtLosMarcadosConSonObligatorios')} {'\n'}Aqui declaras los que tienes; la copia fisica se entrega al aprobar la solicitud.</Text>
             </View>
             {DOCS.map(doc => (
               <View key={doc.key} style={[s.docCard, !!docs[doc.key] && s.docCardDone]}>
@@ -241,18 +248,18 @@ export default function TaxiDriverRegisterScreen() {
                     <Text style={s.docLabel}>{doc.label}</Text>
                     {doc.req
                       ? <Text style={s.docReq}>*</Text>
-                      : <View style={s.docOptBadge}><Text style={s.docOptTxt}>Opcional</Text></View>
+                      : <View style={s.docOptBadge}><Text style={s.docOptTxt}>{tr('xtOpcional2')}</Text></View>
                     }
                   </View>
                   <Text style={s.docDesc}>{doc.desc}</Text>
-                  {!!docs[doc.key] && <Text style={s.docUploaded}>Subido: {docs[doc.key]}</Text>}
+                  {!!docs[doc.key] && <Text style={s.docUploaded}>Declarado: {docs[doc.key]}</Text>}
                 </View>
                 <TouchableOpacity
                   style={[s.uploadBtn, !!docs[doc.key] && s.uploadBtnDone]}
                   onPress={() => pickDoc(doc.key)}
                 >
                   <Text style={[s.uploadBtnTxt, !!docs[doc.key] && s.uploadBtnTxtDone]}>
-                    {docs[doc.key] ? 'Cambiar' : 'Subir'}
+                    {docs[doc.key] ? tr('change') : 'Declarar'}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -268,7 +275,7 @@ export default function TaxiDriverRegisterScreen() {
               {loading
                 ? <ActivityIndicator color="#fff" />
                 : <Text style={s.ctaTxt}>
-                    {reqDone ? 'Enviar solicitud' : 'Sube los documentos obligatorios (*)'}
+                    {reqDone ? tr('kySendRequest') : tr('xtSubeLosDocumentosObligatorios')}
                   </Text>
               }
             </TouchableOpacity>

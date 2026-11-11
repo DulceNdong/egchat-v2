@@ -12,16 +12,17 @@ import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Image } from 'expo-image';
 import Svg, { Path, Line, Circle, Polyline, Rect } from 'react-native-svg';
 import { apiFetch } from '../src/api';
+import { t as tr } from '../src/translations';
 
 // ── Helpers ────────────────────────────────────────────────────────
 const fmt = (n: number, c = 'XAF') => `${Number(n).toLocaleString('fr-FR')} ${c}`;
 const initials = (name: string) =>
   name.split(' ').slice(0, 2).map(w => w[0] || '').join('').toUpperCase() || '?';
 const FREQ: Record<string, { label: string; color: string }> = {
-  daily:   { label: 'Diario',   color: '#f59e0b' },
-  weekly:  { label: 'Semanal',  color: '#10b981' },
-  monthly: { label: 'Mensual',  color: '#6366f1' },
-  annual:  { label: 'Anual',    color: '#ec4899' },
+  daily:   { label: tr('setDaily'),   color: '#f59e0b' },
+  weekly:  { label: tr('setWeekly'),  color: '#10b981' },
+  monthly: { label: tr('setMonthly'),  color: '#6366f1' },
+  annual:  { label: tr('xtAnual'),    color: '#ec4899' },
 };
 
 // ── Iconos SVG ─────────────────────────────────────────────────────
@@ -135,7 +136,7 @@ export default function DjangueChatInfoScreen() {
       const data = await apiFetch(`/api/djangue/${djangueId}`);
       setGroup(data);
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'No se pudo cargar el grupo');
+      Alert.alert(tr('error'), e.message || 'No se pudo cargar el grupo');
       router.back();
     } finally {
       setLoading(false);
@@ -149,7 +150,7 @@ export default function DjangueChatInfoScreen() {
     if (group?.chat_group_id) {
       router.push(`/chat/${group.chat_group_id}` as any);
     } else {
-      Alert.alert('Chat no configurado', 'Este djangue aún no tiene grupo de chat.');
+      Alert.alert(tr('djnChatNotConfiguredTitle'), tr('djhNoChatGroupBody'));
     }
   };
 
@@ -158,7 +159,7 @@ export default function DjangueChatInfoScreen() {
       <SafeAreaView style={s.root} edges={['left', 'right']}>
         <View style={[s.center, { paddingTop: insets.top }]}>
           <ActivityIndicator size="large" color="#6366f1" />
-          <Text style={s.loadTxt}>Cargando información...</Text>
+          <Text style={s.loadTxt}>{tr('xtCargandoInformacion')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -241,7 +242,7 @@ export default function DjangueChatInfoScreen() {
         {/* ── Stats del ciclo ── */}
         <View style={s.card}>
           <View style={s.cardRow}>
-            <Text style={s.cardTitle}>Progreso del ciclo</Text>
+            <Text style={s.cardTitle}>{tr('xtProgresoDelCiclo')}</Text>
             <Text style={s.cardSub}>Turno {group.current_turn} de {group.total_turns || '?'}</Text>
           </View>
           <View style={s.progressTrack}>
@@ -260,7 +261,7 @@ export default function DjangueChatInfoScreen() {
                 <IconUsers />
               </View>
               <Text style={s.statNum}>{members.length}/{group.max_members}</Text>
-              <Text style={s.statLbl}>Integrantes</Text>
+              <Text style={s.statLbl}>{tr('xtIntegrantes')}</Text>
             </View>
             <View style={s.statItem}>
               <View style={[s.statIcon, { backgroundColor: '#f0fdf4' }]}>
@@ -303,14 +304,14 @@ export default function DjangueChatInfoScreen() {
                     </View>
                   )}
                   <View style={s.memberInfo}>
-                    <Text style={s.memberName} numberOfLines={1}>{m.users?.full_name || 'Integrante'}</Text>
+                    <Text style={s.memberName} numberOfLines={1}>{m.users?.full_name || tr('xtIntegrante')}</Text>
                     <Text style={s.memberTurn}>Turno #{m.turn_number ?? m.turn_order}</Text>
                   </View>
                   {isBeneficiary
-                    ? <View style={s.chipActive}><IconTarget /><Text style={[s.chipTxt, { color: '#6366f1' }]}>Su turno</Text></View>
+                    ? <View style={s.chipActive}><IconTarget /><Text style={[s.chipTxt, { color: '#6366f1' }]}>{tr('xtSuTurno')}</Text></View>
                     : paid
-                    ? <View style={s.chipPaid}><IconCheck /><Text style={[s.chipTxt, { color: '#10b981' }]}>Pagó</Text></View>
-                    : <View style={s.chipPending}><IconPending /><Text style={[s.chipTxt, { color: '#d97706' }]}>Pendiente</Text></View>
+                    ? <View style={s.chipPaid}><IconCheck /><Text style={[s.chipTxt, { color: '#10b981' }]}>{tr('djhPaidBadge')}</Text></View>
+                    : <View style={s.chipPending}><IconPending /><Text style={[s.chipTxt, { color: '#d97706' }]}>{tr('kyPending')}</Text></View>
                   }
                 </View>
               );
@@ -321,10 +322,10 @@ export default function DjangueChatInfoScreen() {
         {/* ── Accesos rápidos (admin) ── */}
         {isAdmin && (
           <View style={s.card}>
-            <Text style={s.cardTitle}>Gestión</Text>
+            <Text style={s.cardTitle}>{tr('xtGestion')}</Text>
             {[
-              { label: 'Configuración', sub: 'Editar nombre, cuota y frecuencia', route: '/djangue-admin-settings', icon: <IconSettings /> },
-              { label: 'Estadísticas', sub: 'Ver reportes y análisis del ciclo', route: '/djangue-admin-stats', icon: <IconStats /> },
+              { label: tr('xtConfiguracion'), sub: 'Editar nombre, cuota y frecuencia', route: '/djangue-admin-settings', icon: <IconSettings /> },
+              { label: tr('djhStatsTab'), sub: 'Ver reportes y análisis del ciclo', route: '/djangue-admin-stats', icon: <IconStats /> },
             ].map(item => (
               <TouchableOpacity
                 key={item.route}
@@ -353,7 +354,7 @@ export default function DjangueChatInfoScreen() {
         >
           <IconChat />
           <Text style={s.fabTxt}>
-            {group.chat_group_id ? 'Abrir chat del grupo' : 'Chat no disponible'}
+            {group.chat_group_id ? tr('xtAbrirChatDelGrupo') : tr('djhChatUnavailable')}
           </Text>
         </TouchableOpacity>
       </View>

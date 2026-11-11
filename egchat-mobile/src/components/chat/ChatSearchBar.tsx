@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, TextInput, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import Svg, { Circle, Line } from 'react-native-svg';
+import { useTranslation } from '../../context/LanguageContext';
 
 export function ChatSearchBar({
   value,
@@ -11,6 +12,7 @@ export function ChatSearchBar({
   onChange: (v: string) => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <View style={s.wrap}>
       <View style={s.field}>
@@ -22,7 +24,7 @@ export function ChatSearchBar({
           autoFocus
           value={value}
           onChangeText={onChange}
-          placeholder="Buscar en el chat..."
+          placeholder={t('searchInChat') + '...'}
           placeholderTextColor="#9CA3AF"
           style={s.input}
         />
@@ -33,7 +35,7 @@ export function ChatSearchBar({
         )}
       </View>
       <TouchableOpacity onPress={onClose}>
-        <Text style={s.cancel}>Cancelar</Text>
+        <Text style={s.cancel}>{t('cancel')}</Text>
       </TouchableOpacity>
     </View>
   );

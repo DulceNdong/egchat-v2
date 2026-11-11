@@ -59,18 +59,6 @@ export const MOBILE_OPERATORS = [
   { id: 'muni', name: 'MUNI', color: '#E8320A' },
 ];
 
-export type MobilePackage = { 
-  id: string; 
-  name: string; 
-  type: string; 
-  desc: string; 
-  price: number; 
-  validity: string 
-};
-
-// Los paquetes ahora se cargan dinámicamente desde /api/services/mobile/operators/:id/packages
-export const MOBILE_PACKAGES: Record<string, MobilePackage[]> = {};
-
 export const CHANNEL_COMPANIES = [
   { id: 'cc1', name: 'Canal Sol', full: 'Canal Sol Guinea Ecuatorial', color: '#0A2463', cat: 'TV Local / Generalista', desc: 'Canal de televisión local de Guinea Ecuatorial', cov: 'Nacional' },
   { id: 'cc2', name: 'Cachu y Hnos', full: 'Cachu y Hermanos Entretenimiento', color: '#1B4332', cat: 'TV Local / Entretenimiento', desc: 'Producción y entretenimiento local GQ', cov: 'Nacional' },

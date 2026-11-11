@@ -11,7 +11,9 @@ import { getSoundSettings, saveSoundSettings, RINGTONES, previewRingtone } from 
 import { Colors } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
+import { useLanguage } from '../../src/context/LanguageContext';
 import { chatAPI } from '../../src/api';
+import { t as tr } from '../../src/translations';
 
 interface CallStats {
   total: number;
@@ -55,6 +57,7 @@ export default function LlamadasScreen() {
 
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
+  const { translate: t } = useLanguage();
 
   useEffect(() => {
     getCfgBool(CFG.hdCall, true).then(setHdCall);
@@ -66,21 +69,21 @@ export default function LlamadasScreen() {
   }, []);
 
   return (
-    <SettingsLayout title="Llamadas de voz y video">
+    <SettingsLayout title={t('callsTitle')}>
 
       {/* ── Estadísticas de llamadas ───────────────── */}
-      <SettingsSection label="Estadísticas" />
+      <SettingsSection label={t('statistics')} />
       {loadingStats ? (
         <ActivityIndicator color={Colors.accent} style={{ marginVertical: 20 }} />
       ) : stats ? (
         <View style={[st.statsGrid, { backgroundColor: isDark ? '#161b22' : '#fff' }]}>
-          <StatCard icon="call" label="Total" value={String(stats.total)} color="#00c8a0" isDark={isDark} />
+          <StatCard icon="call" label={tr('total')} value={String(stats.total)} color="#00c8a0" isDark={isDark} />
           <StatCard icon="call-missed" label="Perdidas" value={String(stats.missed)} color="#ef4444" isDark={isDark} />
           <StatCard icon="mic" label="Voz" value={String(stats.audio)} color="#6366f1" isDark={isDark} />
-          <StatCard icon="videocam" label="Video" value={String(stats.video)} color="#f59e0b" isDark={isDark} />
+          <StatCard icon="videocam" label={tr('liaAttachVideo')} value={String(stats.video)} color="#f59e0b" isDark={isDark} />
           {stats.totalMinutes > 0 && (
             <View style={[st.minutesRow, { borderTopColor: isDark ? '#21262d' : '#f3f4f6' }]}>
-              <Text style={[st.minutesLabel, { color: C.textSecondary }]}>Tiempo total en llamadas</Text>
+              <Text style={[st.minutesLabel, { color: C.textSecondary }]}>{tr('setTotalCallTime')}</Text>
               <Text style={[st.minutesValue, { color: C.textPrimary }]}>
                 {stats.totalMinutes >= 60
                   ? `${Math.floor(stats.totalMinutes / 60)}h ${stats.totalMinutes % 60}m`
@@ -93,56 +96,53 @@ export default function LlamadasScreen() {
 
       <SettingsCard style={{ marginTop: 4 }}>
         <SettingsRow
-          label="Ver historial completo"
-          value="Todas las llamadas"
+          label={t('viewFullHistory')}
+          value={t('allCalls')}
           onPress={() => router.push('/call-history' as any)}
         />
       </SettingsCard>
 
-      {/* ── Calidad ───────────────────────────────── */}
-      <SettingsSection label="Calidad" />
+      <SettingsSection label={t('quality')} />
       <SettingsCard>
         <SettingsToggleRow
-          label="Llamadas HD"
-          description="Mayor calidad de audio y video"
+          label={t('hdCalls')}
+          description={t('higherQuality')}
           value={hdCall}
           onValueChange={v => { setHdCall(v); setCfgBool(CFG.hdCall, v); }}
         />
         <SettingsDivider />
         <SettingsToggleRow
-          label="Reducir uso de datos"
-          description="Menor calidad para ahorrar datos móviles"
+          label={t('reduceDataUsage')}
+          description={t('lowerQualityToSave')}
           value={saveData}
           onValueChange={v => { setSaveData(v); setCfgBool(CFG.saveDataCall, v); }}
         />
       </SettingsCard>
 
-      {/* ── Privacidad ────────────────────────────── */}
-      <SettingsSection label="Privacidad" />
+      <SettingsSection label={t('privacyTitle')} />
       <SettingsCard>
         <SettingsToggleRow
-          label="Silenciar llamadas de desconocidos"
-          description="Solo suenan llamadas de contactos"
+          label={t('muteUnknownCalls')}
+          description={t('onlyContactsRing')}
           value={muteUnknown}
           onValueChange={v => { setMuteUnknown(v); setCfgBool(CFG.muteCallUnknown, v); }}
         />
       </SettingsCard>
 
-      {/* ── Tono de llamada ───────────────────────── */}
-      <SettingsSection label="Tono de llamada" />
+      <SettingsSection label={t('ringtoneToneSection')} />
       <SettingsCard>
-        {RINGTONES.map((t, i) => (
-          <React.Fragment key={t.id}>
+        {RINGTONES.map((tone, i) => (
+          <React.Fragment key={tone.id}>
             <TouchableOpacity
               style={st.ringtoneRow}
               onPress={async () => {
-                setRingtone(t.id);
-                await saveSoundSettings({ ringtone: t.id });
-                if (t.id !== 'none') await previewRingtone();
+                setRingtone(tone.id);
+                await saveSoundSettings({ ringtone: tone.id });
+                if (tone.id !== 'none') await previewRingtone();
               }}
             >
-              <Text style={[st.ringtoneName, { color: C.textPrimary }]}>{t.name}</Text>
-              {ringtone === t.id && (
+              <Text style={[st.ringtoneName, { color: C.textPrimary }]}>{tone.name}</Text>
+              {ringtone === tone.id && (
                 <Text style={{ color: Colors.accent, fontWeight: '700' }}>✓</Text>
               )}
             </TouchableOpacity>

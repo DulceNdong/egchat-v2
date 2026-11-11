@@ -154,7 +154,7 @@ export function useOfflineQueue({ chatId, sendText, onSent, onFailed }: UseOffli
         setTimeout(() => processQueue(), 800);
       }
     });
-    return unsub;
+    return () => { unsub(); };
   }, [processQueue]);
 
   // Procesar al montar (por si había mensajes de una sesión anterior)

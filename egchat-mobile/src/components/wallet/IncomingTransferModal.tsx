@@ -11,6 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, G, Rect, Line, Polyline } from 'react-native-svg';
 import { walletAPI } from '../../api';
 import { BeacShield } from '../ui/BeacShield';
+import { useTranslation } from '../../context/LanguageContext';
 
 export interface IncomingTransfer {
   transferId: string;
@@ -85,6 +86,7 @@ function IconInfo() {
 // ── Componente principal ─────────────────────────────────────────────────────
 
 export function IncomingTransferModal({ transfer, onAccepted, onCancelled, onDismiss }: Props) {
+  const { t } = useTranslation();
   const [loading, setLoading]       = useState<'accept' | 'cancel' | null>(null);
   const [error, setError]           = useState('');
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
@@ -119,7 +121,7 @@ export function IncomingTransferModal({ transfer, onAccepted, onCancelled, onDis
       const res = await walletAPI.acceptTransfer(transfer.transferId);
       onAccepted(res.balance);
     } catch (e: any) {
-      setError(e?.message || 'Error al aceptar. Inténtalo de nuevo.');
+      setError(e?.message || t('walAcceptError'));
       setLoading(null);
     }
   };
@@ -131,7 +133,7 @@ export function IncomingTransferModal({ transfer, onAccepted, onCancelled, onDis
       await walletAPI.cancelTransfer(transfer.transferId);
       onCancelled();
     } catch (e: any) {
-      setError(e?.message || 'Error al cancelar. Inténtalo de nuevo.');
+      setError(e?.message || t('walCancelError'));
       setLoading(null);
     }
   };
@@ -156,7 +158,7 @@ export function IncomingTransferModal({ transfer, onAccepted, onCancelled, onDis
             {/* Badge de tipo */}
             <View style={st.badge}>
               <IconArrowDown />
-              <Text style={st.badgeText}>Transferencia entrante</Text>
+              <Text style={st.badgeText}>{t('walIncomingTransfer')}</Text>
             </View>
 
             {/* Remitente */}
@@ -180,7 +182,7 @@ export function IncomingTransferModal({ transfer, onAccepted, onCancelled, onDis
                 <BeacShield size={40} />
               </View>
               <View style={st.amountTexts}>
-                <Text style={st.amountLabel}>MONTO A RECIBIR</Text>
+                <Text style={st.amountLabel}>{t('walAmountToReceiveLabel')}</Text>
                 <View style={st.amountRow}>
                   <Text style={st.amountValue}>{formattedAmount}</Text>
                   <Text style={st.amountCurrency}> XAF</Text>
@@ -203,8 +205,8 @@ export function IncomingTransferModal({ transfer, onAccepted, onCancelled, onDis
                 <IconClock />
                 <Text style={[st.expiryText, isExpired && st.expiryTextExpired]}>
                   {isExpired
-                    ? 'Esta transferencia ha expirado'
-                    : `Expira en ${formatCountdown(secondsLeft)}`}
+                    ? t('walTransferExpired')
+                    : `${t('walExpiresInPrefix')} ${formatCountdown(secondsLeft)}`}
                 </Text>
               </View>
             )}
@@ -219,7 +221,7 @@ export function IncomingTransferModal({ transfer, onAccepted, onCancelled, onDis
             {/* ── Botones ── */}
             {isExpired ? (
               <TouchableOpacity style={st.dismissBtn} onPress={onDismiss}>
-                <Text style={st.dismissText}>Cerrar</Text>
+                <Text style={st.dismissText}>{t('close')}</Text>
               </TouchableOpacity>
             ) : (
               <View style={st.actions}>
@@ -228,7 +230,7 @@ export function IncomingTransferModal({ transfer, onAccepted, onCancelled, onDis
                   style={[st.cancelBtn, loading !== null && st.btnDisabled]}
                   onPress={handleCancel}
                   disabled={loading !== null}
-                  accessibilityLabel="Cancelar transferencia"
+                  accessibilityLabel={t('walCancelTransferTitle')}
                   accessibilityRole="button"
                 >
                   {loading === 'cancel' ? (
@@ -236,7 +238,7 @@ export function IncomingTransferModal({ transfer, onAccepted, onCancelled, onDis
                   ) : (
                     <View style={st.btnInner}>
                       <IconX />
-                      <Text style={st.cancelBtnText}>Cancelar</Text>
+                      <Text style={st.cancelBtnText}>{t('cancel')}</Text>
                     </View>
                   )}
                 </TouchableOpacity>
@@ -246,7 +248,7 @@ export function IncomingTransferModal({ transfer, onAccepted, onCancelled, onDis
                   style={[st.btnDisabledWrapper, loading !== null && st.btnDisabled]}
                   onPress={handleAccept}
                   disabled={loading !== null}
-                  accessibilityLabel="Aceptar y recibir dinero"
+                  accessibilityLabel={t('walAcceptReceiveDesc')}
                   accessibilityRole="button"
                 >
                   <LinearGradient
@@ -260,7 +262,7 @@ export function IncomingTransferModal({ transfer, onAccepted, onCancelled, onDis
                     ) : (
                       <View style={st.btnInner}>
                         <IconCheck />
-                        <Text style={st.acceptBtnText}>Recibir</Text>
+                        <Text style={st.acceptBtnText}>{t('receive')}</Text>
                       </View>
                     )}
                   </LinearGradient>
@@ -272,7 +274,7 @@ export function IncomingTransferModal({ transfer, onAccepted, onCancelled, onDis
             <View style={st.footerRow}>
               <IconInfo />
               <Text style={st.footerNote}>
-                Si cancelas, el dinero se devuelve al remitente.
+                {t('walCancelReturnsNote')}
               </Text>
             </View>
           </View>

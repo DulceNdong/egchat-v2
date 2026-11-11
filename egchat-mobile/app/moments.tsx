@@ -11,9 +11,10 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import { ResizeMode, Video } from 'expo-av';
 import Svg, { Path, Circle, Line, Polyline } from 'react-native-svg';
 import { router } from 'expo-router';
-import { getToken, getApiBase, authAPI } from '../src/api';
+import { getToken, getApiBase, authAPI, apiFetch } from '../src/api';
 import { EGAvatar } from '../src/components/ui';
 import { toast } from '../src/components/Toast';
 import { useThemeContext } from '../src/theme/ThemeContext';
@@ -24,6 +25,7 @@ import MomentCameraEditor, { type MomentMedia } from '../src/components/MomentCa
 import { uploadStoryMediaToSupabase } from '../src/utils/storyMediaStorage';
 import { notifyNewMoment } from '../src/notifications';
 import { MomentImageViewer, type MomentViewerPost } from '../src/components/MomentImageViewer';
+import { t as tr } from '../src/translations';
 
 // ── Tipos ─────────────────────────────────────────────────────────
 interface MomentPost {
@@ -33,6 +35,7 @@ interface MomentPost {
   user_avatar?: string;
   text?: string;
   images?: string[];
+  videos?: string[];
   likes: number;
   liked_by_me: boolean;
   comments: MomentComment[];
@@ -52,101 +55,94 @@ const formatRelativeTime = (dateStr: string) => {
   const now = Date.now();
   const then = new Date(dateStr).getTime();
   const diff = Math.floor((now - then) / 1000);
-  if (diff < 60) return 'Hace un momento';
+  if (diff < 60) return tr('xtHaceUnMomento');
   if (diff < 3600) return `Hace ${Math.floor(diff / 60)} min`;
   if (diff < 86400) return `Hace ${Math.floor(diff / 3600)}h`;
   return `Hace ${Math.floor(diff / 86400)}d`;
 };
 
-// ── API local (con fallback a mock) ───────────────────────────────
+// ── API ───────────────────────────────────────────────────────────
 const CACHE_KEY = 'egchat_moments_v1';
 
-async function fetchMoments(): Promise<MomentPost[]> {
+// La caché existe para que el feed no se quede en blanco sin señal, pero es un
+// favor y no una verdad: hay que devolver también si lo que se ve es viejo.
+async function fetchMoments(): Promise<{ posts: MomentPost[]; desdeCache: boolean }> {
   try {
     const BASE = getApiBase();
     const token = await getToken();
     const res = await fetch(`${BASE}/api/moments`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
-        await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(data));
-        return data;
-      }
-    }
-  } catch {}
-  // Fallback: caché local
-  try {
-    const cached = await AsyncStorage.getItem(CACHE_KEY);
-    if (cached) return JSON.parse(cached);
-  } catch {}
-  return [];
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (!Array.isArray(data)) throw new Error('respuesta inesperada');
+    // Se guarda tambien la lista vacia: un feed sin posts es una respuesta real
+    // y no hay que resucitar la caché anterior cada vez que se abre la pantalla.
+    await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(data));
+    return { posts: data, desdeCache: false };
+  } catch {
+    try {
+      const cached = await AsyncStorage.getItem(CACHE_KEY);
+      if (cached) return { posts: JSON.parse(cached) as MomentPost[], desdeCache: true };
+    } catch {}
+    throw new Error('sin momentos y sin caché');
+  }
 }
 
-async function createMoment(text: string, images: string[]): Promise<MomentPost | null> {
-  try {
-    const BASE = getApiBase();
-    const token = await getToken();
-    const res = await fetch(`${BASE}/api/moments`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, images }),
-    });
-    if (res.ok) return res.json();
-  } catch {}
-  // Fallback local
+// Un file:// en el POST es un momento que solo ve este teléfono: sube primero.
+async function subirMediaLocal(uris: string[], userId: string): Promise<string[]> {
+  const subidas: string[] = [];
+  for (const uri of uris) {
+    if (/^https?:\/\//.test(uri)) { subidas.push(uri); continue; }
+    const url = await uploadStoryMediaToSupabase(userId, uri, 'image');
+    if (!url) throw new Error('no se pudo subir la imagen');
+    subidas.push(url);
+  }
+  return subidas;
+}
+
+async function createMoment(text: string, images: string[]): Promise<MomentPost> {
+  const BASE = getApiBase();
+  const token = await getToken();
   const me = await authAPI.me().catch(() => null);
-  const local: MomentPost = {
-    id: `local-${Date.now()}`,
-    user_id: me?.id || 'local',
-    user_name: me?.full_name || 'Yo',
-    user_avatar: me?.avatar_url,
-    text,
-    images,
-    likes: 0,
-    liked_by_me: false,
-    comments: [],
-    created_at: new Date().toISOString(),
-  };
-  return local;
+  const subidas = await subirMediaLocal(images, me?.id || 'anon');
+  const res = await fetch(`${BASE}/api/moments`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, images: subidas }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
 }
 
-async function toggleLike(postId: string): Promise<boolean> {
-  try {
-    const BASE = getApiBase();
-    const token = await getToken();
-    const res = await fetch(`${BASE}/api/moments/${postId}/like`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (res.ok) {
-      const data = await res.json();
-      return data.liked;
-    }
-  } catch {}
-  return true;
+// El servidor devuelve el estado real (liked y el conteo fresco); se usa ese y no
+// un booleano inventado cuando la petición falla.
+async function toggleLike(postId: string): Promise<{ liked: boolean; likes: number }> {
+  const BASE = getApiBase();
+  const token = await getToken();
+  const res = await fetch(`${BASE}/api/moments/${postId}/like`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  return { liked: !!data.liked, likes: Number(data.likes) || 0 };
 }
 
-async function addComment(postId: string, text: string): Promise<MomentComment | null> {
-  try {
-    const BASE = getApiBase();
-    const token = await getToken();
-    const res = await fetch(`${BASE}/api/moments/${postId}/comments`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
-    });
-    if (res.ok) return res.json();
-  } catch {}
-  const me = await authAPI.me().catch(() => null);
-  return {
-    id: `local-${Date.now()}`,
-    user_id: me?.id || 'local',
-    user_name: me?.full_name || 'Yo',
-    text,
-    created_at: new Date().toISOString(),
-  };
+async function deleteMoment(postId: string): Promise<void> {
+  await apiFetch(`/api/moments/${postId}`, { method: 'DELETE' });
+}
+
+async function addComment(postId: string, text: string): Promise<MomentComment> {
+  const BASE = getApiBase();
+  const token = await getToken();
+  const res = await fetch(`${BASE}/api/moments/${postId}/comments`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
 }
 
 // ── Componente principal ──────────────────────────────────────────
@@ -154,6 +150,8 @@ export default function MomentsScreen() {
   const [posts, setPosts] = useState<MomentPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [desdeCache, setDesdeCache] = useState(false);
+  const [cargaFallo, setCargaFallo] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const [commentingPost, setCommentingPost] = useState<string | null>(null);
@@ -169,8 +167,16 @@ export default function MomentsScreen() {
   const load = useCallback(async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true);
     try {
-      const data = await fetchMoments();
+      const { posts: data, desdeCache: viejo } = await fetchMoments();
       setPosts(data);
+      setDesdeCache(viejo);
+      setCargaFallo(false);
+      if (viejo) toast.info(tr('xtSinConexion'));
+    } catch {
+      // Sin red y sin caché: decir que no hay posts seria otro modo de mentir.
+      setDesdeCache(false);
+      setCargaFallo(true);
+      toast.error(tr('xtNoSePudoCargar'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -182,46 +188,53 @@ export default function MomentsScreen() {
     load();
   }, []);
 
-  const handleLike = useCallback(async (postId: string) => {
-    setPosts(prev => prev.map(p =>
-      p.id === postId
-        ? { ...p, liked_by_me: !p.liked_by_me, likes: p.liked_by_me ? p.likes - 1 : p.likes + 1 }
-        : p
-    ));
-    await toggleLike(postId);
+  const handleLike = useCallback(async (postId: string): Promise<{ liked: boolean; likes: number } | null> => {
+    try {
+      const estado = await toggleLike(postId);
+      setPosts(prev => prev.map(p =>
+        p.id === postId ? { ...p, liked_by_me: estado.liked, likes: estado.likes } : p
+      ));
+      return estado;
+    } catch {
+      toast.error(tr('xtNoSePudoCargar'));
+      return null;
+    }
   }, []);
 
   const handleComment = useCallback(async () => {
     if (!commentingPost || !commentText.trim()) return;
-    const text = commentText.trim();
+    const texto = commentText.trim();
     setCommentText('');
-    const comment = await addComment(commentingPost, text);
-    if (comment) {
+    try {
+      const comentario = await addComment(commentingPost, texto);
       setPosts(prev => prev.map(p =>
         p.id === commentingPost
-          ? { ...p, comments: [...p.comments, comment] }
+          ? { ...p, comments: [...p.comments, comentario] }
           : p
       ));
+    } catch {
+      setCommentText(texto); // lo que escribió no se pierde
+      toast.error(tr('xtNoSePudoCargar'));
     }
   }, [commentingPost, commentText]);
 
   // ── Handler cámara → publicar Moment ──────────────────────────
   const handleCameraDone = useCallback(async (media: MomentMedia) => {
     setShowCamera(false);
-    // Subir la imagen/video a Supabase Storage para tener URL pública
     let publicUrl = media.uri;
-    if (!media.uri.startsWith('http://') && !media.uri.startsWith('https://')) {
+    if (!/^https?:\/\//.test(media.uri)) {
       const uploaded = await uploadStoryMediaToSupabase(
         currentUserId || 'unknown',
         media.uri,
         media.type === 'video' ? 'video' : 'image',
       );
-      if (uploaded) publicUrl = uploaded;
+      // Si la subida falla no se abre el modal con un file:// que el servidor
+      // guardaria como si fuera una foto publica.
+      if (!uploaded) { toast.error(tr('xtNoSePudoCargar')); return; }
+      publicUrl = uploaded;
     }
-    // Abrir modal de texto con la imagen ya lista
-    setShowCreate(true);
-    // Guardamos la URL en un ref para que CreatePostModal la use como imagen precargada
     pendingMediaRef.current = { ...media, uri: publicUrl };
+    setShowCreate(true);
   }, [currentUserId]);
 
   const pendingMediaRef = React.useRef<MomentMedia | null>(null);
@@ -238,8 +251,20 @@ export default function MomentsScreen() {
         {item.user_id === currentUserId && (
           <TouchableOpacity
             onPress={() => Alert.alert('Post', 'Opciones', [
-              { text: 'Eliminar', style: 'destructive', onPress: () => setPosts(p => p.filter(x => x.id !== item.id)) },
-              { text: 'Cancelar', style: 'cancel' },
+              {
+                text: tr('delete'), style: 'destructive',
+                onPress: async () => {
+                  setPosts(p => p.filter(x => x.id !== item.id)); // optimistic
+                  try {
+                    await deleteMoment(item.id);
+                  } catch {
+                    // Si falla el servidor, revertir el post y avisar
+                    setPosts(p => [item, ...p.filter(x => x.id !== item.id)]);
+                    toast.error(tr('xtNoSePudoEliminarIntentaDeNuevo'));
+                  }
+                },
+              },
+              { text: tr('cancel'), style: 'cancel' },
             ])}
           >
             <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={C.textTertiary} strokeWidth={2} strokeLinecap="round">
@@ -280,6 +305,21 @@ export default function MomentsScreen() {
                 </View>
               )}
             </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
+      {/* Videos — los momentos que se publican desde /stories traen clips */}
+      {item.videos && item.videos.length > 0 && (
+        <View style={ps.videosWrap}>
+          {item.videos.map((uri, i) => (
+            <Video
+              key={i}
+              source={{ uri }}
+              style={ps.video}
+              resizeMode={ResizeMode.CONTAIN}
+              useNativeControls
+            />
           ))}
         </View>
       )}
@@ -325,7 +365,7 @@ export default function MomentsScreen() {
         <View style={[ps.commentInput, { backgroundColor: C.bgSecondary, borderTopColor: C.borderLight }]}>
           <TextInput
             style={[ps.commentInputText, { color: C.textPrimary }]}
-            placeholder="Escribe un comentario..."
+            placeholder={tr('xtEscribeUnComentario')}
             placeholderTextColor={C.textTertiary}
             value={commentText}
             onChangeText={setCommentText}
@@ -384,29 +424,45 @@ export default function MomentsScreen() {
             renderItem={renderPost}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} colors={['#00C8A0']} />}
             contentContainerStyle={{ paddingBottom: insets.bottom + 20, flexGrow: 1, backgroundColor: C.bgPrimary }}
-            ListEmptyComponent={
-              <View style={s.empty}>
-                <View style={[s.emptyIconWrap, { backgroundColor: isDark ? '#1a2530' : '#f0faf6' }]}>
-                  <Svg width={48} height={48} viewBox="0 0 24 24" fill="none">
-                    {/* Cuerpo cámara */}
-                    <Path
-                      d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
-                      stroke="#00C8A0"
-                      strokeWidth={1.6}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    {/* Lente */}
-                    <Circle cx={12} cy={13} r={4} stroke="#00C8A0" strokeWidth={1.6} />
-                    {/* Destello superior derecho */}
-                    <Circle cx={18.5} cy={9.5} r={1} fill="#00C8A0" />
-                  </Svg>
+            ListHeaderComponent={
+              desdeCache ? (
+                <View style={[s.staleBar, { backgroundColor: isDark ? '#2a2317' : '#fff8e6' }]}>
+                  <Text style={[s.staleText, { color: C.textSecondary }]}>{tr('xtSinConexion')}</Text>
                 </View>
-                <Text style={[s.emptyTitle, { color: C.textPrimary }]}>Sin posts aún</Text>
-                <Text style={[s.emptyText, { color: C.textTertiary }]}>
-                  Comparte un momento con tus contactos
-                </Text>
-              </View>
+              ) : null
+            }
+            ListEmptyComponent={
+              cargaFallo ? (
+                <View style={s.empty}>
+                  <Text style={[s.emptyTitle, { color: C.textPrimary }]}>{tr('xtNoSePudoCargar')}</Text>
+                  <TouchableOpacity style={s.retryBtn} onPress={() => load(true)}>
+                    <Text style={s.retryText}>{tr('retry')}</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={s.empty}>
+                  <View style={[s.emptyIconWrap, { backgroundColor: isDark ? '#1a2530' : '#f0faf6' }]}>
+                    <Svg width={48} height={48} viewBox="0 0 24 24" fill="none">
+                      {/* Cuerpo cámara */}
+                      <Path
+                        d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
+                        stroke="#00C8A0"
+                        strokeWidth={1.6}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      {/* Lente */}
+                      <Circle cx={12} cy={13} r={4} stroke="#00C8A0" strokeWidth={1.6} />
+                      {/* Destello superior derecho */}
+                      <Circle cx={18.5} cy={9.5} r={1} fill="#00C8A0" />
+                    </Svg>
+                  </View>
+                  <Text style={[s.emptyTitle, { color: C.textPrimary }]}>{tr('xtSinPostsAun')}</Text>
+                  <Text style={[s.emptyText, { color: C.textTertiary }]}>
+                    Comparte un momento con tus contactos
+                  </Text>
+                </View>
+              )
             }
           />
         )
@@ -438,12 +494,12 @@ export default function MomentsScreen() {
         post={viewerPost}
         initialImageIndex={viewerImageIdx}
         onClose={() => setViewerPost(null)}
-        onLike={(postId) => {
-          handleLike(postId);
-          // Actualizar el post en el viewer también
+        onLike={async (postId) => {
+          const estado = await handleLike(postId);
+          if (!estado) return;
           setViewerPost(prev =>
             prev && prev.id === postId
-              ? { ...prev, liked_by_me: !prev.liked_by_me, likes: prev.liked_by_me ? prev.likes - 1 : prev.likes + 1 }
+              ? { ...prev, liked_by_me: estado.liked, likes: estado.likes }
               : prev
           );
         }}
@@ -498,20 +554,23 @@ function CreatePostModal({
   const handleCreate = async () => {
     if (!text.trim() && images.length === 0) { toast.error('Escribe algo o añade una foto'); return; }
     setCreating(true);
+    const limpio = text.trim();
     try {
-      const post = await createMoment(text.trim(), images);
-      if (post) {
-        onCreated(post);
-        setText('');
-        setImages([]);
-        toast.success('¡Moment publicado! 🎉');
-        // Notificar a contactos via push
-        notifyNewMoment({
-          momentId: post.id,
-          authorName: post.user_name,
-          preview: text.trim() || (images.length > 0 ? '📸 Nueva foto' : undefined),
-        }).catch(() => {});
-      }
+      const post = await createMoment(limpio, images);
+      onCreated(post);
+      setText('');
+      setImages([]);
+      toast.success(tr('xtMomentPublicado'));
+      // Notificar a contactos via push
+      notifyNewMoment({
+        momentId: post.id,
+        authorName: post.user_name,
+        preview: limpio || (images.length > 0 ? tr('xtNuevaFoto') : undefined),
+      }).catch(() => {});
+    } catch {
+      // El momento no existe en el servidor: no se añade al feed ni se dice que
+      // se publico. El texto y las fotos se quedan en el modal para reintentar.
+      toast.error(tr('xtNoSePudoCargar'));
     } finally {
       setCreating(false);
     }
@@ -527,11 +586,11 @@ function CreatePostModal({
               <Line x1="18" y1="6" x2="6" y2="18"/><Line x1="6" y1="6" x2="18" y2="18"/>
             </Svg>
           </TouchableOpacity>
-          <Text style={cm.title}>Nuevo post</Text>
+          <Text style={cm.title}>{tr('xtNuevoPost')}</Text>
           <TouchableOpacity onPress={handleCreate} disabled={creating} style={cm.publishBtn}>
             {creating
               ? <ActivityIndicator color="#fff" size="small" />
-              : <Text style={cm.publishText}>Publicar</Text>
+              : <Text style={cm.publishText}>{tr('xtPublicar')}</Text>
             }
           </TouchableOpacity>
         </LinearGradient>
@@ -539,7 +598,7 @@ function CreatePostModal({
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
           <TextInput
             style={[cm.textInput, { color: C.textPrimary, borderColor: C.borderLight }]}
-            placeholder="¿Qué está pasando?"
+            placeholder={tr('xtQueEstaPasando')}
             placeholderTextColor={C.textTertiary}
             value={text}
             onChangeText={setText}
@@ -573,7 +632,7 @@ function CreatePostModal({
               <Svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke={C.textTertiary} strokeWidth={1.8} strokeLinecap="round">
                 <Polyline points="4 17 10 11 13 14 17 10 21 14"/><Polyline points="21 4 12 4 12 10"/><Path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/>
               </Svg>
-              <Text style={[cm.addPhotoText, { color: C.textTertiary }]}>Añadir fotos</Text>
+              <Text style={[cm.addPhotoText, { color: C.textTertiary }]}>{tr('xtAnadirFotos')}</Text>
             </TouchableOpacity>
           )}
         </ScrollView>
@@ -593,6 +652,10 @@ const s = StyleSheet.create({
   emptyIconWrap: { width: 96, height: 96, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
   emptyTitle: { fontSize: 17, fontWeight: '700', marginBottom: 6 },
   emptyText: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
+  staleBar: { paddingHorizontal: 16, paddingVertical: 8, marginBottom: 2 },
+  staleText: { fontSize: 12, fontWeight: '600' },
+  retryBtn: { marginTop: 14, paddingHorizontal: 22, paddingVertical: 10, borderRadius: 20, backgroundColor: '#00C8A0' },
+  retryText: { color: '#fff', fontSize: 14, fontWeight: '700' },
 });
 
 const ps = StyleSheet.create({
@@ -606,6 +669,8 @@ const ps = StyleSheet.create({
   image: { width: 120, height: 120, borderRadius: 6 },
   imageSingle: { width: '100%', height: 220, borderRadius: 10 },
   imageHalf: { width: '49%', height: 160, borderRadius: 8 },
+  videosWrap: { marginBottom: 10, gap: 6 },
+  video: { width: '100%', height: 200, borderRadius: 10 },
   moreOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.52)',

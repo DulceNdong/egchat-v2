@@ -3,6 +3,7 @@
 // El usuario puede crear, editar y borrar plantillas de texto
 // ══════════════════════════════════════════════════════════════════
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { t as tr } from '../translations';
 
 const KEY = 'egchat_quick_replies_v1';
 
@@ -14,23 +15,23 @@ export interface QuickReply {
 }
 
 // Respuestas predeterminadas para nuevos usuarios
-const DEFAULTS: QuickReply[] = [
-  { id: 'qr_1', shortcut: '/hola', text: '¡Hola! ¿Cómo estás?', createdAt: new Date().toISOString() },
-  { id: 'qr_2', shortcut: '/gracias', text: 'Muchas gracias por tu mensaje, te responderé pronto.', createdAt: new Date().toISOString() },
-  { id: 'qr_3', shortcut: '/ok', text: '¡Perfecto, entendido! 👍', createdAt: new Date().toISOString() },
-  { id: 'qr_4', shortcut: '/pronto', text: 'Te respondo en cuanto pueda, estoy ocupado ahora mismo.', createdAt: new Date().toISOString() },
-  { id: 'qr_5', shortcut: '/precio', text: '¿Podrías indicarme tu presupuesto o lo que necesitas exactamente?', createdAt: new Date().toISOString() },
+const buildDefaults = (): QuickReply[] => [
+  { id: 'qr_1', shortcut: '/hola', text: tr('xtHolaComoEstas'), createdAt: new Date().toISOString() },
+  { id: 'qr_2', shortcut: '/gracias', text: tr('xtMuchasGraciasPorTuMensajeTeResponderePronto'), createdAt: new Date().toISOString() },
+  { id: 'qr_3', shortcut: '/ok', text: tr('xtPerfectoEntendido'), createdAt: new Date().toISOString() },
+  { id: 'qr_4', shortcut: '/pronto', text: tr('xtTeRespondoEnCuantoPuedaEstoyOcupadoAhoraMism'), createdAt: new Date().toISOString() },
+  { id: 'qr_5', shortcut: '/precio', text: tr('xtPodriasIndicarmeTuPresupuestoOLoQueNecesitas'), createdAt: new Date().toISOString() },
 ];
 
 export async function getAllQuickReplies(): Promise<QuickReply[]> {
   try {
     const raw = await AsyncStorage.getItem(KEY);
     if (!raw) {
-      await AsyncStorage.setItem(KEY, JSON.stringify(DEFAULTS));
-      return DEFAULTS;
+      await AsyncStorage.setItem(KEY, JSON.stringify(buildDefaults()));
+      return buildDefaults();
     }
     return JSON.parse(raw) as QuickReply[];
-  } catch { return DEFAULTS; }
+  } catch { return buildDefaults(); }
 }
 
 export async function saveQuickReply(reply: Omit<QuickReply, 'id' | 'createdAt'>): Promise<QuickReply> {

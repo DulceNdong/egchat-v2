@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Line, Polyline, Rect, Circle } from 'react-native-svg';
 import { EGAvatar } from '../ui';
+import { useTranslation } from '../../context/LanguageContext';
 
 export interface ChatHeaderProps {
   chatName: string;
@@ -36,8 +37,9 @@ export function ChatHeader({
   onGroupCall,
   onMenuPress,
 }: ChatHeaderProps) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const statusText = isTyping ? 'Escribiendo...' : subtitle;
+  const statusText = isTyping ? t('chtTyping') : subtitle;
   const statusColor = isTyping ? '#c76b8a' : isOnline ? '#7c9e8f' : '#a89bb0';
   const iconColor = '#5c3d5e';
 

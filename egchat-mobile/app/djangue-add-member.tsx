@@ -14,6 +14,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router';
 import Svg, { Path, Line, Circle } from 'react-native-svg';
 import { apiFetch } from '../src/api';
+import { t as tr } from '../src/translations';
 
 const initials = (name: string) =>
   name ? name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : '?';
@@ -37,7 +38,7 @@ export default function DjangueAddMemberScreen() {
         body: JSON.stringify({ phone: phone.trim() }),
       });
       if (!res.exists) {
-        Alert.alert('No encontrado', 'No hay ningún usuario con ese teléfono en EGChat.');
+        Alert.alert(tr('djhNotFoundTitle'), tr('djhNoUserWithPhone'));
         return;
       }
       // Obtener info del usuario (si existe)
@@ -45,10 +46,10 @@ export default function DjangueAddMemberScreen() {
       if (contacts && contacts.length > 0) {
         setPreview(contacts[0]);
       } else {
-        setPreview({ full_name: 'Usuario EGChat', phone: phone.trim(), avatar_url: null });
+        setPreview({ full_name: tr('djhEgchatUser'), phone: phone.trim(), avatar_url: null });
       }
     } catch (e: any) {
-      Alert.alert('Error', e.message);
+      Alert.alert(tr('error'), e.message);
     } finally {
       setChecking(false);
     }
@@ -56,8 +57,8 @@ export default function DjangueAddMemberScreen() {
 
   const handleAdd = async () => {
     const token = await AsyncStorage.getItem('token');
-    if (!token) return Alert.alert('No autenticado', 'Debes iniciar sesión.');
-    if (!phone.trim()) return Alert.alert('Teléfono requerido', 'Ingresa el teléfono del integrante.');
+    if (!token) return Alert.alert(tr('djhNotAuthTitle'), 'Debes iniciar sesión.');
+    if (!phone.trim()) return Alert.alert(tr('djhPhoneRequiredTitle'), 'Ingresa el teléfono del integrante.');
     setLoading(true);
     try {
       const result = await apiFetch(`/api/djangue/${id}/members`, {
@@ -65,13 +66,13 @@ export default function DjangueAddMemberScreen() {
         body: JSON.stringify({ phone: phone.trim() }),
       });
       Alert.alert(
-        '✅ Integrante agregado',
-        `${result.user?.full_name || 'Usuario'} se unió al djangue.`,
+        tr('djhMemberAddedTitle'),
+        `${result.user?.full_name || tr('setUser')} ${tr('djhJoinedSuffix')}`,
         [{ text: 'Continuar', onPress: () => { setPhone(''); setPreview(null); } },
-         { text: 'Volver', onPress: () => router.back() }],
+         { text: tr('djhBack'), onPress: () => router.back() }],
       );
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'No se pudo agregar el integrante');
+      Alert.alert(tr('error'), e.message || 'No se pudo agregar el integrante');
     } finally {
       setLoading(false);
     }
@@ -88,8 +89,8 @@ export default function DjangueAddMemberScreen() {
           </Svg>
         </TouchableOpacity>
         <View style={{ flex: 1, alignItems: 'center' }}>
-          <Text style={s.headerTitle}>Agregar Integrante</Text>
-          <Text style={s.headerSub}>Busca por número de teléfono</Text>
+          <Text style={s.headerTitle}>{tr('djhAddMember')}</Text>
+          <Text style={s.headerSub}>{tr('djhSearchByPhone')}</Text>
         </View>
         <View style={{ width: 40 }} />
       </View>
@@ -158,13 +159,13 @@ export default function DjangueAddMemberScreen() {
                 <Circle cx="12" cy="12" r="10"/>
                 <Path d="M12 16v-4M12 8h.01"/>
               </Svg>
-              <Text style={s.infoTitle}>Cómo funciona</Text>
+              <Text style={s.infoTitle}>{tr('djhHowItWorks')}</Text>
             </View>
             {[
-              'El integrante debe tener cuenta en EGChat',
-              'Se le asignará el siguiente número de turno',
-              'Recibirá el fondo del grupo cuando sea su turno',
-              'Solo el responsable puede agregar hasta el máximo',
+              tr('djhInfoNeedsAccount'),
+              tr('djhInfoNextTurn'),
+              tr('djhInfoReceivesFund'),
+              tr('djhInfoOnlyLead'),
             ].map((txt, i) => (
               <View key={i} style={s.infoItem}>
                 <View style={s.infoDot} />
@@ -183,7 +184,7 @@ export default function DjangueAddMemberScreen() {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={s.addBtnTxt}>Agregar al Djangue</Text>
+              <Text style={s.addBtnTxt}>{tr('djhAddToDjangue')}</Text>
             )}
           </TouchableOpacity>
         </View>

@@ -1,5 +1,6 @@
 import type { HomeNewsItem } from '../data/homeNews';
 import { HOME_NEWS } from '../data/homeNews';
+import { t as tr } from '../translations';
 
 const RSS_FEEDS: { url: string; source: string }[] = [
   { url: 'https://lagacetadeguinea.com/feed/', source: 'La Gaceta de Guinea' },
@@ -32,7 +33,7 @@ function parseRssItems(xml: string, source: string): HomeNewsItem[] {
       const d = new Date(pubMatch[1].trim());
       if (!Number.isNaN(d.getTime())) {
         const diffH = Math.round((Date.now() - d.getTime()) / 3600000);
-        time = diffH < 1 ? 'Hace un momento' : diffH < 24 ? `Hace ${diffH} h` : 'Ayer';
+        time = diffH < 1 ? tr('xtHaceUnMomento') : diffH < 24 ? `Hace ${diffH} h` : tr('msgYesterday');
       }
     }
     items.push({

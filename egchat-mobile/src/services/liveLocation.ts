@@ -4,6 +4,7 @@
 // ══════════════════════════════════════════════════════════════════
 import * as Location from 'expo-location';
 import { chatAPI, getToken, getApiBase } from '../api';
+import { t as tr } from '../translations';
 
 export interface LiveLocationSession {
   chatId: string;
@@ -26,7 +27,7 @@ export async function startLiveLocation(
   // Pedir permisos
   const { status } = await Location.requestForegroundPermissionsAsync();
   if (status !== 'granted') {
-    throw new Error('Se necesitan permisos de ubicación para compartir tu posición');
+    throw new Error(tr('xtSeNecesitanPermisosDeUbicacionParaCompartirTuPosic'));
   }
 
   // Detener sesión previa si existía
@@ -41,7 +42,7 @@ export async function startLiveLocation(
       // Enviar al chat como mensaje de tipo location con live:true
       await chatAPI.sendMessage(chatId, {
         type: 'live_location',
-        text: `📍 Ubicación en vivo\nlat:${latitude.toFixed(6)},lng:${longitude.toFixed(6)}`,
+        text: tr('locLiveShare') + '\nlat:' + latitude.toFixed(6) + ',lng:' + longitude.toFixed(6),
         file_url: `geo:${latitude},${longitude}?live=true`,
       });
     } catch { /* silencioso */ }
@@ -69,7 +70,7 @@ export function stopLiveLocation(chatId: string) {
     // Notificar al chat que se detuvo
     chatAPI.sendMessage(chatId, {
       type: 'location',
-      text: '📍 Ubicación en vivo finalizada',
+      text: tr('locLiveEnded'),
     }).catch(() => {});
   }
 }

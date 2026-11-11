@@ -9,12 +9,14 @@ import { saveKycDraft } from '../../src/services/kycStorage';
 import { verifyBiometric } from '../../src/services/kycService';
 import { getNetworkStatus } from '../../src/store/offlineStore';
 import { enqueueKycAction } from '../../src/hooks/useKycOfflineSync';
+import { useTranslation } from '../../src/context/LanguageContext';
 
 const MAX_ATTEMPTS = 3;
 
 export default function Step3() {
   const store = useKycStore();
   const bio   = store.biometricData;
+  const { t } = useTranslation();
 
   const [verifying, setVerifying] = useState(false);
   const [error, setError]         = useState('');
@@ -60,7 +62,7 @@ export default function Step3() {
     if (newAttempts >= MAX_ATTEMPTS) {
       setFailed(true);
     } else {
-      setError(`Intento ${newAttempts} de ${MAX_ATTEMPTS}. Inténtalo de nuevo.`);
+      setError(`${t('kyAttempt')} ${newAttempts} ${t('kyAttemptOf')} ${MAX_ATTEMPTS}. ${t('setTryAgain')}.`);
     }
   };
 
@@ -77,8 +79,8 @@ export default function Step3() {
     return (
       <View style={st.failedWrap}>
         <Text style={st.failedIcon}>❌</Text>
-        <Text style={st.failedTitle}>No pudimos verificar tu identidad</Text>
-        <Text style={st.failedSub}>Has superado el número máximo de intentos.</Text>
+        <Text style={st.failedTitle}>{t('kyFailedTitle')}</Text>
+        <Text style={st.failedSub}>{t('kyFailedSub')}</Text>
         <TouchableOpacity
           style={st.retryBtn}
           onPress={() => {
@@ -86,10 +88,10 @@ export default function Step3() {
             setFailed(false);
           }}
         >
-          <Text style={st.retryBtnText}>Intentar más tarde</Text>
+          <Text style={st.retryBtnText}>{t('kyRetryLater')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={st.backBtn} onPress={() => router.back()}>
-          <Text style={st.backBtnText}>Volver atrás</Text>
+          <Text style={st.backBtnText}>{t('kyGoBack')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -98,16 +100,14 @@ export default function Step3() {
   return (
     <KycStepLayout
       step={3} completed={store.completedSteps}
-      title="Verificación Biométrica"
+      title={t('kyBiometricVerification')}
       onBack={() => router.push('/kyc/step-2')}
       onNext={handleNext}
       nextDisabled={!canContinue || verifying}
       loading={verifying}
       onExit={() => router.back()}
     >
-      <Text style={st.instructions}>
-        Sigue las instrucciones en pantalla para tomar tu selfie con prueba de vida.
-      </Text>
+      <Text style={st.instructions}>{t('kySelfieInstructions')}</Text>
 
       {!canContinue ? (
         <LivenessCapture
@@ -119,10 +119,10 @@ export default function Step3() {
       ) : (
         <View style={st.successWrap}>
           <Text style={st.successIcon}>✅</Text>
-          <Text style={st.successTitle}>Identidad verificada</Text>
+          <Text style={st.successTitle}>{t('kyIdentityVerified')}</Text>
           {bio.faceMatchScore != null && (
             <Text style={st.matchScore}>
-              Coincidencia facial: {Math.round(bio.faceMatchScore * 100)}%
+              {t('kyFaceMatch')} {Math.round(bio.faceMatchScore * 100)}%
             </Text>
           )}
         </View>

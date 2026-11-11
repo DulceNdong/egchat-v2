@@ -31,6 +31,7 @@ import { BlurView } from 'expo-blur';
 import * as FileSystem from 'expo-file-system/legacy';
 import { toast } from './Toast';
 import Svg, { Path, Line, Polyline, Circle, Polygon, Rect } from 'react-native-svg';
+import { t as tr } from '../translations';
 
 const { width: W, height: H } = Dimensions.get('window');
 
@@ -247,12 +248,12 @@ const ShareSheet: React.FC<ShareSheetProps> = ({
         localUri = dest;
       }
       if (Sharing && (await (Sharing as any).isAvailableAsync?.())) {
-        await (Sharing as any).shareAsync(localUri, { mimeType: 'image/jpeg', dialogTitle: 'Guardar imagen' });
+        await (Sharing as any).shareAsync(localUri, { mimeType: 'image/jpeg', dialogTitle: tr('xtGuardarImagen') });
       } else {
-        Alert.alert('✓ Descargado', 'Imagen lista para guardar');
+        Alert.alert('✓ Descargado', tr('xtImagenListaParaGuardar'));
       }
     } catch {
-      Alert.alert('Error', 'No se pudo guardar la imagen');
+      Alert.alert(tr('error'), 'No se pudo guardar la imagen');
     }
   };
 
@@ -268,7 +269,7 @@ const ShareSheet: React.FC<ShareSheetProps> = ({
         localUri = dest;
       }
       if (Sharing && (await (Sharing as any).isAvailableAsync?.())) {
-        await (Sharing as any).shareAsync(localUri, { mimeType: 'image/jpeg', dialogTitle: 'Compartir imagen' });
+        await (Sharing as any).shareAsync(localUri, { mimeType: 'image/jpeg', dialogTitle: tr('xtCompartirImagen') });
       } else {
         await Share.share({ url: localUri, message: item.name || '' });
       }
@@ -285,9 +286,9 @@ const ShareSheet: React.FC<ShareSheetProps> = ({
       const Clipboard = await import('expo-clipboard');
       const cb = (Clipboard as any).default ?? Clipboard;
       await cb.setStringAsync(item.uri);
-      Alert.alert('✓ Copiado', 'Enlace de imagen copiado');
+      Alert.alert(tr('xtCopiado'), 'Enlace de imagen copiado');
     } catch {
-      Alert.alert('Error', 'No se pudo copiar');
+      Alert.alert(tr('error'), 'No se pudo copiar');
     }
   };
 
@@ -309,11 +310,11 @@ const ShareSheet: React.FC<ShareSheetProps> = ({
       );
       const Sharing = await import('expo-sharing').catch(() => null);
       if (Sharing && (await (Sharing as any).isAvailableAsync?.())) {
-        await (Sharing as any).shareAsync(result.uri, { mimeType: 'image/webp', dialogTitle: 'Guardar sticker' });
+        await (Sharing as any).shareAsync(result.uri, { mimeType: 'image/webp', dialogTitle: tr('xtGuardarSticker') });
       }
       Alert.alert('✓ Sticker listo', 'Sticker 512×512 generado');
     } catch {
-      Alert.alert('Error', 'No se pudo crear el sticker');
+      Alert.alert(tr('error'), 'No se pudo crear el sticker');
     }
   };
 
@@ -327,7 +328,7 @@ const ShareSheet: React.FC<ShareSheetProps> = ({
       const { openURL } = await import('expo-linking');
       await openURL(`https://lens.google.com/uploadbyurl?url=${encodeURIComponent(item.uri)}`);
     } catch {
-      Alert.alert('Error', 'No se pudo abrir el navegador');
+      Alert.alert(tr('error'), 'No se pudo abrir el navegador');
     }
   };
 
@@ -336,16 +337,16 @@ const ShareSheet: React.FC<ShareSheetProps> = ({
 
   // Grid 4 + 4
   const row1 = [
-    { icon: <IcoSave />,         label: 'Guardar',    color: '#10b981', bg: 'rgba(16,185,129,0.2)',  onPress: handleSave },
-    { icon: <IcoShareSheet />,   label: 'Compartir',  color: '#6366f1', bg: 'rgba(99,102,241,0.2)',  onPress: handleShare },
+    { icon: <IcoSave />,         label: tr('save'),    color: '#10b981', bg: 'rgba(16,185,129,0.2)',  onPress: handleSave },
+    { icon: <IcoShareSheet />,   label: tr('share'),  color: '#6366f1', bg: 'rgba(99,102,241,0.2)',  onPress: handleShare },
     { icon: <IcoForwardSheet />, label: 'Reenviar',   color: '#f59e0b', bg: 'rgba(245,158,11,0.2)',  onPress: handleForward },
     { icon: <IcoCopy />,         label: 'Copiar',     color: '#0ea5e9', bg: 'rgba(14,165,233,0.2)',  onPress: handleCopy },
   ];
   const row2 = [
     { icon: <IcoSticker />,   label: 'Sticker',     color: '#a855f7', bg: 'rgba(168,85,247,0.2)',  onPress: handleSticker },
-    { icon: <IcoProfile />,   label: 'Foto perfil', color: '#14b8a6', bg: 'rgba(20,184,166,0.2)',  onPress: handleProfile },
-    { icon: <IcoSearch />,    label: 'Buscar web',  color: '#f97316', bg: 'rgba(249,115,22,0.2)',  onPress: handleSearchWeb },
-    { icon: <IcoWallpaper />, label: 'Fondo',       color: '#ec4899', bg: 'rgba(236,72,153,0.2)',  onPress: handleWallpaper },
+    { icon: <IcoProfile />,   label: tr('xtFotoPerfil'), color: '#14b8a6', bg: 'rgba(20,184,166,0.2)',  onPress: handleProfile },
+    { icon: <IcoSearch />,    label: tr('xtBuscarWeb'),  color: '#f97316', bg: 'rgba(249,115,22,0.2)',  onPress: handleSearchWeb },
+    { icon: <IcoWallpaper />, label: tr('xtFondo'),       color: '#ec4899', bg: 'rgba(236,72,153,0.2)',  onPress: handleWallpaper },
   ];
 
   const renderTile = (a: typeof row1[0]) => (
@@ -536,7 +537,7 @@ const ZoomableImage = ({
     return (
       <View style={[iz.frame, { gap: 12 }]}>
         <Text style={{ fontSize: 40 }}>⚠️</Text>
-        <Text style={{ color: '#fff', fontSize: 15 }}>No se pudo cargar</Text>
+        <Text style={{ color: '#fff', fontSize: 15 }}>{tr('xtNoSePudoCargar')}</Text>
         <TouchableOpacity
           style={{ backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 8, paddingHorizontal: 20, paddingVertical: 8 }}
           onPress={() => { setHasError(false); setRetryKey(k => k + 1); setLoading(true); }}
@@ -586,7 +587,7 @@ const NonImagePlaceholder = ({ item }: { item: MediaItem }) => {
   return (
     <View style={[iz.frame, { gap: 16 }]}>
       <View style={np.iconWrap}><Icon /></View>
-      <Text style={np.name} numberOfLines={2}>{item.name || 'Archivo'}</Text>
+      <Text style={np.name} numberOfLines={2}>{item.name || tr('liaAttachFile')}</Text>
       {item.size ? <Text style={np.meta}>{item.size}</Text> : null}
       {item.duration ? <Text style={np.meta}>{item.duration}</Text> : null}
     </View>
@@ -667,16 +668,16 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
       const filename = current.name || `egchat_${Date.now()}.jpg`;
       const dest = `${FileSystem.cacheDirectory}${filename}`;
       await FileSystem.copyAsync({ from: current.uri, to: dest });
-      toast.success('Guardado en galería');
+      toast.success(tr('xtGuardadoEnGaleria'));
     } catch {
-      toast.error('No se pudo guardar el archivo');
+      toast.error(tr('xtNoSePudoGuardarElArchivo'));
     }
   };
 
   const handleDelete = () => {
-    Alert.alert('Eliminar', '¿Eliminar este archivo?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Eliminar', style: 'destructive', onPress: () => { onDelete?.(current); closeWithFade(); } },
+    Alert.alert(tr('delete'), '¿Eliminar este archivo?', [
+      { text: tr('cancel'), style: 'cancel' },
+      { text: tr('delete'), style: 'destructive', onPress: () => { onDelete?.(current); closeWithFade(); } },
     ]);
   };
 
@@ -808,7 +809,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
               <View style={s.actionsBar}>
                 <TouchableOpacity style={s.actionBtn} onPress={handleShare}>
                   <IcoShare />
-                  <Text style={s.actionLabel}>Compartir</Text>
+                  <Text style={s.actionLabel}>{tr('share')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={s.actionBtn} onPress={() => { onForward?.(current); closeWithFade(); }}>
                   <IcoForward />
@@ -823,7 +824,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
                 </TouchableOpacity>
                 <TouchableOpacity style={s.actionBtn} onPress={handleDelete}>
                   <IcoTrash />
-                  <Text style={[s.actionLabel, { color: '#FF6B6B' }]}>Eliminar</Text>
+                  <Text style={[s.actionLabel, { color: '#FF6B6B' }]}>{tr('delete')}</Text>
                 </TouchableOpacity>
               </View>
 
@@ -866,7 +867,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
               Alert.alert('✅', 'Foto de perfil actualizada');
             }
           } catch {
-            Alert.alert('Error', 'No se pudo actualizar la foto de perfil');
+            Alert.alert(tr('error'), 'No se pudo actualizar la foto de perfil');
           }
         }}
         onSetWallpaper={async () => {
@@ -878,10 +879,10 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
               await setChatWallpaperId(chatId, `custom:${current.uri}`);
               Alert.alert('✅', 'Fondo del chat actualizado');
             } else {
-              Alert.alert('Info', 'Abre el chat primero para establecer el fondo');
+              Alert.alert('Info', tr('xtAbreElChatPrimeroParaEstablecerElFondo'));
             }
           } catch {
-            Alert.alert('Error', 'No se pudo establecer el fondo');
+            Alert.alert(tr('error'), 'No se pudo establecer el fondo');
           }
         }}
       />

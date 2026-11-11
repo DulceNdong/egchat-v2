@@ -136,13 +136,36 @@ export async function getPendingSignals(
  */
 export function subscribeToCallState(
   callId: string,
-  onStatusChange: (status: CallStatus) => void,
+  onStatusChange: (status: CallStatus, answer?: any) => void,
   onEnded: () => void,
 ): () => void {
   const channel: RealtimeChannel = supabase
     .channel(`call-state:${callId}`, {
       config: { broadcast: { self: false } },
     })
+    // FIX: Broadcast para eventos instantáneos (< 50ms)
+    .on(
+      'broadcast',
+      { event: 'call_status' },
+      (payload) => {
+        const data = payload.payload as { status: CallStatus; callId: string; answer?: any };
+        if (data.callId !== callId) return;
+        console.log(`[callSupabase] Broadcast received: status=${data.status} for callId=${callId}`, data.answer ? 'with answer' : 'without answer');
+        
+        // Si viene con answer, incluirlo en el callback
+        if (data.answer && data.status === 'accepted') {
+          // Llamar onStatusChange con el answer embebido
+          onStatusChange(data.status, data.answer);
+        } else {
+          onStatusChange(data.status);
+        }
+        
+        if (isTerminal(data.status)) {
+          onEnded();
+        }
+      },
+    )
+    // Postgres changes como fallback (200-500ms delay)
     .on(
       'postgres_changes',
       {
@@ -152,10 +175,16 @@ export function subscribeToCallState(
         filter: `call_id=eq.${callId}`,
       },
       (payload) => {
-        const row = payload.new as { status?: CallStatus; ended?: boolean };
-        if (!row.status) return;
-        onStatusChange(row.status);
-        if (isTerminal(row.status) || row.ended) {
+        const row = payload.new as { status?: CallStatus; ended?: boolean; answer?: string };
+        // Reaccionar si el status cambió O si llegó un answer (callee aceptó)
+        if (!row.status && !row.answer) return;
+        if (row.status) {
+          onStatusChange(row.status);
+        } else if (row.answer) {
+          // El servidor actualizó el answer pero quizás no el status todavía
+          onStatusChange('accepted' as CallStatus);
+        }
+        if (isTerminal(row.status as CallStatus) || row.ended) {
           onEnded();
         }
       },

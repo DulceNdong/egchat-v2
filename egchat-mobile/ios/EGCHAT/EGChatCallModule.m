@@ -25,4 +25,8 @@ RCT_EXTERN_METHOD(rejectCall:(NSString *)callId)
 /// Notifica a CallKit que la llamada terminó
 RCT_EXTERN_METHOD(endCall:(NSString *)callId)
 
+/// Devuelve (y borra) la llamada contestada en CallKit sin JavaScript activo
+RCT_EXTERN_METHOD(consumePendingAnsweredCall:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
 @end

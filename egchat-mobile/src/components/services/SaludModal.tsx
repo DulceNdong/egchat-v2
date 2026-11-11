@@ -4,25 +4,31 @@ import {
   View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, Linking, ScrollView, ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { saludAPI } from '../../api';
+import { saludAPI, walletAPI, ProductoServicio } from '../../api';
+import { toast } from '../Toast';
 import {
-  HOSPITALS, PHARMACIES, MEDICAMENTOS, CITA_SPECIALTIES,
-  Hospital, Pharmacy, Medicamento,
+  HOSPITALS, PHARMACIES, CITA_SPECIALTIES,
+  Hospital, Pharmacy,
 } from '../../data/serviciosPublicos';
 import { FinancialModuleShell, FilterChips, SegmentTabs } from './FinancialModuleUI';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
 import { SearchField } from './PublicModuleUI';
+import { usePaymentPin } from '../../context/PaymentPinContext';
+import { t as tr } from '../../translations';
 
 type SaludTab = 'hospitales' | 'farmacias' | 'cita' | 'urgencias';
 type MedScreen = 'search' | 'cart' | 'delivery' | 'ok';
 
-interface Props { visible: boolean; onClose: () => void; userBalance?: number; }
+interface Props { visible: boolean; onClose: () => void; }
+
+// El catálogo de medicamentos vive en service_products; la app solo lo lee.
+type MedLinea = { id: string; name: string; qty: number; price: number };
 
 const TAB_OPTS = [
-  { id: 'hospitales', label: 'Hospitales' },
-  { id: 'farmacias', label: 'Farmacias' },
-  { id: 'cita', label: 'Cita' },
-  { id: 'urgencias', label: 'Urgencias' },
+  { id: 'hospitales', get label() { return tr('xtHospitales'); } },
+  { id: 'farmacias', get label() { return tr('xtFarmacias'); } },
+  { id: 'cita', get label() { return tr('xtCita'); } },
+  { id: 'urgencias', get label() { return tr('xtUrgencias2'); } },
 ];
 
 const openRoute = (lat?: number, lng?: number, name?: string) => {
@@ -31,7 +37,8 @@ const openRoute = (lat?: number, lng?: number, name?: string) => {
   }
 };
 
-export const SaludModal: React.FC<Props> = ({ visible, onClose, userBalance = 100000 }) => {
+export const SaludModal: React.FC<Props> = ({ visible, onClose }) => {
+  const { runWithPin } = usePaymentPin();
   const [tab, setTab] = useState<SaludTab>('hospitales');
   const [cityFilter, setCityFilter] = useState('Malabo');
   const [search, setSearch] = useState('');
@@ -39,25 +46,43 @@ export const SaludModal: React.FC<Props> = ({ visible, onClose, userBalance = 10
   const [pharmacies, setPharmacies] = useState<Pharmacy[]>(PHARMACIES);
   const [loading, setLoading] = useState(false);
   const [citaOk, setCitaOk] = useState(false);
+  const [citaRef, setCitaRef] = useState('');
   const [citaForm, setCitaForm] = useState({ name: '', phone: '', date: '', specialty: '', hospital: '', notes: '' });
-  const [balance, setBalance] = useState(userBalance);
+  const [balance, setBalance] = useState<number | null>(null);
 
   // Medicamentos sub-modal
   const [showMed, setShowMed] = useState(false);
   const [medScreen, setMedScreen] = useState<MedScreen>('search');
   const [medSearch, setMedSearch] = useState('');
-  const [medCart, setMedCart] = useState<Array<{ id: string; name: string; qty: number; price: number }>>([]);
+  const [medResults, setMedResults] = useState<ProductoServicio[]>([]);
+  const [medLoading, setMedLoading] = useState(false);
+  const [medError, setMedError] = useState('');
+  const [medCart, setMedCart] = useState<MedLinea[]>([]);
+  const [medPlacing, setMedPlacing] = useState(false);
+  const [medRecibo, setMedRecibo] = useState<{ orderId: string; total: number; balance: number | null; eta: string } | null>(null);
   const [deliveryForm, setDeliveryForm] = useState({ name: '', phone: '', address: '', notes: '' });
   const [pharmCity, setPharmCity] = useState('Malabo');
   const [pharmBarrio, setPharmBarrio] = useState('Todos');
   const [selectedPharm, setSelectedPharm] = useState<string | null>(null);
 
-  useEffect(() => { if (visible) setBalance(userBalance); }, [visible, userBalance]);
+  useEffect(() => {
+    if (visible) { cargarSaldo(); return; }
+  }, [visible]);
+
+  const cargarSaldo = async () => {
+    try {
+      const r = await walletAPI.getBalance();
+      setBalance(Number(r.balance) || 0);
+    } catch {
+      setBalance(null);
+    }
+  };
   useEffect(() => {
     if (!visible) {
       setTab('hospitales'); setCityFilter('Malabo'); setSearch('');
-      setCitaOk(false); setCitaForm({ name: '', phone: '', date: '', specialty: '', hospital: '', notes: '' });
-      setShowMed(false); setMedScreen('search'); setMedSearch(''); setMedCart([]);
+      setCitaOk(false); setCitaRef(''); setCitaForm({ name: '', phone: '', date: '', specialty: '', hospital: '', notes: '' });
+      setShowMed(false); setMedScreen('search'); setMedSearch(''); setMedCart([]); setMedResults([]);
+      setMedError(''); setMedRecibo(null);
       setDeliveryForm({ name: '', phone: '', address: '', notes: '' });
       setPharmCity('Malabo'); setPharmBarrio('Todos'); setSelectedPharm(null);
     }
@@ -65,15 +90,24 @@ export const SaludModal: React.FC<Props> = ({ visible, onClose, userBalance = 10
 
   useEffect(() => {
     if (!visible) return;
+    // El servidor conoce tres centros; el directorio local es mas amplio. Se
+    // fusionan los datos que el servidor manda (telefono / guardia) y no se
+    // sustituye la ficha local por una fila sin direccion ni especialidades.
     (async () => {
       try {
         const h = await saludAPI.getHospitals();
-        if (h?.length) setHospitals(h);
-      } catch { /* local data */ }
+        if (h?.length) setHospitals(HOSPITALS.map(local => {
+          const rem = h.find((x: any) => x.name === local.name || x.id === local.id);
+          return rem ? { ...local, phone: rem.phone ?? local.phone, emergency: rem.emergency ?? local.emergency } : local;
+        }));
+      } catch { /* directorio local */ }
       try {
         const f = await saludAPI.getPharmacies();
-        if (f?.length) setPharmacies(f);
-      } catch { /* local data */ }
+        if (f?.length) setPharmacies(PHARMACIES.map(local => {
+          const rem = f.find((x: any) => x.name === local.name || x.id === local.id);
+          return rem ? { ...local, phone: rem.phone ?? local.phone } : local;
+        }));
+      } catch { /* directorio local */ }
     })();
   }, [visible]);
 
@@ -97,19 +131,63 @@ export const SaludModal: React.FC<Props> = ({ visible, onClose, userBalance = 10
     return acc;
   }, {});
 
-  const medResults = medSearch.length >= 2
-    ? MEDICAMENTOS.filter(m => m.name.toLowerCase().includes(medSearch.toLowerCase()) || m.cat.toLowerCase().includes(medSearch.toLowerCase()))
-    : [];
-
   const cartTotal = medCart.reduce((s, i) => s + i.price * i.qty, 0);
   const setCF = (k: string, v: string) => setCitaForm(p => ({ ...p, [k]: v }));
   const setDF = (k: string, v: string) => setDeliveryForm(p => ({ ...p, [k]: v }));
 
-  const addToCart = (m: Medicamento) => {
+  // La busqueda va al servidor: los precios los fija service_products, no un
+  // catalogo de JavaScript que pueda quedarse desfasado.
+  const buscarMeds = async () => {
+    const q = medSearch.trim();
+    if (q.length < 2) { setMedResults([]); setMedError(''); return; }
+    setMedLoading(true); setMedError('');
+    try {
+      const rows = await saludAPI.getMedicamentos(q);
+      setMedResults(rows || []);
+      if (!rows?.length) setMedError('No hay ese medicamento en el catálogo.');
+    } catch (e: any) {
+      setMedResults([]);
+      setMedError(e?.message || 'No se pudo consultar el catálogo de medicamentos.');
+    } finally {
+      setMedLoading(false);
+    }
+  };
+
+  const addToCart = (m: ProductoServicio) => {
     setMedCart(p => {
       const ex = p.find(i => i.id === m.id);
-      return ex ? p.map(i => i.id === m.id ? { ...i, qty: i.qty + 1 } : i) : [...p, { id: m.id, name: m.name, qty: 1, price: m.price }];
+      return ex ? p.map(i => i.id === m.id ? { ...i, qty: i.qty + 1 } : i) : [...p, { id: m.id, name: m.name, qty: 1, price: Number(m.price) }];
     });
+  };
+
+  const confirmarMeds = async () => {
+    if (!deliveryForm.name || !deliveryForm.phone || !deliveryForm.address || !medCart.length) return;
+    setMedPlacing(true);
+    try {
+      const res = await runWithPin(
+        pin => saludAPI.orderMeds({
+          farmaciaId: selectedPharm || '1',
+          direccion: deliveryForm.address,
+          external_id: `MED-${Date.now()}`,
+          // Solo producto y cantidad; el importe lo pone la tabla.
+          items: medCart.map(i => ({ product_id: i.id, qty: i.qty })),
+        }, pin),
+        tr('xtIntroduceTuPIN'),
+      );
+      if (!res) return;
+      setMedRecibo({
+        orderId: res.orderId,
+        total: Number(res.total),
+        balance: res.balance == null ? null : Number(res.balance),
+        eta: res.eta || '20-30 min',
+      });
+      if (res.balance != null) setBalance(Number(res.balance));
+      setMedScreen('ok');
+    } catch (e: any) {
+      toast.error(e?.message || 'No se pudo completar el pedido de medicamentos.');
+    } finally {
+      setMedPlacing(false);
+    }
   };
 
   const refresh = () => {
@@ -125,7 +203,7 @@ export const SaludModal: React.FC<Props> = ({ visible, onClose, userBalance = 10
       )}
       {tab === 'hospitales' && (
         <FilterChips
-          options={[{ id: 'Malabo', label: 'Malabo' }, { id: 'Bata', label: 'Bata' }, { id: 'Todos', label: 'Todos' }]}
+          options={[{ id: 'Malabo', label: 'Malabo' }, { id: 'Bata', label: 'Bata' }, { id: 'Todos', label: tr('everyone') }]}
           value={cityFilter}
           onChange={setCityFilter}
           activeColor="#C0392B"
@@ -134,7 +212,7 @@ export const SaludModal: React.FC<Props> = ({ visible, onClose, userBalance = 10
       {tab === 'farmacias' && (
         <>
           <FilterChips
-            options={[{ id: 'Malabo', label: 'Malabo' }, { id: 'Bata', label: 'Bata' }, { id: 'Todos', label: 'Todos' }]}
+            options={[{ id: 'Malabo', label: 'Malabo' }, { id: 'Bata', label: 'Bata' }, { id: 'Todos', label: tr('everyone') }]}
             value={pharmCity}
             onChange={v => { setPharmCity(v); setPharmBarrio('Todos'); setSelectedPharm(null); }}
             activeColor="#2E9E6B"
@@ -177,7 +255,7 @@ export const SaludModal: React.FC<Props> = ({ visible, onClose, userBalance = 10
                 </View>
                 <Text style={s.cardMeta}>📍 {h.address} — {h.city}</Text>
                 <View style={s.tagRow}>
-                  {h.emergency && <Text style={s.tagUrg}>🚨 Urgencias 24h</Text>}
+                  {h.emergency && <Text style={s.tagUrg}>{tr('xtUrgencias24h')}</Text>}
                   <Text style={s.tagGray}>{h.beds} camas</Text>
                   <Text style={s.tagGray}>{h.doctors} médicos</Text>
                 </View>
@@ -188,13 +266,13 @@ export const SaludModal: React.FC<Props> = ({ visible, onClose, userBalance = 10
             </View>
             <View style={s.cardActions}>
               <TouchableOpacity style={[s.actionBtn, { backgroundColor: '#FEF2F2' }]} onPress={() => openRoute(h.lat, h.lng, h.name)}>
-                <Text style={[s.actionText, { color: '#C0392B' }]}>🗺️ Ver ruta</Text>
+                <Text style={[s.actionText, { color: '#C0392B' }]}>{tr('xtVerRuta')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[s.actionBtn, { backgroundColor: '#F0FAF5' }]} onPress={() => { setCF('hospital', h.name); setTab('cita'); }}>
-                <Text style={[s.actionText, { color: '#2E9E6B' }]}>📅 Pedir cita</Text>
+                <Text style={[s.actionText, { color: '#2E9E6B' }]}>{tr('xtPedirCita')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[s.actionBtn, { backgroundColor: '#EFF5FD' }]} onPress={() => Linking.openURL(`tel:${h.phone}`)}>
-                <Text style={[s.actionText, { color: '#1485EE' }]}>📞 Llamar</Text>
+                <Text style={[s.actionText, { color: '#1485EE' }]}>{tr('svcCallPhone')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -205,13 +283,13 @@ export const SaludModal: React.FC<Props> = ({ visible, onClose, userBalance = 10
             <TouchableOpacity style={s.medBanner} onPress={() => { setShowMed(true); setMedScreen('search'); }}>
               <Text style={{ fontSize: 22 }}>🔍</Text>
               <View style={{ flex: 1 }}>
-                <Text style={s.medBannerTitle}>Buscar medicamentos</Text>
-                <Text style={s.medBannerSub}>Busca, pide y recibe en casa — {MEDICAMENTOS.length} medicamentos</Text>
+                <Text style={s.medBannerTitle}>{tr('xtBuscarMedicamentos')}</Text>
+                <Text style={s.medBannerSub}>Busca, pide y recibe en casa</Text>
               </View>
               <Text style={s.arrow}>›</Text>
             </TouchableOpacity>
             {Object.keys(pharmByBarrio).length === 0 && (
-              <Text style={s.medHint}>Sin farmacias en esta zona</Text>
+              <Text style={s.medHint}>{tr('xtSinFarmaciasEnEstaZona')}</Text>
             )}
             {Object.entries(pharmByBarrio).map(([barrio, list]) => (
               <View key={barrio} style={{ marginBottom: 14 }}>
@@ -243,10 +321,10 @@ export const SaludModal: React.FC<Props> = ({ visible, onClose, userBalance = 10
                             <Text style={s.cardMeta}>🕐 {f.schedule}</Text>
                             <View style={s.pharmExpandActions}>
                               <TouchableOpacity style={[s.pharmMiniBtn, { backgroundColor: '#EFF5FD' }]} onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(f.address + ', ' + f.city)}`)}>
-                                <Text style={[s.actionText, { color: '#1485EE' }]}>🗺️ Ruta</Text>
+                                <Text style={[s.actionText, { color: '#1485EE' }]}>{tr('xtRuta2')}</Text>
                               </TouchableOpacity>
                               <TouchableOpacity style={[s.pharmMiniBtn, { backgroundColor: '#F0FAF5' }]} onPress={() => Linking.openURL(`tel:${f.phone}`)}>
-                                <Text style={[s.actionText, { color: '#2E9E6B' }]}>📞 Llamar</Text>
+                                <Text style={[s.actionText, { color: '#2E9E6B' }]}>{tr('svcCallPhone')}</Text>
                               </TouchableOpacity>
                             </View>
                           </View>
@@ -263,10 +341,10 @@ export const SaludModal: React.FC<Props> = ({ visible, onClose, userBalance = 10
         {tab === 'cita' && !citaOk && (
           <View>
             <View style={s.citaInfo}>
-              <Text style={s.citaInfoTitle}>📅 Solicitar cita médica</Text>
-              <Text style={s.citaInfoSub}>Recibirás confirmación por teléfono en 24h</Text>
+              <Text style={s.citaInfoTitle}>{tr('xtSolicitarCitaMedica')}</Text>
+              <Text style={s.citaInfoSub}>{tr('svcCitaConfirm24h')}</Text>
             </View>
-            <Text style={s.lbl}>Hospital / Clínica</Text>
+            <Text style={s.lbl}>{tr('xtHospitalClinica')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
               {hospitals.map(h => (
                 <TouchableOpacity key={h.id} style={[s.hospChip, citaForm.hospital === h.name && s.hospChipActive]} onPress={() => setCF('hospital', h.name)}>
@@ -282,18 +360,29 @@ export const SaludModal: React.FC<Props> = ({ visible, onClose, userBalance = 10
                 </TouchableOpacity>
               ))}
             </ScrollView>
-            <FormField placeholder="Nombre completo" value={citaForm.name} onChangeText={v => setCF('name', v)} />
-            <FormField placeholder="Teléfono de contacto" value={citaForm.phone} onChangeText={v => setCF('phone', v)} keyboardType="phone-pad" />
-            <FormField placeholder="Fecha preferida (DD/MM/AAAA)" value={citaForm.date} onChangeText={v => setCF('date', v)} />
-            <FormField placeholder="Síntomas o notas (opcional)" value={citaForm.notes} onChangeText={v => setCF('notes', v)} />
+            <FormField placeholder={tr('name')} value={citaForm.name} onChangeText={v => setCF('name', v)} />
+            <FormField placeholder={tr('svcContactPhone')} value={citaForm.phone} onChangeText={v => setCF('phone', v)} keyboardType="phone-pad" />
+            <FormField placeholder={tr('xtFechaPreferidaDDMMAAAA')} value={citaForm.date} onChangeText={v => setCF('date', v)} />
+            <FormField placeholder={tr('xtSintomasONotasOpcional')} value={citaForm.notes} onChangeText={v => setCF('notes', v)} />
             <PrimaryButton
-              label="Solicitar cita"
+              label={loading ? tr('processing') : tr('xtSolicitarCita')}
               onPress={async () => {
                 if (!citaForm.name || !citaForm.phone || !citaForm.hospital || !citaForm.specialty) return;
                 setLoading(true);
-                try { await saludAPI.requestCita({ hospitalId: citaForm.hospital, especialidad: citaForm.specialty, fecha: citaForm.date, motivo: citaForm.notes }); } catch { /* demo */ }
-                setLoading(false);
-                setCitaOk(true);
+                try {
+                  const res = await saludAPI.requestCita({
+                    hospitalId: citaForm.hospital,
+                    especialidad: citaForm.specialty,
+                    fecha: citaForm.date,
+                    motivo: citaForm.notes,
+                  });
+                  setCitaRef(res?.citaId || '');
+                  setCitaOk(true);
+                } catch (e: any) {
+                  toast.error(e?.message || 'No se pudo registrar la solicitud de cita.');
+                } finally {
+                  setLoading(false);
+                }
               }}
               disabled={!citaForm.name || !citaForm.phone || !citaForm.hospital || !citaForm.specialty || loading}
               color="#C0392B"
@@ -304,24 +393,25 @@ export const SaludModal: React.FC<Props> = ({ visible, onClose, userBalance = 10
         {tab === 'cita' && citaOk && (
           <View style={s.success}>
             <Text style={{ fontSize: 48 }}>✅</Text>
-            <Text style={s.successTitle}>¡Cita solicitada!</Text>
+            <Text style={s.successTitle}>{tr('svcAppointmentRequested')}</Text>
             <Text style={s.successSub}>{citaForm.hospital} — {citaForm.specialty}</Text>
+            {!!citaRef && <Text style={s.successSub}>Ref. {citaRef}</Text>}
             <View style={s.summaryBox}>
-              {([['Paciente', citaForm.name], ['Teléfono', citaForm.phone], ['Fecha', citaForm.date || 'A confirmar']] as const).map(([l, v]) => (
+              {([[tr('xtPaciente'), citaForm.name], [tr('phone'), citaForm.phone], [tr('mznInfDateLabel'), citaForm.date || tr('svcToConfirm')]] as const).map(([l, v]) => (
                 <View key={l} style={s.summaryRow}><Text style={s.summaryLbl}>{l}</Text><Text style={s.summaryVal}>{v}</Text></View>
               ))}
             </View>
-            <PrimaryButton label="Nueva cita" onPress={() => { setCitaOk(false); setCitaForm({ name: '', phone: '', date: '', specialty: '', hospital: '', notes: '' }); }} color="#C0392B" />
+            <PrimaryButton label={tr('xtNuevaCita')} onPress={() => { setCitaOk(false); setCitaRef(''); setCitaForm({ name: '', phone: '', date: '', specialty: '', hospital: '', notes: '' }); }} color="#C0392B" />
           </View>
         )}
 
         {tab === 'urgencias' && (
           <View>
             <LinearGradient colors={['#C0392B', '#E74C3C']} style={s.urgBanner}>
-              <Text style={s.urgTitle}>🚨 Urgencias</Text>
-              <Text style={s.urgSub}>Centros con urgencias 24h en Guinea Ecuatorial</Text>
+              <Text style={s.urgTitle}>{tr('xtUrgencias')}</Text>
+              <Text style={s.urgSub}>{tr('xtCentrosConUrgencias24hEnGuineaEcuatorial')}</Text>
               <TouchableOpacity style={s.urgCall} onPress={() => Linking.openURL('tel:112')}>
-                <Text style={s.urgCallText}>📞 Llamar al 112 — Emergencias</Text>
+                <Text style={s.urgCallText}>{tr('xtLlamarAl112Emergencias')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={s.urgCall2} onPress={() => Linking.openURL('tel:+240333097000')}>
                 <Text style={s.urgCallText2}>🏥 Hospital General Malabo: +240 333 09 70 00</Text>
@@ -364,20 +454,27 @@ export const SaludModal: React.FC<Props> = ({ visible, onClose, userBalance = 10
             <ScrollView style={{ padding: 16 }} keyboardShouldPersistTaps="handled">
               {medScreen === 'search' && (
                 <View>
-                  <FormField placeholder="Nombre del medicamento..." value={medSearch} onChangeText={setMedSearch} />
-                  {medSearch.length < 2 && <Text style={s.medHint}>Escribe al menos 2 letras para buscar</Text>}
+                  <FormField placeholder={tr('xtNombreDelMedicamento')} value={medSearch} onChangeText={setMedSearch} />
+                  {medSearch.length < 2 && <Text style={s.medHint}>{tr('xtEscribeAlMenos2LetrasParaBuscar')}</Text>}
+                  {medSearch.length >= 2 && (
+                    <PrimaryButton
+                      label={medLoading ? tr('processing') : tr('xtBuscarMedicamentos')}
+                      onPress={buscarMeds}
+                      disabled={medLoading}
+                      color="#2E9E6B"
+                    />
+                  )}
+                  {medLoading && <ActivityIndicator color="#2E9E6B" style={{ marginVertical: 12 }} />}
+                  {!!medError && <Text style={s.medHint}>{medError}</Text>}
                   {medResults.map(m => (
                     <View key={m.id} style={s.medRow}>
                       <View style={{ flex: 1 }}>
                         <Text style={s.cardName}>{m.name}</Text>
-                        <Text style={s.cardMeta}>{m.cat} — {m.price.toLocaleString()} XAF</Text>
-                        {m.requiereReceta && <Text style={s.receta}>📋 Receta</Text>}
+                        <Text style={s.cardMeta}>{m.category || 'Medicamento'} — {Number(m.price).toLocaleString()} {m.currency || 'XAF'}</Text>
                       </View>
-                      {m.stock ? (
-                        <TouchableOpacity style={s.addBtn} onPress={() => addToCart(m)}>
-                          <Text style={s.addBtnText}>{medCart.find(i => i.id === m.id) ? `✓ (${medCart.find(i => i.id === m.id)?.qty})` : '+ Añadir'}</Text>
-                        </TouchableOpacity>
-                      ) : <Text style={s.sinStock}>Sin stock</Text>}
+                      <TouchableOpacity style={s.addBtn} onPress={() => addToCart(m)}>
+                        <Text style={s.addBtnText}>{medCart.find(i => i.id === m.id) ? `✓ (${medCart.find(i => i.id === m.id)?.qty})` : '+ Añadir'}</Text>
+                      </TouchableOpacity>
                     </View>
                   ))}
                 </View>
@@ -391,33 +488,40 @@ export const SaludModal: React.FC<Props> = ({ visible, onClose, userBalance = 10
                     </View>
                   ))}
                   <Text style={s.cartTotal}>Total: {cartTotal.toLocaleString()} XAF</Text>
-                  <PrimaryButton label="Continuar → Datos de entrega" onPress={() => setMedScreen('delivery')} color="#2E9E6B" />
+                  <PrimaryButton label={tr('xtContinuarDatosDeEntrega')} onPress={() => setMedScreen('delivery')} color="#2E9E6B" />
                 </View>
               )}
               {medScreen === 'delivery' && (
                 <View>
-                  <FormField placeholder="Nombre completo" value={deliveryForm.name} onChangeText={v => setDF('name', v)} />
-                  <FormField placeholder="Teléfono" value={deliveryForm.phone} onChangeText={v => setDF('phone', v)} keyboardType="phone-pad" />
-                  <FormField placeholder="Dirección de entrega" value={deliveryForm.address} onChangeText={v => setDF('address', v)} />
+                  <FormField placeholder={tr('name')} value={deliveryForm.name} onChangeText={v => setDF('name', v)} />
+                  <FormField placeholder={tr('authPhoneLabel')} value={deliveryForm.phone} onChangeText={v => setDF('phone', v)} keyboardType="phone-pad" />
+                  <FormField placeholder={tr('svcDeliveryAddress')} value={deliveryForm.address} onChangeText={v => setDF('address', v)} />
+                  <Text style={s.medNote}>
+                    {`Saldo del monedero: ${balance === null ? 'sin datos' : `${balance.toLocaleString()} XAF`}`}
+                  </Text>
                   <PrimaryButton
-                    label={`Confirmar pedido — ${cartTotal.toLocaleString()} XAF`}
-                    onPress={async () => {
-                      if (!deliveryForm.name || !deliveryForm.phone || !deliveryForm.address) return;
-                      try { await saludAPI.orderMeds({ farmaciaId: '1', direccion: deliveryForm.address, items: medCart }); } catch { /* demo */ }
-                      setBalance(b => b - cartTotal);
-                      setMedScreen('ok');
-                    }}
-                    disabled={!deliveryForm.name || !deliveryForm.phone || !deliveryForm.address || cartTotal > balance}
+                    label={medPlacing ? tr('processing') : `Confirmar pedido — ${cartTotal.toLocaleString()} XAF`}
+                    onPress={confirmarMeds}
+                    disabled={medPlacing || !deliveryForm.name || !deliveryForm.phone || !deliveryForm.address || (balance !== null && cartTotal > balance)}
                     color="#2E9E6B"
                   />
                 </View>
               )}
-              {medScreen === 'ok' && (
+              {medScreen === 'ok' && medRecibo && (
                 <View style={s.success}>
                   <Text style={{ fontSize: 48 }}>✅</Text>
-                  <Text style={s.successTitle}>¡Pedido confirmado!</Text>
-                  <Text style={s.successSub}>Entrega estimada: 2-4 horas</Text>
-                  <PrimaryButton label="Cerrar" onPress={() => { setShowMed(false); setMedCart([]); setMedSearch(''); setMedScreen('search'); }} color="#2E9E6B" />
+                  <Text style={s.successTitle}>{tr('svcOrderConfirmedTitle')}</Text>
+                  <Text style={s.successSub}>Ref. {medRecibo.orderId}</Text>
+                  <Text style={s.successTotal}>{medRecibo.total.toLocaleString()} XAF</Text>
+                  {medRecibo.balance != null && (
+                    <Text style={s.successSub}>Saldo restante: {medRecibo.balance.toLocaleString()} XAF</Text>
+                  )}
+                  <Text style={s.successSub}>Entrega estimada: {medRecibo.eta}</Text>
+                  <PrimaryButton
+                    label={tr('close')}
+                    onPress={() => { setShowMed(false); setMedCart([]); setMedSearch(''); setMedResults([]); setMedRecibo(null); setMedScreen('search'); }}
+                    color="#2E9E6B"
+                  />
                 </View>
               )}
             </ScrollView>
@@ -471,7 +575,9 @@ const s = StyleSheet.create({
   hospChipText: { fontSize: 11, fontWeight: '700', color: '#6B7280', maxWidth: 140 },
   success: { alignItems: 'center', paddingVertical: 30, gap: 8 },
   successTitle: { fontSize: 20, fontWeight: '900', color: '#111827' },
+  medNote: { fontSize: 12, color: '#6B7280', marginBottom: 10 },
   successSub: { fontSize: 13, color: '#9CA3AF', marginBottom: 12 },
+  successTotal: { fontSize: 24, fontWeight: '900', color: '#065F46', marginBottom: 8 },
   summaryBox: { backgroundColor: '#FEF2F2', borderRadius: 14, padding: 16, width: '100%', marginBottom: 16 },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#FECACA' },
   summaryLbl: { fontSize: 12, color: '#6B7280' },

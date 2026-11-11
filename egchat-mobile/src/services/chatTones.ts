@@ -2,6 +2,7 @@
 // chatTones — tono de notificación personalizado por chat
 // ══════════════════════════════════════════════════════════════════
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { t as tr } from '../translations';
 
 const KEY = 'egchat_chat_tones';
 
@@ -13,13 +14,13 @@ export interface ToneOption {
 }
 
 export const TONE_OPTIONS: ToneOption[] = [
-  { id: 'default', label: 'Por defecto', emoji: '🔔' },
-  { id: 'none', label: 'Sin sonido', emoji: '🔇' },
+  { id: 'default', get label() { return tr('xtPorDefecto'); }, emoji: '🔔' },
+  { id: 'none', get label() { return tr('xtSinSonido'); }, emoji: '🔇' },
   { id: 'ding', label: 'Ding', emoji: '🔔' },
   { id: 'chime', label: 'Chime', emoji: '🎵' },
   { id: 'pop', label: 'Pop', emoji: '💬' },
   { id: 'whoosh', label: 'Whoosh', emoji: '💨' },
-  { id: 'bell', label: 'Campana', emoji: '🔕' },
+  { id: 'bell', get label() { return tr('xtCampana'); }, emoji: '🔕' },
 ];
 
 type ToneSettings = Record<string, string>; // chatId → toneId

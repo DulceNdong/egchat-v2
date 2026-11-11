@@ -4,7 +4,7 @@ export type UtilityVariant = 'elec' | 'agua';
 
 export const UTILITY_CONFIG: Record<UtilityVariant, {
   title: string; subtitle: string; gradient: [string, string]; accent: string;
-  icon: string; placeholder: string; hint: string; mockImporte: number;
+  icon: string; placeholder: string; hint: string;
 }> = {
   elec: {
     title: 'SEGESA',
@@ -14,7 +14,6 @@ export const UTILITY_CONFIG: Record<UtilityVariant, {
     icon: '⚡',
     placeholder: 'Ej: 0012345678',
     hint: '📋 Encuéntralo en tu factura o en el medidor',
-    mockImporte: 18500,
   },
   agua: {
     title: 'SNGE',
@@ -24,7 +23,6 @@ export const UTILITY_CONFIG: Record<UtilityVariant, {
     icon: '💧',
     placeholder: 'Ej: SNGE-00456',
     hint: '📋 Encuéntralo en tu factura de agua',
-    mockImporte: 8200,
   },
 };
 

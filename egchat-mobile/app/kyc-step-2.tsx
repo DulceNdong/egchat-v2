@@ -17,6 +17,7 @@ import {
   loadKycDraftLocal, saveKycDraftLocal, validateStep2,
   DOC_TYPE_LABELS,
 } from '../src/services/kyc';
+import { t as tr } from '../src/translations';
 
 // ── Barra de progreso ─────────────────────────────────────────────
 const KycProgressBar = ({ step }: { step: number }) => (
@@ -57,7 +58,7 @@ const PhotoZone = ({
         <Text style={st.photoLabel}>{label}</Text>
         <Text style={st.photoSub}>{sublabel}</Text>
         <View style={st.photoPickBtn}>
-          <Text style={st.photoPickBtnText}>📷 Abrir cámara / galería</Text>
+          <Text style={st.photoPickBtnText}>{tr('xtAbrirCamaraGaleria')}</Text>
         </View>
       </View>
     )}
@@ -96,15 +97,15 @@ export default function KycStep2() {
   ) => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permiso necesario', 'Necesitamos acceso a tu galería para subir el documento.');
+      Alert.alert(tr('setPermissionNeeded'), tr('kyGalleryDocPermBody'));
       return;
     }
     Alert.alert(
-      'Subir documento',
-      'Elige cómo quieres obtener la imagen',
+      tr('xtSubirDocumento'),
+      tr('xtEligeComoQuieresObtenerLaImagen'),
       [
         {
-          text: '📷 Cámara',
+          text: tr('chtCamera'),
           onPress: async () => {
             const camStatus = await ImagePicker.requestCameraPermissionsAsync();
             if (camStatus.status !== 'granted') return;
@@ -123,7 +124,7 @@ export default function KycStep2() {
           },
         },
         {
-          text: '🖼️ Galería',
+          text: tr('chtGallery'),
           onPress: async () => {
             setLoading(true);
             const result = await ImagePicker.launchImageLibraryAsync({
@@ -139,7 +140,7 @@ export default function KycStep2() {
             }
           },
         },
-        { text: 'Cancelar', style: 'cancel' },
+        { text: tr('cancel'), style: 'cancel' },
       ]
     );
   };
@@ -170,8 +171,8 @@ export default function KycStep2() {
               </Svg>
             </TouchableOpacity>
             <View style={st.headerCenter}>
-              <Text style={st.headerTitle}>Documento de Identidad</Text>
-              <Text style={st.headerSub}>Paso 2 de 3</Text>
+              <Text style={st.headerTitle}>{tr('kyDocumentIdentity')}</Text>
+              <Text style={st.headerSub}>{tr('xtPaso2De3')}</Text>
             </View>
             <View style={{ width: 36 }}/>
           </View>
@@ -183,14 +184,14 @@ export default function KycStep2() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <Text style={st.sectionTitle}>Tipo de documento</Text>
+            <Text style={st.sectionTitle}>{tr('kyDocType')}</Text>
             <Text style={st.sectionSub}>
               Usa un documento oficial vigente. El nombre debe coincidir exactamente con el que indicaste en el paso anterior.
             </Text>
 
             {/* Tipo de documento */}
             <View style={st.fieldGroup}>
-              <Text style={st.fieldLabel}>Tipo de documento <Text style={st.required}>*</Text></Text>
+              <Text style={st.fieldLabel}>{tr('kyDocType')} <Text style={st.required}>*</Text></Text>
               <TouchableOpacity style={st.selector} onPress={() => setShowDocType(true)} activeOpacity={0.8}>
                 <Text style={st.selectorText}>{docLabel}</Text>
                 <Text style={st.selectorArrow}>›</Text>
@@ -199,7 +200,7 @@ export default function KycStep2() {
 
             {/* Número */}
             <View style={st.fieldGroup}>
-              <Text style={st.fieldLabel}>Número de documento <Text style={st.required}>*</Text></Text>
+              <Text style={st.fieldLabel}>{tr('kyDocumentNumber')} <Text style={st.required}>*</Text></Text>
               <TextInput
                 style={st.input}
                 value={form.doc_number || ''}
@@ -213,7 +214,7 @@ export default function KycStep2() {
 
             {/* Fecha de expiración */}
             <View style={st.fieldGroup}>
-              <Text style={st.fieldLabel}>Fecha de expiración</Text>
+              <Text style={st.fieldLabel}>{tr('xtFechaDeExpiracion')}</Text>
               <TextInput
                 style={st.input}
                 value={form.doc_expiry || ''}
@@ -223,17 +224,17 @@ export default function KycStep2() {
                 keyboardType="number-pad"
                 maxLength={10}
               />
-              <Text style={st.hint}>Deja en blanco si no aplica (ej. pasaporte sin vencimiento)</Text>
+              <Text style={st.hint}>{tr('xtDejaEnBlancoSiNoAplicaEjPasaporteSinVencimie')}</Text>
             </View>
 
             {/* Tips */}
             <View style={st.tipsBox}>
-              <Text style={st.tipsTitle}>📋 Consejos para una buena foto</Text>
+              <Text style={st.tipsTitle}>{tr('xtConsejosParaUnaBuenaFoto')}</Text>
               {[
-                'Fondo liso, sin sombras ni reflejos',
-                'Todos los datos deben ser legibles',
-                'No cortes los bordes del documento',
-                'Buena iluminación, sin flash directo',
+                tr('xtFondoLisoSinSombrasNiReflejos'),
+                tr('xtTodosLosDatosDebenSerLegibles'),
+                tr('xtNoCortesLosBordesDelDocumento'),
+                tr('xtBuenaIluminacionSinFlashDirecto'),
               ].map((t, i) => (
                 <Text key={i} style={st.tipItem}>· {t}</Text>
               ))}
@@ -244,8 +245,8 @@ export default function KycStep2() {
               Foto frontal <Text style={st.required}>*</Text>
             </Text>
             <PhotoZone
-              label="Frente del documento"
-              sublabel="Asegúrate de que sea legible"
+              label={tr('xtFrenteDelDocumento')}
+              sublabel={tr('kyEnsureLegible')}
               uri={form.doc_front_uri || ''}
               onPick={() => pickImage('front', setLoadingFront)}
               loading={loadingFront}
@@ -257,8 +258,8 @@ export default function KycStep2() {
               <Text style={st.optional}>(si aplica)</Text>
             </Text>
             <PhotoZone
-              label="Reverso del documento"
-              sublabel="Opcional para pasaporte"
+              label={tr('xtReversoDelDocumento')}
+              sublabel={tr('xtOpcionalParaPasaporte')}
               uri={form.doc_back_uri || ''}
               onPick={() => pickImage('back', setLoadingBack)}
               loading={loadingBack}
@@ -287,7 +288,7 @@ export default function KycStep2() {
       <Modal visible={showDocType} transparent animationType="slide">
         <View style={st.modalOverlay}>
           <View style={st.modalBox}>
-            <Text style={st.modalTitle}>Tipo de documento</Text>
+            <Text style={st.modalTitle}>{tr('kyDocType')}</Text>
             {(Object.entries(DOC_TYPE_LABELS) as [keyof typeof DOC_TYPE_LABELS, string][]).map(([code, label]) => (
               <TouchableOpacity
                 key={code}
@@ -299,7 +300,7 @@ export default function KycStep2() {
               </TouchableOpacity>
             ))}
             <TouchableOpacity style={st.modalClose} onPress={() => setShowDocType(false)}>
-              <Text style={st.modalCloseText}>Cerrar</Text>
+              <Text style={st.modalCloseText}>{tr('close')}</Text>
             </TouchableOpacity>
           </View>
         </View>

@@ -11,6 +11,7 @@ import { EGAvatar } from '../ui';
 import { chatAPI } from '../../api';
 import { toast } from '../Toast';
 import type { ChatMessage } from '../../types/chat';
+import { t as tr } from '../../translations';
 
 interface ChatSummary {
   id: string;
@@ -22,12 +23,13 @@ interface ChatSummary {
 interface Props {
   visible: boolean;
   message: ChatMessage | null;
+  messages?: ChatMessage[];   // ← para reenvío múltiple
   currentUserId: string;
   onClose: () => void;
   onForwarded?: () => void;
 }
 
-export function ForwardWithCommentModal({ visible, message, currentUserId, onClose, onForwarded }: Props) {
+export function ForwardWithCommentModal({ visible, message, messages, currentUserId, onClose, onForwarded }: Props) {
   const isDark = useColorScheme() === 'dark';
   const sheetBg = isDark ? '#1c1c1e' : '#fff';
   const textColor = isDark ? '#f9fafb' : '#111827';
@@ -54,52 +56,74 @@ export function ForwardWithCommentModal({ visible, message, currentUserId, onClo
   }, [visible]);
 
   const handleSend = async () => {
-    if (!selectedChat || !message) return;
+    if (!selectedChat) return;
+
+    // Determinar qué mensajes enviar
+    const msgsToForward: ChatMessage[] = (messages && messages.length > 0)
+      ? messages
+      : (message ? [message] : []);
+
+    if (msgsToForward.length === 0) return;
+
     setSending(true);
     try {
-      await chatAPI.sendMessage(selectedChat.id, {
-        text: message.text || '',
-        type: message.type || 'text',
-        file_url: message.file_url,
-        album_urls: (message as any).album_urls,
-        forwarded_from: message.id,
-      });
+      await Promise.allSettled(
+        msgsToForward.map(msg =>
+          chatAPI.sendMessage(selectedChat.id, {
+            text: msg.text || '',
+            type: msg.type || 'text',
+            file_url: msg.file_url,
+            album_urls: (msg as any).album_urls,
+            forwarded_from: msg.id,
+          })
+        )
+      );
       if (comment.trim()) {
         await chatAPI.sendMessage(selectedChat.id, { text: comment.trim(), type: 'text' });
       }
-      // Mensaje reenviado silenciosamente
       onForwarded?.();
       onClose();
     } catch {
-      Alert.alert('Error', 'No se pudo reenviar el mensaje');
+      Alert.alert(tr('error'), 'No se pudo reenviar el mensaje');
     } finally {
       setSending(false);
     }
   };
 
-  const getChatName = (c: ChatSummary) => c.name || 'Chat';
+  const getChatName = (c: ChatSummary) => c.name || tr('chat');
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <Pressable style={s.overlay} onPress={onClose}>
         <Pressable style={[s.sheet, { backgroundColor: sheetBg }]} onPress={e => e.stopPropagation()}>
           <View style={s.handle} />
-          <Text style={[s.title, { color: textColor }]}>➡️ Reenviar mensaje</Text>
+          <Text style={[s.title, { color: textColor }]}>
+            {(messages && messages.length > 1)
+              ? `➡️ Reenviar ${messages.length} mensajes`
+              : tr('xtReenviarMensaje')}
+          </Text>
 
-          {message && (
+          {(messages && messages.length > 1) ? (
             <View style={[s.preview, { backgroundColor: previewBg }]}>
-              <Text style={[s.previewLabel]}>Mensaje original:</Text>
+              <Text style={[s.previewLabel]}>Mensajes seleccionados:</Text>
+              <Text style={[s.previewText, { color: textColor }]}>
+                {messages.length} mensajes seleccionados
+              </Text>
+            </View>
+          ) : message ? (
+            <View style={[s.preview, { backgroundColor: previewBg }]}>
+              <Text style={[s.previewLabel]}>{tr('xtMensajeOriginal')}</Text>
               <Text style={[s.previewText, { color: textColor }]} numberOfLines={3}>
                 {message.type === 'image' ? '📷 Foto'
                   : message.type === 'video' ? '🎥 Video'
                   : message.type === 'audio' ? '🎵 Audio'
                   : message.type === 'album' ? '📷 Álbum'
-                  : message.text || '(sin texto)'}
+                  : message.text || tr('xtSinTexto')}
               </Text>
             </View>
-          )}
+          ) : null}
 
-          <Text style={[s.sectionLabel, { color: isDark ? '#9ca3af' : '#6b7280' }]}>Enviar a:</Text>
+          <Text style={[s.sectionLabel, { color: isDark ? '#9ca3af' : '#6b7280' }]}>{tr('xtEnviarA')}</Text>
           {loading ? (
             <ActivityIndicator color="#00b4e6" style={{ marginVertical: 12 }} />
           ) : (
@@ -124,7 +148,7 @@ export function ForwardWithCommentModal({ visible, message, currentUserId, onClo
 
           <TextInput
             style={[s.commentInput, { color: textColor, borderColor: inputBorder, backgroundColor: inputBg }]}
-            placeholder="Añadir comentario (opcional)..."
+            placeholder={tr('xtAnadirComentarioOpcional')}
             placeholderTextColor={isDark ? '#6b7280' : '#9ca3af'}
             value={comment}
             onChangeText={setComment}
@@ -134,12 +158,12 @@ export function ForwardWithCommentModal({ visible, message, currentUserId, onClo
 
           <View style={s.actions}>
             <TouchableOpacity style={[s.cancelBtn, { backgroundColor: cancelBg }]} onPress={onClose} activeOpacity={0.7}>
-              <Text style={[s.cancelTxt, { color: isDark ? '#9ca3af' : '#6b7280' }]}>Cancelar</Text>
+              <Text style={[s.cancelTxt, { color: isDark ? '#9ca3af' : '#6b7280' }]}>{tr('cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[s.sendBtn, (!selectedChat || sending) && s.sendBtnDisabled]}
+              style={[s.sendBtn, (!selectedChat || sending || ((!message) && (!messages || messages.length === 0))) && s.sendBtnDisabled]}
               onPress={handleSend}
-              disabled={!selectedChat || sending}
+              disabled={!selectedChat || sending || ((!message) && (!messages || messages.length === 0))}
               activeOpacity={0.8}
             >
               {sending ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.sendTxt}>Reenviar</Text>}

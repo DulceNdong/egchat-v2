@@ -8,12 +8,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { authAPI } from '../../src/api';
 import SessionManager from '../../src/sessionManager';
-import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification } from '../../src/components/HeaderPanels';
+import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification, handleNotifNavigation } from '../../src/components/HeaderPanels';
 import { EGChatHeader } from '../../src/components/EGChatHeader';
 import { useAppStore } from '../../src/store/useAppStore';
 import { markAllRead, clearAllNotifications, removeNotification, markNotificationRead } from '../../src/store/appStore';
 import { mergePersistentAvatar, onProfileUpdated } from '../../src/utils/profileEvents';
 import { ServiceIcon } from '../../src/components/ServiceIcon';
+import { LiaAvatar } from '../../src/components/LiaAvatar';
 import { DraggableHomeButton } from '../../src/components/DraggableHomeButton';
 import {
   RecargaModal, InternetModal, CanalesModal,
@@ -28,72 +29,84 @@ import {
 } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
+import { useTranslation } from '../../src/context/LanguageContext';
 
 // ── Secciones de servicios — iconos y colores idénticos a la web ──
-const SERVICE_SECTIONS = [
+const SERVICE_SECTIONS_BASE = [
   {
     id: 'basicos',
-    title: 'Básicos',
+    titleKey: 'basicServices',
     services: [
-      { id: 'recarga',      svgIcon: 'recharge',      label: 'Recarga Tel.',  color: '#07C160' },
-      { id: 'internet',     svgIcon: 'world',         label: 'Internet',      color: '#1485EE' },
-      { id: 'tv',           svgIcon: 'services',      label: 'Canales',       color: '#8B5CF6' },
+      { id: 'recarga',      svgIcon: 'recharge',      labelKey: 'rechargeTel',  color: '#07C160' },
+      { id: 'internet',     svgIcon: 'world',         labelKey: 'internet',     color: '#1485EE' },
+      { id: 'tv',           svgIcon: 'services',      labelKey: 'channels',     color: '#8B5CF6' },
     ],
   },
   {
     id: 'financieros',
-    title: 'Servicios Financieros',
+    titleKey: 'financialServices',
     services: [
-      { id: 'bancos',       svgIcon: 'banking',       label: 'Bancos',        color: '#1485EE' },
-      { id: 'seguros',      svgIcon: 'seguros',       label: 'Seguros',       color: '#2E9E6B' },
-      { id: 'facturas',     svgIcon: 'factura',       label: 'Facturas',      color: '#C47D2A' },
-      { id: 'inversion',    svgIcon: 'invest',        label: 'Inversión',     color: '#6B5BD6' },
-      { id: 'tarjetas',     svgIcon: 'tarjeta',       label: 'Tarjetas',      color: '#C0392B' },
-      { id: 'historial',    svgIcon: 'historial',     label: 'Historial',     color: '#5A7090' },
+      { id: 'bancos',       svgIcon: 'banking',       labelKey: 'banks',        color: '#1485EE' },
+      { id: 'seguros',      svgIcon: 'seguros',       labelKey: 'insurance',    color: '#2E9E6B' },
+      { id: 'facturas',     svgIcon: 'factura',       labelKey: 'bills',        color: '#C47D2A' },
+      { id: 'inversion',    svgIcon: 'invest',        labelKey: 'investment',   color: '#6B5BD6' },
+      { id: 'tarjetas',     svgIcon: 'tarjeta',       labelKey: 'cards',        color: '#C0392B' },
+      { id: 'historial',    svgIcon: 'historial',     labelKey: 'history',      color: '#5A7090' },
     ],
   },
   {
     id: 'publicos',
-    title: 'Servicios Públicos',
+    titleKey: 'publicServices',
     services: [
-      { id: 'electricidad', svgIcon: 'electricidad',  label: 'Electricidad',  color: '#C47D2A' },
-      { id: 'agua',         svgIcon: 'rain',          label: 'Agua',          color: '#1485EE' },
-      { id: 'salud',        svgIcon: 'salud',         label: 'Salud',         color: '#C0392B' },
-      { id: 'educacion',    svgIcon: 'edu',           label: 'Educación',     color: '#6B5BD6' },
-      { id: 'correos',      svgIcon: 'mensajes',      label: 'Correos',       color: '#C47D2A' },
-      { id: 'impuestos',    svgIcon: 'gobierno',      label: 'Impuestos',     color: '#C0392B' },
+      { id: 'electricidad', svgIcon: 'electricidad',  labelKey: 'electricity',  color: '#C47D2A' },
+      { id: 'agua',         svgIcon: 'rain',          labelKey: 'water',        color: '#1485EE' },
+      { id: 'salud',        svgIcon: 'salud',         labelKey: 'health',       color: '#C0392B' },
+      { id: 'educacion',    svgIcon: 'edu',           labelKey: 'education',    color: '#6B5BD6' },
+      { id: 'correos',      svgIcon: 'mensajes',      labelKey: 'mail',         color: '#C47D2A' },
+      { id: 'impuestos',    svgIcon: 'gobierno',      labelKey: 'taxes',        color: '#C0392B' },
     ],
   },
   {
     id: 'diarios',
-    title: 'Servicios Diarios',
+    titleKey: 'dailyServices',
     services: [
-      { id: 'mitaxi',       svgIcon: 'taxi',          label: 'MiTaxi',        color: '#F59E0B' },
-      { id: 'supermercado', svgIcon: 'comercio',      label: 'Supermercado',  color: '#2E9E6B' },
-      { id: 'comida',       svgIcon: 'money',         label: 'Comida',        color: '#C0392B' },
-      { id: 'restaurantes', svgIcon: 'restaurante',   label: 'Restaurante',   color: '#C47D2A' },
-      { id: 'hotel',        svgIcon: 'hotel',         label: 'Hotel',         color: '#1485EE' },
-      { id: 'vuelos',       svgIcon: 'vuelos',        label: 'Vuelos',        color: '#6B5BD6' },
-      { id: 'barcos',       svgIcon: 'barco',         label: 'Barcos',        color: '#0EA5E9' },
-      { id: 'gasolineras',  svgIcon: 'gasolinera',    label: 'Gasolinera',    color: '#C47D2A' },
-      { id: 'tienda',       svgIcon: 'tienda',        label: 'Tienda',        color: '#2E9E6B' },
-      { id: 'lavanderia',   svgIcon: 'lavanderia',    label: 'Lavandería',    color: '#1485EE' },
-      { id: 'belleza',      svgIcon: 'belleza',       label: 'Belleza',       color: '#C0392B' },
-      { id: 'noticias',     svgIcon: 'noticias',      label: 'Noticias',      color: '#6B5BD6' },
+      { id: 'mitaxi',       svgIcon: 'taxi',          labelKey: 'taxi',         color: '#F59E0B' },
+      { id: 'supermercado', svgIcon: 'comercio',      labelKey: 'supermarket',  color: '#2E9E6B' },
+      { id: 'comida',       svgIcon: 'money',         labelKey: 'food',         color: '#C0392B' },
+      { id: 'restaurantes', svgIcon: 'restaurante',   labelKey: 'restaurant',   color: '#C47D2A' },
+      { id: 'hotel',        svgIcon: 'hotel',         labelKey: 'hotel',        color: '#1485EE' },
+      { id: 'vuelos',       svgIcon: 'vuelos',        labelKey: 'flights',      color: '#6B5BD6' },
+      { id: 'barcos',       svgIcon: 'barco',         labelKey: 'boats',        color: '#0EA5E9' },
+      { id: 'gasolineras',  svgIcon: 'gasolinera',    labelKey: 'gasStation',   color: '#C47D2A' },
+      { id: 'tienda',       svgIcon: 'tienda',        labelKey: 'store',        color: '#2E9E6B' },
+      { id: 'lavanderia',   svgIcon: 'lavanderia',    labelKey: 'laundry',      color: '#1485EE' },
+      { id: 'belleza',      svgIcon: 'belleza',       labelKey: 'beauty',       color: '#C0392B' },
+      { id: 'noticias',     svgIcon: 'noticias',      labelKey: 'news',         color: '#6B5BD6' },
     ],
   },
   {
     id: 'herramientas',
-    title: 'Herramientas',
+    titleKey: 'tools',
     services: [
-      { id: 'id_digital',   svgIcon: 'id-card',       label: 'ID Digital',    color: '#6B5BD6' },
-      { id: 'lia',          svgIcon: 'ai',            label: 'Lia-25',        color: '#1485EE' },
-      { id: 'actividad',    svgIcon: 'historial',     label: 'Actividad',     color: '#0E7FA8' },
-      { id: 'emergencias',  svgIcon: 'emergencia',    label: 'Emergencia',    color: '#C0392B' },
-      { id: 'ajustes',      svgIcon: 'ajustes',       label: 'Ajustes',       color: '#5A7090' },
+      { id: 'id_digital',   svgIcon: 'id-card',       labelKey: 'digitalId',    color: '#6B5BD6' },
+      { id: 'lia',          svgIcon: 'ai',            labelKey: 'lia',          color: '#1485EE' },
+      { id: 'actividad',    svgIcon: 'historial',     labelKey: 'activity',     color: '#0E7FA8' },
+      { id: 'emergencias',  svgIcon: 'emergencia',    labelKey: 'emergencia',   color: '#C0392B' },
+      { id: 'ajustes',      svgIcon: 'ajustes',       labelKey: 'settings',     color: '#5A7090' },
     ],
   },
 ];
+
+function getServiceSections(t: (k: string) => string) {
+  return SERVICE_SECTIONS_BASE.map(section => ({
+    ...section,
+    title: t(section.titleKey),
+    services: section.services.map(s => ({
+      ...s,
+      label: t(s.labelKey),
+    })),
+  }));
+}
 
 // ── Modal genérico (bottom sheet) ─────────────────────────────────
 const ServiceModal = ({
@@ -116,19 +129,21 @@ const ServiceModal = ({
 
 // ── Modal Noticias ────────────────────────────────────────────────
 const NEWS_SOURCES = [
-  { name: 'La Gaceta de Guinea',   desc: 'Diario oficial y noticias nacionales', url: 'https://lagacetadeguinea.com' },
-  { name: 'TVGE Noticias',          desc: 'Televisión de Guinea Ecuatorial',      url: 'https://tvge.gq' },
-  { name: 'Noticias CEMAC',         desc: 'Noticias de la región CEMAC',          url: 'https://cemac.int' },
-  { name: 'Radio Nacional GQ',      desc: 'Radio pública de Guinea Ecuatorial',   url: '' },
-  { name: 'Economía GQ',            desc: 'Noticias económicas y empresariales',  url: '' },
+  { name: 'La Gaceta de Guinea',   descKey: 'svcNewsSrcOfficial', url: 'https://lagacetadeguinea.com' },
+  { name: 'TVGE Noticias',          descKey: 'svcNewsSrcTv',       url: 'https://tvge.gq' },
+  { name: 'Noticias CEMAC',         descKey: 'svcNewsSrcCemac',    url: 'https://cemac.int' },
+  { name: 'Radio Nacional GQ',      descKey: 'svcNewsSrcRadio',    url: '' },
+  { name: 'Economía GQ',            descKey: 'svcNewsSrcEconomy',  url: '' },
 ];
 
-const NoticiasModal = ({ visible, onClose }: { visible: boolean; onClose: () => void }) => (
-  <ServiceModal visible={visible} title="Noticias" onClose={onClose}>
-    <Text style={styles.sectionLabel}>Fuentes de noticias</Text>
+const NoticiasModal = ({ visible, onClose }: { visible: boolean; onClose: () => void }) => {
+  const { t } = useTranslation();
+  return (
+  <ServiceModal visible={visible} title={t('news')} onClose={onClose}>
+    <Text style={styles.sectionLabel}>{t('svcNewsSources')}</Text>
     {NEWS_SOURCES.map(n => (
       <TouchableOpacity key={n.name} style={styles.providerCard}
-        onPress={() => n.url ? Linking.openURL(n.url) : Alert.alert(n.name, n.desc)}
+        onPress={() => n.url ? Linking.openURL(n.url) : Alert.alert(n.name, t(n.descKey))}
         activeOpacity={0.7}>
         <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#6366f1' + '15', alignItems: 'center', justifyContent: 'center' }}>
           <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -138,7 +153,7 @@ const NoticiasModal = ({ visible, onClose }: { visible: boolean; onClose: () => 
         </View>
         <View style={styles.providerInfo}>
           <Text style={styles.providerName}>{n.name}</Text>
-          <Text style={styles.providerCat}>{n.desc}</Text>
+          <Text style={styles.providerCat}>{t(n.descKey)}</Text>
         </View>
         {n.url ? (
           <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -153,11 +168,14 @@ const NoticiasModal = ({ visible, onClose }: { visible: boolean; onClose: () => 
       </TouchableOpacity>
     ))}
   </ServiceModal>
-);
+  );
+};
 
 // ── Modal ID Digital ──────────────────────────────────────────────
-const IdDigitalModal = ({ visible, onClose }: { visible: boolean; onClose: () => void }) => (
-  <ServiceModal visible={visible} title="ID Digital" onClose={onClose}>
+const IdDigitalModal = ({ visible, onClose }: { visible: boolean; onClose: () => void }) => {
+  const { t } = useTranslation();
+  return (
+  <ServiceModal visible={visible} title={t('digitalId')} onClose={onClose}>
     <View style={[styles.infoCard, { alignItems: 'center', marginBottom: Spacing.md }]}>
       <View style={{ width: 72, height: 72, borderRadius: 20, backgroundColor: '#6366f1' + '15', alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.md }}>
         <Svg width={36} height={36} viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
@@ -166,16 +184,16 @@ const IdDigitalModal = ({ visible, onClose }: { visible: boolean; onClose: () =>
           <Path d="M14 10h4M14 14h4"/>
         </Svg>
       </View>
-      <Text style={[styles.infoCardTitle, { textAlign: 'center' }]}>Identidad Digital EGCHAT</Text>
+      <Text style={[styles.infoCardTitle, { textAlign: 'center' }]}>{t('svcDigitalIdentityTitle')}</Text>
       <Text style={[styles.providerCat, { textAlign: 'center', marginTop: Spacing.sm }]}>
-        Tu identidad digital verificada en Guinea Ecuatorial
+        {t('svcDigitalIdTagline')}
       </Text>
     </View>
     {[
-      { color: '#22c55e', label: 'DNI verificado',        desc: 'Documento de identidad vinculado' },
-      { color: '#6366f1', label: 'Número verificado',     desc: 'Teléfono confirmado por SMS' },
-      { color: '#0ea5e9', label: 'Cuenta segura',         desc: 'Autenticación de dos factores activa' },
-      { color: '#f59e0b', label: 'Zona CEMAC',            desc: 'Válido en los 6 países CEMAC' },
+      { color: '#22c55e', label: t('svcDniVerified'),        desc: t('svcDniVerifiedDesc') },
+      { color: '#6366f1', label: t('svcNumberVerified'),     desc: t('svcNumberVerifiedDesc') },
+      { color: '#0ea5e9', label: t('svcSecureAccount'),      desc: t('svcSecureAccountDesc') },
+      { color: '#f59e0b', label: t('svcCemacZone'),          desc: t('svcCemacZoneDesc') },
     ].map(item => (
       <View key={item.label} style={styles.providerCard}>
         <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: item.color, marginRight: 4 }} />
@@ -188,42 +206,45 @@ const IdDigitalModal = ({ visible, onClose }: { visible: boolean; onClose: () =>
     <TouchableOpacity style={[styles.callBtn, { marginTop: Spacing.md }]}
       onPress={() => {
         onClose();
-        Alert.alert('ID Digital', 'Elige qué quieres hacer', [
-          { text: 'Cancelar', style: 'cancel' },
-          { text: 'Ver perfil', onPress: () => router.push('/ajustes/perfil' as any) },
-          { text: 'Escanear QR', onPress: () => router.push('/_qr-scanner' as any) },
+        Alert.alert(t('digitalId'), t('svcIdDigitalChoose'), [
+          { text: t('cancel'), style: 'cancel' },
+          { text: t('viewProfile'), onPress: () => router.push('/ajustes/perfil' as any) },
+          { text: t('scanQR'), onPress: () => router.push('/_qr-scanner' as any) },
         ]);
       }}>
-      <Text style={styles.callBtnText}>Verificar mi identidad</Text>
+      <Text style={styles.callBtnText}>{t('svcVerifyIdentity')}</Text>
     </TouchableOpacity>
   </ServiceModal>
-);
+  );
+};
 
 // ── Modal Emergencias ─────────────────────────────────────────────
 const EMERGENCY_NUMBERS = [
-  { name: 'Bomberos',              number: '115',               color: '#EF4444' },
-  { name: 'Ambulancia / SAMU',     number: '116',               color: '#DC2626' },
-  { name: 'Policía Nacional',       number: '114',               color: '#1E3A5F' },
-  { name: 'Hospital General',       number: '+240 333 09 50 00', color: '#DC2626' },
-  { name: 'Averías SEGESA',         number: '+240 333 09 70 00', color: '#EAB308' },
-  { name: 'Averías SNGE',           number: '+240 333 09 71 00', color: '#0EA5E9' },
-  { name: 'Guardia Civil',          number: '112',               color: '#374151' },
-  { name: 'Protección Civil',       number: '+240 333 09 72 00', color: '#0369A1' },
+  { nameKey: 'svcFireBrigade',       number: '115',               color: '#EF4444' },
+  { nameKey: 'svcAmbulance',         number: '116',               color: '#DC2626' },
+  { nameKey: 'svcNationalPolice',    number: '114',               color: '#1E3A5F' },
+  { nameKey: 'svcGeneralHospital',   number: '+240 333 09 50 00', color: '#DC2626' },
+  { nameKey: 'svcSegesaOutages',     number: '+240 333 09 70 00', color: '#EAB308' },
+  { nameKey: 'svcSngeOutages',       number: '+240 333 09 71 00', color: '#0EA5E9' },
+  { nameKey: 'svcCivilGuard',        number: '112',               color: '#374151' },
+  { nameKey: 'svcCivilProtection',   number: '+240 333 09 72 00', color: '#0369A1' },
 ];
 
-const EmergenciasModal = ({ visible, onClose }: { visible: boolean; onClose: () => void }) => (
-  <ServiceModal visible={visible} title="Emergencias" onClose={onClose}>
+const EmergenciasModal = ({ visible, onClose }: { visible: boolean; onClose: () => void }) => {
+  const { t } = useTranslation();
+  return (
+  <ServiceModal visible={visible} title={t('svcEmergencies')} onClose={onClose}>
     <View style={{ backgroundColor: '#FEF2F2', borderRadius: BorderRadius.lg, padding: Spacing.md, marginBottom: Spacing.md, borderWidth: 1, borderColor: '#FECACA' }}>
       <Text style={{ fontSize: FontSize.sm, color: '#991B1B', textAlign: 'center', fontWeight: FontWeight.semibold }}>
-        En caso de emergencia real, llama directamente al número correspondiente
+        {t('svcEmergencyNote')}
       </Text>
     </View>
-    <Text style={styles.sectionLabel}>Números de emergencia</Text>
+    <Text style={styles.sectionLabel}>{t('svcEmergencyNumbers')}</Text>
     {EMERGENCY_NUMBERS.map(e => (
-      <TouchableOpacity key={e.name} style={[styles.providerCard, { borderLeftWidth: 3, borderLeftColor: e.color }]}
-        onPress={() => Alert.alert(e.name, `Número: ${e.number}`, [
-          { text: 'Cancelar', style: 'cancel' },
-          { text: 'Llamar ahora', style: 'destructive', onPress: () => Linking.openURL(`tel:${e.number}`) },
+      <TouchableOpacity key={e.nameKey} style={[styles.providerCard, { borderLeftWidth: 3, borderLeftColor: e.color }]}
+        onPress={() => Alert.alert(t(e.nameKey), `${t('svcNumberLabel')}: ${e.number}`, [
+          { text: t('cancel'), style: 'cancel' },
+          { text: t('svcCallNow'), style: 'destructive', onPress: () => Linking.openURL(`tel:${e.number}`) },
         ])}
         activeOpacity={0.7}>
         <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: e.color + '15', alignItems: 'center', justifyContent: 'center' }}>
@@ -232,7 +253,7 @@ const EmergenciasModal = ({ visible, onClose }: { visible: boolean; onClose: () 
           </Svg>
         </View>
         <View style={styles.providerInfo}>
-          <Text style={styles.providerName}>{e.name}</Text>
+          <Text style={styles.providerName}>{t(e.nameKey)}</Text>
           <Text style={[styles.providerCat, { color: e.color, fontWeight: FontWeight.bold }]}>{e.number}</Text>
         </View>
         <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth={2} strokeLinecap="round">
@@ -241,7 +262,8 @@ const EmergenciasModal = ({ visible, onClose }: { visible: boolean; onClose: () 
       </TouchableOpacity>
     ))}
   </ServiceModal>
-);
+  );
+};
 
 // ── Drawer lateral ────────────────────────────────────────────────
 import Svg, { Path, Circle, Line, Rect, Polyline } from 'react-native-svg';
@@ -263,19 +285,20 @@ const IcoDrawerItem = ({ id }: { id: string }) => {
 
 const DrawerMenu = ({ visible, onClose }: { visible: boolean; onClose: () => void }) => {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const ITEMS = [
-    { id: 'lia',      label: 'LIA-25 — IA Asistente',  action: () => { onClose(); router.push('/(tabs)/lia' as any); } },
-    { id: 'map',      label: 'Mapa de Malabo',          action: () => { onClose(); router.push('/map' as any); } },
-    { id: 'qr',       label: 'Escanear QR',             action: () => { onClose(); router.push('/_qr-scanner' as any); } },
-    { id: 'contacts', label: 'Contactos',               action: () => { onClose(); router.push('/contacts' as any); } },
-    { id: 'stories',  label: 'Estados / Stories',       action: () => { onClose(); router.push('/stories' as any); } },
-    { id: 'settings', label: 'Ajustes',                 action: () => { onClose(); router.push('/(tabs)/ajustes' as any); } },
+    { id: 'lia',      label: t('svcLiaAssistant'),      action: () => { onClose(); router.push('/(tabs)/lia' as any); } },
+    { id: 'map',      label: t('svcMapMalabo'),         action: () => { onClose(); router.push('/map' as any); } },
+    { id: 'qr',       label: t('scanQR'),               action: () => { onClose(); router.push('/_qr-scanner' as any); } },
+    { id: 'contacts', label: t('contacts'),             action: () => { onClose(); router.push('/contacts' as any); } },
+    { id: 'stories',  label: t('svcStatusStories'),     action: () => { onClose(); router.push('/stories' as any); } },
+    { id: 'settings', label: t('settings'),             action: () => { onClose(); router.push('/(tabs)/ajustes' as any); } },
   ];
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={drawerStyles.overlay} onPress={onClose}>
         <Pressable style={[drawerStyles.drawer, { paddingTop: insets.top + 24 }]} onPress={() => {}}>
-          <Text style={drawerStyles.title}>Menú</Text>
+          <Text style={drawerStyles.title}>{t('svcMenu')}</Text>
           {ITEMS.map(item => (
             <TouchableOpacity key={item.id} style={drawerStyles.item} onPress={item.action} activeOpacity={0.7}>
               <View style={drawerStyles.itemIconWrap}>
@@ -328,7 +351,9 @@ function ServiciosScreenInner() {
   const [showWeather, setShowWeather] = useState(false);
   const { weather, notifications } = useAppStore();
   const { isDark } = useThemeContext();
+  const { language, t } = useTranslation();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
+  const SERVICE_SECTIONS = getServiceSections(t);
 
   const loadData = async () => {
     try {
@@ -393,7 +418,7 @@ function ServiciosScreenInner() {
       router.push(route as any);
       return;
     }
-    Alert.alert('Servicio no encontrado', 'No se pudo abrir este servicio.');
+    Alert.alert(t('svcServiceNotFound'), t('svcServiceNotFoundBody'));
   };
 
   useEffect(() => {
@@ -444,7 +469,9 @@ function ServiciosScreenInner() {
                     delayPressIn={0}
                   >
                     <View style={[styles.serviceIconBox, { backgroundColor: s.color + '15' }]}>
-                      <ServiceIcon name={s.svgIcon} size={22} color={s.color} />
+                      {s.id === 'lia'
+                        ? <LiaAvatar size={22} />
+                        : <ServiceIcon name={s.svgIcon} size={22} color={s.color} />}
                     </View>
                     <Text style={[styles.serviceLabel, { color: C.textPrimary }]} numberOfLines={1}>{s.label}</Text>
                   </TouchableOpacity>
@@ -470,7 +497,7 @@ function ServiciosScreenInner() {
         onNotifPress={(n) => {
           markNotificationRead(n.id);
           setShowNotifications(false);
-          if (n.chatId) router.push(`/chat/${n.chatId}` as any);
+          handleNotifNavigation(n);
         }}
       />
       <HamburgerMenu visible={showMenu} onClose={() => setShowMenu(false)} user={user} />
@@ -690,8 +717,9 @@ const styles = StyleSheet.create({
 });
 
 export default function ServiciosScreen() {
+  const { t } = useTranslation();
   return (
-    <TabErrorBoundary tabName="Servicios">
+    <TabErrorBoundary tabName={t('services')}>
       <ServiciosScreenInner />
     </TabErrorBoundary>
   );

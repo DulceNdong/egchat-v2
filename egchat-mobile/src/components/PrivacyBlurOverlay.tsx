@@ -11,6 +11,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, Platform } from 'react-native';
 import Svg, { Path, Circle } from 'react-native-svg';
+import { t as tr } from '../translations';
 
 interface Props {
   visible: boolean;
@@ -59,8 +60,8 @@ export function PrivacyBlurOverlay({ visible }: Props) {
             <Path d="M1 1l22 22" />
           </Svg>
         </View>
-        <Text style={styles.title}>Modo incógnito</Text>
-        <Text style={styles.subtitle}>El contenido está oculto por seguridad</Text>
+        <Text style={styles.title}>{tr('chtIncognitoMode')}</Text>
+        <Text style={styles.subtitle}>{tr('xtElContenidoEstaOcultoPorSeguridad')}</Text>
       </View>
     </Animated.View>
   );

@@ -1,0 +1,18 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    {
+      "id": 1,
+      "label": "Ring tap drops userId",
+      "severity": "likely",
+      "description": "avatarOnPress in ChatItem calls router.push('/stories') and router.push('/moments') without a ?userId= query param. handleNotifNavigation in HeaderPanels.tsx already passes ?userId= correctly. Tapping the avatar ring drops the user on the generic feed instead of the specific contact's content. Fix: pass other.user_id as a query param in all three branches."
+    },
+    {
+      "id": 2,
+      "label": "TSC artifact missing",
+      "severity": "confirmed",
+      "description": "avatar-ring-nav-tsc.txt was never written by any prior step. TypeScript correctness was assessed by source reading. Errors that only manifest under full module resolution (route type narrowing, exhaustiveness under `as any` casts) cannot be ruled out without a compiler run."
+    }
+  ],
+  "reviewDoc": "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/.agents/tasks/avatar-ring-nav-review.md"
+}

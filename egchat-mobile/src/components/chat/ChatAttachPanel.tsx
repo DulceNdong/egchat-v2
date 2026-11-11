@@ -2,19 +2,30 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Svg, { Path, Circle, Line, Polyline, Polygon, Rect, G } from 'react-native-svg';
+import { useTranslation } from '../../context/LanguageContext';
+
+const LABEL_KEYS: Record<AttachAction, string> = {
+  photo: 'chtPhoto',
+  album: 'chtAlbum',
+  video: 'chtVideo',
+  file: 'chtFile',
+  contact: 'chtContact',
+  location: 'chtLocation',
+  music: 'chtMusic',
+  money: 'sendMoney',
+  poll: 'chtPoll',
+};
 
 export type AttachAction = 'photo' | 'album' | 'video' | 'file' | 'contact' | 'location' | 'music' | 'money' | 'poll';
 
 const ITEMS: {
   id: AttachAction;
-  label: string;
   color: string;
   bg: string;
   Icon: React.FC;
 }[] = [
   {
     id: 'photo',
-    label: 'Foto',
     color: '#00b4e6',
     bg: '#E0F7FF',
     Icon: () => (
@@ -27,7 +38,6 @@ const ITEMS: {
   },
   {
     id: 'album',
-    label: 'Álbum',
     color: '#8b5cf6',
     bg: '#EDE9FE',
     Icon: () => (
@@ -41,7 +51,6 @@ const ITEMS: {
   },
   {
     id: 'video',
-    label: 'Video',
     color: '#f59e0b',
     bg: '#FEF3C7',
     Icon: () => (
@@ -59,7 +68,6 @@ const ITEMS: {
   },
   {
     id: 'file',
-    label: 'Archivo',
     color: '#06b6d4',
     bg: '#CFFAFE',
     Icon: () => (
@@ -70,7 +78,6 @@ const ITEMS: {
   },
   {
     id: 'contact',
-    label: 'Contacto',
     color: '#ec4899',
     bg: '#FCE7F3',
     Icon: () => (
@@ -84,7 +91,6 @@ const ITEMS: {
   },
   {
     id: 'location',
-    label: 'Ubicación',
     color: '#ef4444',
     bg: '#FEE2E2',
     Icon: () => (
@@ -96,7 +102,6 @@ const ITEMS: {
   },
   {
     id: 'music',
-    label: 'Música',
     color: '#8b5cf6',
     bg: '#EDE9FE',
     Icon: () => (
@@ -109,7 +114,6 @@ const ITEMS: {
   },
   {
     id: 'money',
-    label: 'Enviar dinero',
     color: '#00c8a0',
     bg: 'transparent',
     Icon: () => (
@@ -124,7 +128,6 @@ const ITEMS: {
   },
   {
     id: 'poll',
-    label: 'Encuesta',
     color: '#8b5cf6',
     bg: '#EDE9FE',
     Icon: () => (
@@ -142,6 +145,7 @@ interface Props {
 }
 
 export function ChatAttachPanel({ onAction }: Props) {
+  const { t } = useTranslation();
   return (
     <View style={s.panel}>
       <View style={s.grid}>
@@ -155,7 +159,7 @@ export function ChatAttachPanel({ onAction }: Props) {
             <View style={[s.iconBox, { backgroundColor: item.bg }]}>
               <item.Icon />
             </View>
-            <Text style={s.label}>{item.label}</Text>
+            <Text style={s.label}>{t(LABEL_KEYS[item.id])}</Text>
           </TouchableOpacity>
         ))}
       </View>

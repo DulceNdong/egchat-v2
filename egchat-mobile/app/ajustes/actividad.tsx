@@ -5,6 +5,7 @@ import { useThemeContext } from '../../src/theme/ThemeContext';
 import { Colors } from '../../src/theme';
 import { DarkColors } from '../../src/theme/darkMode';
 import { getToken, getApiBase } from '../../src/api';
+import { useLanguage } from '../../src/context/LanguageContext';
 
 interface ActivityLogItem {
   id: string;
@@ -28,6 +29,7 @@ export default function ActividadScreen() {
   const [search, setSearch] = useState('');
   const { isDark } = useThemeContext();
   const C = isDark ? (DarkColors as unknown as typeof Colors) : Colors;
+  const { translate: t } = useLanguage();
 
   useEffect(() => {
     const load = async () => {
@@ -65,28 +67,28 @@ export default function ActividadScreen() {
   };
 
   return (
-    <SettingsLayout title="Registro de actividad">
+    <SettingsLayout title={t('activityTitle')}>
       <View style={[st.filters, { backgroundColor: isDark ? '#161b22' : '#fff' }]}>
         <View style={st.chipRow}>
-          {['all','login','transaction','security','profile','chat'].map(t => (
-            <Chip key={t} id={t} label={
-              t === 'all' ? 'Todo' : t === 'login' ? 'Login' :
-              t === 'transaction' ? 'Transacciones' : t === 'security' ? 'Seguridad' :
-              t === 'profile' ? 'Perfil' : 'Chats'
+          {(['all','login','transaction','security','profile','chat'] as const).map(id => (
+            <Chip key={id} id={id} label={
+              id === 'all' ? t('all') : id === 'login' ? t('setChipLogin') :
+              id === 'transaction' ? t('transactions') : id === 'security' ? t('security') :
+              id === 'profile' ? t('profile') : t('chat')
             }/>
           ))}
         </View>
         <TextInput
           style={[st.search, { color: C.textPrimary, borderColor: C.borderLight }]}
           value={search} onChangeText={setSearch}
-          placeholder="Buscar actividad..." placeholderTextColor={C.textTertiary}
+          placeholder={t('searchActivity')} placeholderTextColor={C.textTertiary}
         />
       </View>
 
       {loading ? (
         <ActivityIndicator color={Colors.accent} style={{ marginTop: 40 }}/>
       ) : filtered.length === 0 ? (
-        <Text style={{ padding: 24, color: C.textSecondary, textAlign: 'center' }}>Sin actividad registrada</Text>
+        <Text style={{ padding: 24, color: C.textSecondary, textAlign: 'center' }}>{t('noActivityRegistered')}</Text>
       ) : (
         filtered.map(log => (
           <View key={log.id} style={[st.card, { backgroundColor: isDark ? '#161b22' : '#fff' }]}>

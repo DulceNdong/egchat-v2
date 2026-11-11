@@ -10,6 +10,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Animated, Platform } from 're
 import Svg, { Path, Line, Rect, Polyline, Circle } from 'react-native-svg';
 import { haptics } from '../../hooks/useHaptics';
 import type { Swipeable as SwipeableType } from 'react-native-gesture-handler';
+import { t as tr } from '../../translations';
 
 // Solo importar Swipeable en nativo
 let Swipeable: any = null;
@@ -58,7 +59,7 @@ export function SwipeChatItem({
               <Circle cx="12" cy="10" r="1" fill="#fff" stroke="none"/>
               <Circle cx="15" cy="10" r="1" fill="#fff" stroke="none"/>
             </Svg>
-            <Text style={s.actionLabel}>No leído</Text>
+            <Text style={s.actionLabel}>{tr('xtNoLeido')}</Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
@@ -139,7 +140,7 @@ export function SwipeChatItem({
             <Polyline points="3 6 5 6 21 6"/>
             <Path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
           </Svg>
-          <Text style={s.actionLabel}>Eliminar</Text>
+          <Text style={s.actionLabel}>{tr('delete')}</Text>
         </TouchableOpacity>
       </Animated.View>
     );

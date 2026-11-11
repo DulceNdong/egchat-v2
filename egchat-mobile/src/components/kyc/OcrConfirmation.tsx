@@ -1,6 +1,7 @@
 // OcrConfirmation — muestra datos OCR extraídos para confirmación
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { t as tr } from '../../translations';
 
 interface Props {
   ocrData: Record<string, string>;
@@ -9,11 +10,11 @@ interface Props {
 }
 
 const LABELS: Record<string, string> = {
-  full_name:      'Nombre',
-  document_number:'Número',
-  date_of_birth:  'Fecha nac.',
-  expiry_date:    'Vence',
-  nationality:    'Nacionalidad',
+  get full_name() { return tr('nameField'); },
+  get document_number() { return tr('svcNumberLabel'); },
+  get date_of_birth() { return tr('kySumDob'); },
+  get expiry_date() { return tr('xtVence'); },
+  get nationality() { return tr('kyNationality'); },
 };
 
 export function OcrConfirmation({ ocrData, onConfirm, onRetry }: Props) {
@@ -22,8 +23,8 @@ export function OcrConfirmation({ ocrData, onConfirm, onRetry }: Props) {
 
   return (
     <View style={st.wrap}>
-      <Text style={st.title}>✅ Datos detectados</Text>
-      <Text style={st.sub}>Revisa que los datos sean correctos</Text>
+      <Text style={st.title}>{tr('xtDatosDetectados')}</Text>
+      <Text style={st.sub}>{tr('xtRevisaQueLosDatosSeanCorrectos')}</Text>
       {entries.map(([k, v]) => (
         <View key={k} style={st.row}>
           <Text style={st.key}>{LABELS[k] ?? k}</Text>
@@ -31,11 +32,11 @@ export function OcrConfirmation({ ocrData, onConfirm, onRetry }: Props) {
         </View>
       ))}
       <View style={st.btns}>
-        <TouchableOpacity style={st.btnConfirm} onPress={onConfirm} accessibilityLabel="Confirmar datos OCR">
-          <Text style={st.btnConfirmText}>✓ Sí, son correctos</Text>
+        <TouchableOpacity style={st.btnConfirm} onPress={onConfirm} accessibilityLabel={tr('xtConfirmarDatosOCR')}>
+          <Text style={st.btnConfirmText}>{tr('kycYesCorrect')}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={st.btnRetry} onPress={onRetry} accessibilityLabel="Repetir captura">
-          <Text style={st.btnRetryText}>✗ Repetir captura</Text>
+        <TouchableOpacity style={st.btnRetry} onPress={onRetry} accessibilityLabel={tr('xtRepetirCaptura')}>
+          <Text style={st.btnRetryText}>✗ {tr('xtRepetirCaptura')}</Text>
         </TouchableOpacity>
       </View>
     </View>

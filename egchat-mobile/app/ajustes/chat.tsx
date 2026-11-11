@@ -7,6 +7,7 @@ import { CFG, getCfgBool, setCfgBool, getCfgString, setCfg } from '../../src/ser
 import { getToken, getApiBase } from '../../src/api';
 import { toast } from '../../src/components/Toast';
 import { Colors } from '../../src/theme';
+import { useLanguage } from '../../src/context/LanguageContext';
 
 type ChatFontSize = 'small' | 'medium' | 'large';
 
@@ -34,12 +35,32 @@ export default function ChatSettingsScreen() {
   const [savePhotos, setSavePhotos] = useState(false);
   const [fontSz, setFontSz] = useState<ChatFontSize>('medium');
   const [syncingReceipts, setSyncingReceipts] = useState(false);
+  const { translate: t } = useLanguage();
 
   useEffect(() => {
+    let vivo = true;
     getCfgBool(CFG.enterSend, false).then(setEnterSend);
     getCfgBool(CFG.readReceipts, true).then(setReadReceipts);
     getCfgBool(CFG.savePhotos, false).then(setSavePhotos);
     getCfgString(CFG.fontSizeChat, 'medium').then(v => setFontSz((v as ChatFontSize) || 'medium'));
+    // El backend decide si tus confirmaciones salen, así que su respuesta manda
+    // sobre la copia local; si no, aquí pondría «Activadas» mientras deja de
+    // enviarlas desde el otro dispositivo.
+    (async () => {
+      try {
+        const token = await getToken();
+        const base = getApiBase();
+        const res = await fetch(`${base}/api/auth/privacy`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!vivo || typeof data?.read_receipts_enabled !== 'boolean') return;
+        setReadReceipts(data.read_receipts_enabled);
+        setCfgBool(CFG.readReceipts, data.read_receipts_enabled);
+      } catch { /* la copia local ya está mostrada */ }
+    })();
+    return () => { vivo = false; };
   }, []);
 
   const handleReadReceiptsChange = useCallback(async (v: boolean) => {
@@ -48,28 +69,32 @@ export default function ChatSettingsScreen() {
     setSyncingReceipts(true);
     await syncReadReceiptsToBackend(v);
     setSyncingReceipts(false);
-    toast.info(v ? '●● Confirmaciones de lectura activadas' : '●● Confirmaciones de lectura desactivadas');
-  }, []);
+    toast.info(v ? `●● ${t('setReadReceiptsOn')}` : `●● ${t('setReadReceiptsOff')}`);
+  }, [t]);
 
-  const labels: Record<ChatFontSize, string> = { small: 'Pequeña', medium: 'Normal', large: 'Grande' };
+  const labels: Record<ChatFontSize, string> = {
+    small: t('fontSmall'),
+    medium: t('fontNormal'),
+    large: t('fontLarge'),
+  };
 
   return (
-    <SettingsLayout title="Chat">
-      <SettingsSection label="Comportamiento" />
+    <SettingsLayout title={t('chatTitle')}>
+      <SettingsSection label={t('behavior')} />
       <SettingsCard>
-        <SettingsToggleRow label="Enter para enviar" value={enterSend} onValueChange={v => { setEnterSend(v); setCfgBool(CFG.enterSend, v); }} />
+        <SettingsToggleRow label={t('enterToSend')} value={enterSend} onValueChange={v => { setEnterSend(v); setCfgBool(CFG.enterSend, v); }} />
         <SettingsDivider />
         <SettingsToggleRow
-          label="Confirmaciones de lectura (●●)"
-          description={syncingReceipts ? 'Guardando…' : (readReceipts ? 'Activadas' : 'Desactivadas')}
+          label={t('readReceipts')}
+          description={syncingReceipts ? t('saving') : (readReceipts ? t('enabled') : t('disabled'))}
           value={readReceipts}
           onValueChange={handleReadReceiptsChange}
         />
         <SettingsDivider />
-        <SettingsToggleRow label="Guardar fotos automáticamente" value={savePhotos} onValueChange={v => { setSavePhotos(v); setCfgBool(CFG.savePhotos, v); }} />
+        <SettingsToggleRow label={t('savePhotosAuto')} value={savePhotos} onValueChange={v => { setSavePhotos(v); setCfgBool(CFG.savePhotos, v); }} />
       </SettingsCard>
 
-      <SettingsSection label="Tamaño de fuente en chats" />
+      <SettingsSection label={t('chatFontSize')} />
       <SettingsCard>
         {(['small', 'medium', 'large'] as const).map((sz, i, arr) => (
           <React.Fragment key={sz}>

@@ -13,11 +13,13 @@ import { refreshAndroidChannels } from '../../src/notifications';
 import { Colors } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
+import { useLanguage } from '../../src/context/LanguageContext';
 
 export default function SonidosScreen() {
   const [settings, setSettings] = useState<SoundSettings | null>(null);
   const { isDark } = useThemeContext();
   const C = isDark ? (DarkColors as unknown as typeof Colors) : Colors;
+  const { translate: t } = useLanguage();
 
   useEffect(() => {
     getSoundSettings().then(setSettings);
@@ -30,7 +32,7 @@ export default function SonidosScreen() {
 
   if (!settings) {
     return (
-      <SettingsLayout title="Sonidos y notificaciones" scroll={false}>
+      <SettingsLayout title={t('soundsTitle')} scroll={false}>
         <ActivityIndicator color={Colors.accent} style={{ marginTop: 40 }} />
       </SettingsLayout>
     );
@@ -83,8 +85,8 @@ export default function SonidosScreen() {
   );
 
   return (
-    <SettingsLayout title="Sonidos y notificaciones">
-      <SettingsSection label="Volumen general" />
+    <SettingsLayout title={t('soundsTitle')}>
+      <SettingsSection label={t('generalVolume')} />
       <View style={{ backgroundColor: isDark ? '#161b22' : '#fff', padding: 16 }}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
           {[0, 0.25, 0.5, 0.75, 1].map(v => (
@@ -100,14 +102,14 @@ export default function SonidosScreen() {
           ))}
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text style={{ fontSize: 16, color: C.textPrimary }}>Vibración</Text>
+          <Text style={{ fontSize: 16, color: C.textPrimary }}>{t('vibration')}</Text>
           <Switch value={settings.vibrationEnabled} onValueChange={v => update('vibrationEnabled', v)} trackColor={{ false: '#d1d5db', true: Colors.accent }} thumbColor="#fff" />
         </View>
       </View>
 
-      {toneSection('Tono de mensajes', MESSAGE_TONES, 'messageTone', '#22c55e')}
-      {toneSection('Tono de llamada', RINGTONES, 'ringtone', '#3b82f6')}
-      {toneSection('Tono de notificación', NOTIFICATION_TONES, 'notificationTone', '#a855f7')}
+      {toneSection(t('messageToneSection'), MESSAGE_TONES, 'messageTone', '#22c55e')}
+      {toneSection(t('ringtoneToneSection'), RINGTONES, 'ringtone', '#3b82f6')}
+      {toneSection(t('notificationToneSection'), NOTIFICATION_TONES, 'notificationTone', '#a855f7')}
     </SettingsLayout>
   );
 }

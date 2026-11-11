@@ -23,6 +23,7 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import type { ChatMessage } from '../../types/chat';
+import { useTranslation } from '../../context/LanguageContext';
 
 // ─── Constantes ────────────────────────────────────────────────────────────────
 const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
@@ -77,6 +78,8 @@ export function ChatContextMenu(props: ChatContextMenuProps) {
     onEditHistory, onSelectMode, onDownload, onDeleteContact,
   } = props;
 
+  const { t } = useTranslation();
+
   // ── Animación de entrada ────────────────────────────────────────
   const scale   = useRef(new Animated.Value(0.9)).current;
   const opacity = useRef(new Animated.Value(0)).current;
@@ -106,102 +109,102 @@ export function ChatContextMenu(props: ChatContextMenuProps) {
   // ── Barra superior de acceso rápido ─────────────────────────────
   interface QuickItem { key: string; label: string; action: () => void }
   const quickItems: QuickItem[] = [];
-  if (isText)            quickItems.push({ key: 'copy',      label: 'Copiar',     action: onCopy });
-  quickItems.push(        { key: 'reply',     label: 'Responder', action: () => { onReply(); onClose(); } });
-  if (isText && onTranslate) quickItems.push({ key: 'translate', label: 'Traducir', action: () => { onTranslate(); } });
+  if (isText)            quickItems.push({ key: 'copy',      label: t('chtCopy'),     action: onCopy });
+  quickItems.push(        { key: 'reply',     label: t('chtReply'), action: () => { onReply(); onClose(); } });
+  if (isText && onTranslate) quickItems.push({ key: 'translate', label: t('chtTranslate'), action: () => { onTranslate(); } });
 
   // ── Cuadrícula de acciones ───────────────────────────────────────
   const grid: GridAction[] = [];
 
   if (isText) grid.push({
-    key: 'copy',      icon: 'content-copy', label: 'Copiar',
+    key: 'copy',      icon: 'content-copy', label: t('chtCopy'),
     bg: '#E8F5E9',    color: '#2E7D32',
     onPress: () => { onCopy(); },
   });
 
   grid.push({
-    key: 'reply',     icon: 'reply',        label: 'Responder',
+    key: 'reply',     icon: 'reply',        label: t('chtReply'),
     bg: '#E3F2FD',    color: '#1565C0',
     onPress: () => { onReply(); onClose(); },
   });
 
   if (isOwn && isText) grid.push({
-    key: 'edit',      icon: 'edit',         label: 'Editar',
+    key: 'edit',      icon: 'edit',         label: t('edit'),
     bg: '#E3F2FD',    color: '#0277BD',
     onPress: () => { onEdit?.(); },
   });
 
   grid.push({
-    key: 'star',      icon: 'star',         label: 'Destacar',
+    key: 'star',      icon: 'star',         label: t('chtStar'),
     bg: '#FFFDE7',    color: '#F9A825',
     onPress: () => { onStar(); onClose(); },
   });
 
   if (onForward) grid.push({
-    key: 'forward',   icon: 'forward',      label: 'Reenviar',
+    key: 'forward',   icon: 'forward',      label: t('chtForward'),
     bg: '#E0F7FA',    color: '#00695C',
     onPress: () => { onForward(); },
   });
 
   if (onSelectMode) grid.push({
-    key: 'select',    icon: 'checklist',    label: 'Seleccionar',
+    key: 'select',    icon: 'checklist',    label: t('chtSelect'),
     bg: '#EDE7F6',    color: '#6A1B9A',
     onPress: () => { onSelectMode(); onClose(); },
   });
 
   grid.push({
-    key: 'info',      icon: 'info-outline', label: 'Info del\nmensaje',
+    key: 'info',      icon: 'info-outline', label: t('chtMessageInfoNL'),
     bg: '#FCE4EC',    color: '#AD1457',
     onPress: () => onClose(),
   });
 
   if (onPin) grid.push({
-    key: 'pin',       icon: 'push-pin',     label: 'Fijar\nmensaje',
+    key: 'pin',       icon: 'push-pin',     label: t('chtPinMessageNL'),
     bg: '#E8F5E9',    color: '#2E7D32',
     onPress: () => { onPin(); onClose(); },
   });
 
   if (isText && onTranslate) grid.push({
-    key: 'translate', icon: 'language',     label: 'Traducir',
+    key: 'translate', icon: 'language',     label: t('chtTranslate'),
     bg: '#E0F7FA',    color: '#00838F',
     onPress: () => { onTranslate(); },
   });
 
   if (isMedia && onDownload) grid.push({
-    key: 'download',  icon: 'download',     label: 'Guardar',
+    key: 'download',  icon: 'download',     label: t('chtSaveAction'),
     bg: '#E8EAF6',    color: '#283593',
     onPress: () => { onDownload(); },
   });
 
   if (wasEdited && onEditHistory) grid.push({
-    key: 'history',   icon: 'history',      label: 'Historial',
+    key: 'history',   icon: 'history',      label: t('history'),
     bg: '#FFF3E0',    color: '#E65100',
     onPress: () => { onEditHistory(); },
   });
 
   if (onEphemeral && isOwn) grid.push({
-    key: 'ephemeral', icon: 'timer',        label: 'Temporales',
+    key: 'ephemeral', icon: 'timer',        label: t('chtEphemeralShort'),
     bg: '#F3E5F5',    color: '#7B1FA2',
     onPress: () => { onEphemeral(); onClose(); },
   });
 
   // Eliminar para mí — siempre visible
   grid.push({
-    key: 'deleteMe',  icon: 'cancel',       label: 'Para mí',
+    key: 'deleteMe',  icon: 'cancel',       label: t('chtForMe'),
     bg: '#FFEBEE',    color: '#C62828', danger: true,
     onPress: () => { onDeleteForMe(); },
   });
 
   // Eliminar para todos — solo si soy el autor
   if (isOwn) grid.push({
-    key: 'deleteAll', icon: 'delete',       label: 'Para\ntodos',
+    key: 'deleteAll', icon: 'delete',       label: t('chtForEveryone'),
     bg: '#FFEBEE',    color: '#B71C1C', danger: true,
     onPress: () => { onDelete(); },
   });
 
   // Eliminar contacto — solo en chats privados (onDeleteContact proporcionado)
   if (onDeleteContact) grid.push({
-    key: 'deleteContact', icon: 'person-remove', label: 'Eliminar\ncontacto',
+    key: 'deleteContact', icon: 'person-remove', label: t('chtDeleteContactNL'),
     bg: '#FFF3E0',        color: '#E65100',       danger: true,
     onPress: () => { onDeleteContact(); onClose(); },
   });
@@ -305,7 +308,7 @@ export function ChatContextMenu(props: ChatContextMenuProps) {
               onPress={onClose}
               activeOpacity={0.75}
             >
-              <Text style={s.cancelLabel}>Cancelar</Text>
+              <Text style={s.cancelLabel}>{t('cancel')}</Text>
             </TouchableOpacity>
 
           </Animated.View>

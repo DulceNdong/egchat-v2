@@ -4,20 +4,21 @@
 // ══════════════════════════════════════════════════════════════════
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getToken, getApiBase } from '../api';
+import { t as tr } from '../translations';
 
 const KEY = 'egchat_ephemeral_settings';
 const ONCE_KEY = 'egchat_view_once_ids';
 
 // Duraciones disponibles (en segundos, 0 = desactivado)
 export const EPHEMERAL_DURATIONS = [
-  { label: 'Desactivado', value: 0 },
-  { label: '30 segundos', value: 30 },
-  { label: '1 minuto', value: 60 },
-  { label: '5 minutos', value: 300 },
-  { label: '1 hora', value: 3600 },
-  { label: '24 horas', value: 86400 },
-  { label: '7 días', value: 604800 },
-  { label: '90 días', value: 7776000 },
+  { get label() { return tr('disabled'); }, value: 0 },
+  { get label() { return tr('xt30Segundos'); }, value: 30 },
+  { get label() { return tr('xt1Minuto'); }, value: 60 },
+  { get label() { return tr('xt5Minutos'); }, value: 300 },
+  { get label() { return tr('xt1Hora'); }, value: 3600 },
+  { get label() { return tr('xt24Horas'); }, value: 86400 },
+  { get label() { return tr('xt7Dias'); }, value: 604800 },
+  { get label() { return tr('xt90Dias'); }, value: 7776000 },
 ] as const;
 
 export type EphemeralDuration = typeof EPHEMERAL_DURATIONS[number]['value'];
