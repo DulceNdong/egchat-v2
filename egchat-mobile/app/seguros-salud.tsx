@@ -6,6 +6,7 @@ import { Colors, Typography, Spacing, BorderRadius, FontSize, FontWeight, Shadow
 import { useThemeContext } from '../src/theme/ThemeContext';
 import { DarkColors } from '../src/theme/darkMode';
 import { useTranslation } from '../src/context/LanguageContext';
+import { usePaymentPin } from '../src/context/PaymentPinContext';
 import { segurosAPI, serviciosAPI, walletAPI, BillFactura, Tarifa } from '../src/api';
 import { toast } from '../src/components/Toast';
 import { SegurosModal } from '../src/components/services/SegurosModal';
@@ -52,6 +53,7 @@ export default function SegurosSaludScreen() {
   const [modal, setModal] = useState<null | 'seguros' | 'salud' | 'correos'>(null);
   const { isDark } = useThemeContext();
   const { t } = useTranslation();
+  const { runWithPin } = usePaymentPin();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
   const insets = useSafeAreaInsets();
 
@@ -133,7 +135,11 @@ export default function SegurosSaludScreen() {
           onPress: async () => {
             setPayingId(factura.id);
             try {
-              const res = await serviciosAPI.pagarDGI(factura.id);
+              const res = await runWithPin(
+                pin => serviciosAPI.pagarDGI(factura.id, pin),
+                t('xtIntroduceTuPIN'),
+              );
+              if (!res) return;
               if (res.balance != null) setBalance(Number(res.balance));
               toast.success(res.message || 'Impuesto pagado.');
               await consultarDGI();

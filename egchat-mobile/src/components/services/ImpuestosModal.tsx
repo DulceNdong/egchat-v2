@@ -7,6 +7,7 @@ import { IMPUESTOS_OPTIONS } from '../../data/serviciosPublicos';
 import { FinancialModuleShell } from './FinancialModuleUI';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
 import { PayMethodPicker, ServiceOptionRow, FacturaResultCard } from './PublicModuleUI';
+import { usePaymentPin } from '../../context/PaymentPinContext';
 import { t as tr } from '../../translations';
 
 interface Props { visible: boolean; onClose: () => void; }
@@ -16,6 +17,7 @@ type Screen = 'home' | 'form' | 'success';
 const ACCENT = '#1B3A6B';
 
 export const ImpuestosModal: React.FC<Props> = ({ visible, onClose }) => {
+  const { runWithPin } = usePaymentPin();
   const [screen, setScreen] = useState<Screen>('home');
   const [selected, setSelected] = useState<typeof IMPUESTOS_OPTIONS[0] | null>(null);
   const [nif, setNif] = useState('');
@@ -65,7 +67,11 @@ export const ImpuestosModal: React.FC<Props> = ({ visible, onClose }) => {
     if (!seleccion || !payMethod) return;
     setLoading(true); setError('');
     try {
-      const res = await serviciosAPI.pagarDGI(seleccion.id);
+      const res = await runWithPin(
+        pin => serviciosAPI.pagarDGI(seleccion.id, pin),
+        tr('xtIntroduceTuPIN'),
+      );
+      if (!res) return;
       setRecibo({ importe: Number(res.importe), balance: Number(res.balance) });
       setBalance(Number(res.balance));
       setScreen('success');

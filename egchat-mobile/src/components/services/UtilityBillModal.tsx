@@ -8,6 +8,7 @@ import { PrimaryButton } from './ServiceModuleUI';
 import {
   UtilityProviderBanner, IconFormField, PayMethodPicker, FacturaResultCard, ServiceOptionRow,
 } from './PublicModuleUI';
+import { usePaymentPin } from '../../context/PaymentPinContext';
 import { t as tr } from '../../translations';
 
 interface Props {
@@ -19,6 +20,7 @@ interface Props {
 type Screen = 'main' | 'confirm' | 'success';
 
 export const UtilityBillModal: React.FC<Props> = ({ visible, onClose, variant }) => {
+  const { runWithPin } = usePaymentPin();
   const cfg = UTILITY_CONFIG[variant];
   const [screen, setScreen] = useState<Screen>('main');
   const [clientType, setClientType] = useState('Residencial');
@@ -78,9 +80,13 @@ export const UtilityBillModal: React.FC<Props> = ({ visible, onClose, variant })
     if (!seleccion || !payMethod) return;
     setLoading(true); setError('');
     try {
-      const res = variant === 'elec'
-        ? await serviciosAPI.pagarElectricidad(seleccion.id)
-        : await serviciosAPI.pagarAgua(seleccion.id);
+      const res = await runWithPin(
+        pin => variant === 'elec'
+          ? serviciosAPI.pagarElectricidad(seleccion.id, pin)
+          : serviciosAPI.pagarAgua(seleccion.id, pin),
+        tr('xtIntroduceTuPIN'),
+      );
+      if (!res) return;
       setRecibo({ importe: Number(res.importe), balance: Number(res.balance) });
       setBalance(Number(res.balance));
       setScreen('success');

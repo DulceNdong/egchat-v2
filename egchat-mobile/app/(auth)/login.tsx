@@ -25,6 +25,7 @@ import { EGErrorMessage } from '../../src/components/ui';
 import { useAuth } from '../../src/hooks/useAuth';
 import { SpinningLogo } from '../../src/components/SpinningLogo';
 import { useTranslation } from '../../src/context/LanguageContext';
+import { maxDigitos, nacionalLimpia, nacionalValida, soloDigitos } from '../../src/utils/phonePlan';
 
 const { width } = Dimensions.get('window');
 
@@ -179,6 +180,7 @@ export default function LoginScreen() {
   const [countryCode, setCountryCode]             = useState('+240');
   const [phone, setPhone]                         = useState('');
   const [password, setPassword]                   = useState('');
+  const [localError, setLocalError]               = useState('');
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [comingSoonCountry, setComingSoonCountry] = useState<typeof COUNTRIES[0] | null>(null);
 
@@ -188,8 +190,13 @@ export default function LoginScreen() {
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
 
   const selectedCountry = COUNTRIES.find(c => c.phone === countryCode) || COUNTRIES[0];
-  const fullPhone       = countryCode + phone.replace(/\s/g, '');
-  const doLogin         = () => login(fullPhone, password);
+  const fullPhone       = countryCode + nacionalLimpia(countryCode, phone);
+  const showErr         = localError || error;
+  const doLogin         = () => {
+    if (!nacionalValida(countryCode, phone)) { setLocalError(t('authPhoneDigitsWrong')); return; }
+    setLocalError('');
+    login(fullPhone, password);
+  };
 
   useEffect(() => {
     (async () => {
@@ -198,7 +205,7 @@ export default function LoginScreen() {
         if (!raw) return;
         const d = JSON.parse(raw) as { countryCode?: string; phone?: string };
         if (d.countryCode) setCountryCode(d.countryCode);
-        if (d.phone)       setPhone(d.phone);
+        if (d.phone)       setPhone(soloDigitos(d.phone));
       } catch {}
     })();
   }, []);
@@ -360,10 +367,11 @@ export default function LoginScreen() {
                 </View>
                 <TextInput
                   value={phone}
-                  onChangeText={setPhone}
+                  onChangeText={v => { setPhone(nacionalLimpia(countryCode, v).slice(0, maxDigitos(countryCode))); setLocalError(''); }}
                   placeholder="222 XXX XXX"
                   placeholderTextColor={isDark ? '#4a6070' : '#b0bcc8'}
                   keyboardType="phone-pad"
+                  maxLength={maxDigitos(countryCode)}
                   autoCapitalize="none"
                   autoCorrect={false}
                   autoComplete="tel"
@@ -383,9 +391,9 @@ export default function LoginScreen() {
               isDark={isDark}
             />
 
-            {error ? (
+            {showErr ? (
               <View style={s.errBox}>
-                <Text style={s.errText}>{error}</Text>
+                <Text style={s.errText}>{showErr}</Text>
               </View>
             ) : null}
 

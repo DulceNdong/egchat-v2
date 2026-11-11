@@ -115,9 +115,11 @@ const prepareSpeech = (text: string, lang: string) => {
     .replace(/https?:\/\/\S+/g, ' ')
     .replace(/[*_#`>~|]/g, ' ')
     .replace(/[\u{1F000}-\u{1FAFF}\u{2190}-\u{27BF}\u{FE0F}\u{200D}]/gu, ' ');
-  // iOS deletrea las mayúsculas sueltas: «EGCHAT» salía como E-G-C-H-A-T.
-  // En minúsculas se lee como una sola palabra, con sonido inglés de «eg-chat».
-  out = out.replace(/\bEGCHAT\b/gi, 'egchat');
+  // Pedido del usuario: la marca suena «E. G. CHAT» (las dos letras y luego la
+  // palabra). Las letras van sueltas para que el sintetizador las lea una a una;
+  // «chat» en minúsculas para que no lo deletree.
+  out = out.replace(/\bE\s?G\s?-?\s?CHAT\b/gi, 'E G chat');
+  out = out.replace(/\bEGCHAT\b/gi, 'E G chat');
   const map = CURRENCY_WORDS[lang] || CURRENCY_WORDS.es;
   Object.entries(map).forEach(([code, words]) => {
     out = out.replace(new RegExp(`\\b${code}\\b`, 'gi'), words);

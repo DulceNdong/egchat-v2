@@ -13,6 +13,7 @@ import {
 import { FinancialModuleShell, FilterChips, SegmentTabs } from './FinancialModuleUI';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
 import { SearchField } from './PublicModuleUI';
+import { usePaymentPin } from '../../context/PaymentPinContext';
 import { t as tr } from '../../translations';
 
 type SaludTab = 'hospitales' | 'farmacias' | 'cita' | 'urgencias';
@@ -37,6 +38,7 @@ const openRoute = (lat?: number, lng?: number, name?: string) => {
 };
 
 export const SaludModal: React.FC<Props> = ({ visible, onClose }) => {
+  const { runWithPin } = usePaymentPin();
   const [tab, setTab] = useState<SaludTab>('hospitales');
   const [cityFilter, setCityFilter] = useState('Malabo');
   const [search, setSearch] = useState('');
@@ -162,13 +164,17 @@ export const SaludModal: React.FC<Props> = ({ visible, onClose }) => {
     if (!deliveryForm.name || !deliveryForm.phone || !deliveryForm.address || !medCart.length) return;
     setMedPlacing(true);
     try {
-      const res = await saludAPI.orderMeds({
-        farmaciaId: selectedPharm || '1',
-        direccion: deliveryForm.address,
-        external_id: `MED-${Date.now()}`,
-        // Solo producto y cantidad; el importe lo pone la tabla.
-        items: medCart.map(i => ({ product_id: i.id, qty: i.qty })),
-      });
+      const res = await runWithPin(
+        pin => saludAPI.orderMeds({
+          farmaciaId: selectedPharm || '1',
+          direccion: deliveryForm.address,
+          external_id: `MED-${Date.now()}`,
+          // Solo producto y cantidad; el importe lo pone la tabla.
+          items: medCart.map(i => ({ product_id: i.id, qty: i.qty })),
+        }, pin),
+        tr('xtIntroduceTuPIN'),
+      );
+      if (!res) return;
       setMedRecibo({
         orderId: res.orderId,
         total: Number(res.total),

@@ -13,6 +13,7 @@ import { taxiAPI, walletAPI, serviciosAPI, Tarifa } from '../src/api';
 import { subscribe, getState } from '../src/store/appStore';
 import { toast } from '../src/components/Toast';
 import { MiTaxiMap } from '../src/components/mitaxi/MiTaxiMap';
+import { usePaymentPin } from '../src/context/PaymentPinContext';
 import {
   MALABO_CENTER, MITAXI_PLACE_NAMES, MapCoord,
   findPlaceCoords, isCurrentLocationLabel,
@@ -57,6 +58,7 @@ interface DriverInfo {
 
 export default function MiTaxiScreen() {
   const insets = useSafeAreaInsets();
+  const { runWithPin } = usePaymentPin();
   const [sheetCollapsed, setSheetCollapsed] = useState(false);
   const sheetAnim = useRef(new Animated.Value(SH * 0.68)).current;
 
@@ -259,13 +261,22 @@ export default function MiTaxiScreen() {
     const origCoords  = await resolvePlace(origin, userLocation);
     if (destCoords)  setDestLoc(destCoords);
     if (origCoords && isCurrentLocationLabel(origin)) setUserLoc(origCoords);
-    setStep('searching');
     try {
-      const res = await taxiAPI.requestRide(
-        { address: origin, lat: origCoords?.latitude, lng: origCoords?.longitude },
-        { address: dest,   lat: destCoords?.latitude,  lng: destCoords?.longitude  },
-        selected.id,
+      const res = await runWithPin(
+        pin => {
+          // Buscar solo cuando haya PIN: sin este paso el botón seguía activo
+          // y un segundo toque creaba otro viaje.
+          setStep('searching');
+          return taxiAPI.requestRide(
+            { address: origin, lat: origCoords?.latitude, lng: origCoords?.longitude },
+            { address: dest,   lat: destCoords?.latitude,  lng: destCoords?.longitude  },
+            selected.id,
+            pin,
+          );
+        },
+        tr('xtIntroduceTuPIN'),
       );
+      if (!res) { setStep('form'); return; }
       setRideId(res.rideId);
       setFare(res.tarifa || estimatedFare || minFare);
       const n = res.driver?.name || 'Carlos Nguema';

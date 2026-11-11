@@ -23,6 +23,7 @@ import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
 import { EGButton, EGInput, EGErrorMessage } from '../../src/components/ui';
 import { useTranslation } from '../../src/context/LanguageContext';
+import { maxDigitos, nacionalLimpia, nacionalValida } from '../../src/utils/phonePlan';
 
 const COUNTRIES = [
   { code: 'GQ', nameKey: 'svcEquatorialGuinea',      phone: '+240' },
@@ -87,7 +88,7 @@ export default function RegisterScreen() {
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
 
   const selectedCountry = COUNTRIES.find(c => c.phone === countryCode) || COUNTRIES[0];
-  const fullPhone = countryCode + phone.replace(/\s/g, '');
+  const fullPhone = countryCode + nacionalLimpia(countryCode, phone);
 
   const pickAvatar = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -111,7 +112,7 @@ export default function RegisterScreen() {
       setStep(2);
     } else if (step === 2) {
       if (!phone.trim()) { setLocalError(t('authPhoneRequired')); return; }
-      if (phone.replace(/\s/g, '').length < 6) { setLocalError(t('authPhoneInvalid')); return; }
+      if (!nacionalValida(countryCode, phone)) { setLocalError(t('authPhoneDigitsWrong')); return; }
       // Verificar que el teléfono no esté ya registrado antes de avanzar
       try {
         const { exists } = await authAPI.checkPhone(fullPhone);
@@ -241,9 +242,10 @@ export default function RegisterScreen() {
                     </View>
                     <EGInput
                       value={phone}
-                      onChangeText={setPhone}
+                      onChangeText={v => { setPhone(nacionalLimpia(countryCode, v).slice(0, maxDigitos(countryCode))); setLocalError(''); }}
                       placeholder="222 XXX XXX"
                       keyboardType="phone-pad"
+                      maxLength={maxDigitos(countryCode)}
                       containerStyle={styles.phoneInputContainer}
                       returnKeyType="next"
                     />

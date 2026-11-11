@@ -14,6 +14,7 @@ import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
 import { EGButton, EGInput, EGErrorMessage } from '../../src/components/ui';
 import { useTranslation } from '../../src/context/LanguageContext';
+import { maxDigitos, nacionalLimpia, nacionalValida } from '../../src/utils/phonePlan';
 
 const COUNTRIES = [
   { code: 'GQ', nameKey: 'svcEquatorialGuinea',          phone: '+240' },
@@ -51,7 +52,8 @@ type RecoverStep = 1 | 2 | 3;
 
 export default function ForgotPasswordScreen() {
   const [recoverStep, setRecoverStep] = useState<RecoverStep>(1);
-  const [countryCode] = useState('+240');
+  const [countryCode, setCountryCode] = useState('+240');
+  const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
   const [newPass, setNewPass] = useState('');
@@ -64,11 +66,12 @@ export default function ForgotPasswordScreen() {
   const { t } = useTranslation();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
 
-  const fullPhone = countryCode + phone.replace(/\s/g, '');
+  const fullPhone = countryCode + nacionalLimpia(countryCode, phone);
   const selectedCountry = COUNTRIES.find(c => c.phone === countryCode) || COUNTRIES[0];
 
   const sendCode = async () => {
     if (!phone.trim()) { setError(t('authPhoneRequired')); return; }
+    if (!nacionalValida(countryCode, phone)) { setError(t('authPhoneDigitsWrong')); return; }
     setLoading(true); setError('');
     try {
       await authAPI.sendVerification(fullPhone);
@@ -130,10 +133,36 @@ export default function ForgotPasswordScreen() {
                 <Text style={[styles.subtitle, { color: C.textSecondary }]}>{t('createStrongPassword')}</Text>
                 <View style={styles.fieldGroup}>
                   <Text style={[styles.fieldLabel, { color: C.textTertiary }]}>{t('country')}</Text>
-                  <View style={[styles.countrySelector, { backgroundColor: C.bgSecondary, borderColor: C.border }]}>
+                  <TouchableOpacity
+                    style={[styles.countrySelector, { backgroundColor: C.bgSecondary, borderColor: C.border }]}
+                    onPress={() => setShowCountryPicker(p => !p)}
+                    activeOpacity={0.8}
+                  >
                     <Text style={styles.countryFlag}>{getFlag(selectedCountry.code)}</Text>
                     <Text style={[styles.countryName, { color: C.textPrimary }]}>{t(selectedCountry.nameKey)}:</Text>
-                  </View>
+                    <Text style={[styles.countryPhone, { color: C.textTertiary }]}>{selectedCountry.phone}</Text>
+                    <Text style={[styles.countryChevron, { color: C.textTertiary }]}>{showCountryPicker ? '▲' : '▼'}</Text>
+                  </TouchableOpacity>
+                  {showCountryPicker && (
+                    <ScrollView
+                      style={[styles.countryDropdown, { backgroundColor: C.bgSecondary, borderColor: C.border }]}
+                      keyboardShouldPersistTaps="handled"
+                      nestedScrollEnabled={true}
+                    >
+                      {COUNTRIES.map(c => (
+                        <TouchableOpacity
+                          key={c.phone}
+                          style={[styles.countryOption, { borderBottomColor: C.borderLight }]}
+                          onPress={() => { setCountryCode(c.phone); setShowCountryPicker(false); setError(''); }}
+                          activeOpacity={0.75}
+                        >
+                          <Text style={styles.countryFlag}>{getFlag(c.code)}</Text>
+                          <Text style={[styles.countryOptionText, { color: C.textPrimary }]}>{t(c.nameKey)}</Text>
+                          <Text style={[styles.countryPhone, { color: C.textTertiary }]}>{c.phone}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  )}
                 </View>
                 <View style={styles.fieldGroup}>
                   <Text style={[styles.fieldLabel, { color: C.textTertiary }]}>{t('phone')}</Text>
@@ -141,7 +170,14 @@ export default function ForgotPasswordScreen() {
                     <View style={[styles.phonePrefix, { backgroundColor: C.bgTertiary, borderColor: C.border }]}>
                       <Text style={[styles.phonePrefixText, { color: C.textPrimary }]}>{countryCode}</Text>
                     </View>
-                    <EGInput value={phone} onChangeText={setPhone} placeholder="222 XXX XXX" keyboardType="phone-pad" containerStyle={styles.phoneInputContainer} />
+                    <EGInput
+                      value={phone}
+                      onChangeText={v => { setPhone(nacionalLimpia(countryCode, v).slice(0, maxDigitos(countryCode))); setError(''); }}
+                      placeholder="222 XXX XXX"
+                      keyboardType="phone-pad"
+                      maxLength={maxDigitos(countryCode)}
+                      containerStyle={styles.phoneInputContainer}
+                    />
                   </View>
                 </View>
                 {error ? <EGErrorMessage text={error} /> : null}
@@ -199,6 +235,23 @@ const styles = StyleSheet.create({
   },
   countryFlag: { fontSize: 18 },
   countryName: { flex: 1, fontSize: FontSize.base, fontWeight: FontWeight.medium },
+  countryChevron: { fontSize: 14 },
+  countryPhone: { fontSize: FontSize.sm, fontWeight: FontWeight.medium },
+  countryDropdown: {
+    marginTop: 4,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    maxHeight: 220,
+    zIndex: 100,
+  },
+  countryOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderBottomWidth: 1,
+    gap: Spacing.sm,
+  },
+  countryOptionText: { flex: 1, fontSize: FontSize.base },
   phoneRow: { flexDirection: 'row', alignItems: 'flex-start' },
   phonePrefix: {
     borderWidth: 1.5, borderRightWidth: 0,

@@ -25,6 +25,8 @@ import { Colors, ThemeProvider, useThemeContext } from '../src/theme';
 import { LanguageProvider, useLanguage } from '../src/context/LanguageContext';
 import { FontProvider } from '../src/context/FontContext';
 import { ActiveCallProvider } from '../src/context/ActiveCallContext';
+import { PaymentPinProvider } from '../src/context/PaymentPinContext';
+import { walletPIN } from '../src/services/walletPin';
 import { FloatingCallBar } from '../src/components/call/FloatingCallBar';
 import { useChatStream } from '../src/hooks/useChatStream';
 import { ToastContainer } from '../src/components/Toast';
@@ -269,6 +271,9 @@ export default function RootLayout() {
   const sessionManager = SessionManager.getInstance();
 
   const unauthorizedCooldown = useRef(false);
+  // Invitaciones a llamada de grupo ya avisadas: el SSE reconecta y no se
+  // quiere un Alert por cada reconexion ni dos seguidos de la misma sala.
+  const grupoInvitadoRef = useRef<Record<string, number>>({});
 
   // ── Modo inmersivo Android — oculta barra de navegación ──────────
   useEffect(() => {
@@ -552,7 +557,32 @@ export default function RootLayout() {
     if (event.type === 'call_ended' && event.callId) {
       callManager.onCallEndedSSE(event.callId);
     }
-  }, [globalUserId]));
+
+    // Alguien del grupo empezo una llamada grupal → ofrecer unirse.
+    // El roomId que llega ya es canonico: la app lo reenvia tal cual.
+    if (event.type === 'group_call_invited' && event.roomId) {
+      const sala = String(event.roomId);
+      if (pathname === '/group-call') return;
+      const ahora = Date.now();
+      if (ahora - (grupoInvitadoRef.current[sala] || 0) < 120000) return;
+      grupoInvitadoRef.current[sala] = ahora;
+      const quien = event.name || tr('chtGcAlguien');
+      Alert.alert(
+        tr('chtGcLlamadaGrupal'),
+        `${quien} ${tr('chtGcTeInvita')}`,
+        [
+          { text: tr('chtGcAhoraNo'), style: 'cancel' },
+          {
+            text: tr('chtGcUnirse'),
+            onPress: () => router.push({
+              pathname: '/group-call',
+              params: { groupId: sala, callType: event.callType === 'video' ? 'video' : 'audio' },
+            } as any),
+          },
+        ],
+      );
+    }
+  }, [globalUserId, pathname]));
 
   // ── Polling de llamadas entrantes (fallback cuando VoIP push falla) ──────
   // Cuando el token APNs es de sandbox y el servidor usa producción,
@@ -697,6 +727,10 @@ export default function RootLayout() {
         // Servicios en background — no bloquean UI
         try {
           if (!me?.id || !mounted) return;
+
+          // Si el PIN de la cuenta se borró en el servidor, la copia de este
+          // teléfono se va con él: nadie sigue entrando con el PIN viejo.
+          walletPIN.syncWithServer().catch(() => {});
 
           // ── Android: escuchar llamadas entrantes via broadcast FCM ────────
           // Cuando el FCM llega con la app abierta, el FirebaseMessagingService
@@ -1233,6 +1267,7 @@ export default function RootLayout() {
           <FontProvider>
           <ActiveCallProvider>
           <ThemeProvider>
+            <PaymentPinProvider>
             <LocalizedAppContent>
             <StatusBarController />
             <Stack screenOptions={{ headerShown: false }}>
@@ -1342,6 +1377,7 @@ export default function RootLayout() {
               onDismiss={() => setIncomingTransfer(null)}
             />
             </LocalizedAppContent>
+            </PaymentPinProvider>
           </ThemeProvider>
           </ActiveCallProvider>
           </FontProvider>

@@ -11,15 +11,16 @@ import { toast } from '../Toast';
 import { FinancialModuleShell, SummaryCard, FilterChips, StatusPill } from './FinancialModuleUI';
 import { PrimaryButton } from './ServiceModuleUI';
 import { PayMethodPicker } from './PublicModuleUI';
+import { usePaymentPin } from '../../context/PaymentPinContext';
 import { t as tr } from '../../translations';
 
 type FScreen = 'home' | 'detail' | 'pay' | 'success';
 type FilterId = 'todas' | 'pendiente' | 'vencida' | 'pagada';
 
-const PROVIDERS: Record<string, { name: string; icon: string; color: string; pay: (id: string) => Promise<any> }> = {
-  segesa: { name: 'SEGESA', icon: '⚡', color: '#1A3A6B', pay: id => serviciosAPI.pagarElectricidad(id) },
-  snge: { name: 'SNGE', icon: '💧', color: '#0A4A8A', pay: id => serviciosAPI.pagarAgua(id) },
-  dgi: { name: 'DGI', icon: '🏛️', color: '#1B3A6B', pay: id => serviciosAPI.pagarDGI(id) },
+const PROVIDERS: Record<string, { name: string; icon: string; color: string; pay: (id: string, pin?: string) => Promise<any> }> = {
+  segesa: { name: 'SEGESA', icon: '⚡', color: '#1A3A6B', pay: (id, pin) => serviciosAPI.pagarElectricidad(id, pin) },
+  snge: { name: 'SNGE', icon: '💧', color: '#0A4A8A', pay: (id, pin) => serviciosAPI.pagarAgua(id, pin) },
+  dgi: { name: 'DGI', icon: '🏛️', color: '#1B3A6B', pay: (id, pin) => serviciosAPI.pagarDGI(id, pin) },
 };
 
 const prov = (p: string) => PROVIDERS[p] || { name: (p || '').toUpperCase(), icon: '📄', color: '#C47D2A', pay: () => Promise.reject(new Error('Proveedor sin ruta de pago')) };
@@ -46,6 +47,7 @@ interface Props {
 }
 
 export const FacturasModal: React.FC<Props> = ({ visible, onClose }) => {
+  const { runWithPin } = usePaymentPin();
   const [screen, setScreen] = useState<FScreen>('home');
   const [bills, setBills] = useState<BillFactura[]>([]);
   const [selected, setSelected] = useState<BillFactura | null>(null);
@@ -102,7 +104,11 @@ export const FacturasModal: React.FC<Props> = ({ visible, onClose }) => {
     }
     setLoading(true);
     try {
-      const res = await prov(selected.provider).pay(selected.id);
+      const res = await runWithPin(
+        pin => prov(selected.provider).pay(selected.id, pin),
+        tr('xtIntroduceTuPIN'),
+      );
+      if (!res) return;
       setRecibo({ importe: Number(res.importe), balance: Number(res.balance) });
       setBalance(Number(res.balance));
       setBills(p => p.map(b => b.id === selected.id ? { ...b, status: 'paid', paid_at: new Date().toISOString() } : b));

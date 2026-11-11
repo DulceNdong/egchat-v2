@@ -11,7 +11,8 @@ import { t as tr } from '../../translations';
 interface SetupPinModalProps {
   visible: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  /** Devuelve el PIN recién guardado para usarlo en la operación pendiente. */
+  onSuccess: (pin?: string) => void;
   title?: string;
 }
 
@@ -21,13 +22,22 @@ export const SetupPinModal: React.FC<SetupPinModalProps> = ({
   onSuccess,
   title = tr('xtConfigurarPINDeSeguridad'),
 }) => {
-  const [step, setStep] = useState<'create' | 'confirm'>('create');
+  const [step, setStep] = useState<'checking' | 'current' | 'create' | 'confirm'>('checking');
+  const [hasPin, setHasPin] = useState(false);
+  const [verifiedCurrent, setVerifiedCurrent] = useState('');
+  const [currentPinArr, setCurrentPinArr] = useState(['', '', '', '', '', '']);
   const [firstPin, setFirstPin] = useState(['', '', '', '', '', '']);
   const [confirmPin, setConfirmPin] = useState(['', '', '', '', '', '']);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  // Cada apertura invalida la comprobación de la anterior.
+  const runRef = useRef(0);
 
+  const currentRefs = [
+    useRef<TextInput>(null), useRef<TextInput>(null), useRef<TextInput>(null),
+    useRef<TextInput>(null), useRef<TextInput>(null), useRef<TextInput>(null),
+  ];
   const createRefs = [
     useRef<TextInput>(null), useRef<TextInput>(null), useRef<TextInput>(null),
     useRef<TextInput>(null), useRef<TextInput>(null), useRef<TextInput>(null),
@@ -38,23 +48,90 @@ export const SetupPinModal: React.FC<SetupPinModalProps> = ({
   ];
 
   useEffect(() => {
-    if (visible) {
+    if (!visible) return;
+    const run = ++runRef.current;
+    setStep('checking');
+    setHasPin(false);
+    setVerifiedCurrent('');
+    setCurrentPinArr(['', '', '', '', '', '']);
+    setFirstPin(['', '', '', '', '', '']);
+    setConfirmPin(['', '', '', '', '', '']);
+    setCurrentIndex(0);
+    setError('');
+    setLoading(false);
+    // Si la consulta se cuelga no bloqueamos: el 403 del guardado nos devuelve
+    // al paso del PIN actual.
+    const timer = setTimeout(() => {
+      if (runRef.current !== run) return;
+      runRef.current = -1;
       setStep('create');
-      setFirstPin(['', '', '', '', '', '']);
-      setConfirmPin(['', '', '', '', '', '']);
-      setCurrentIndex(0);
-      setError('');
       setTimeout(() => createRefs[0].current?.focus(), 300);
-    }
+    }, 8000);
+    authAPI.hasPinConfigured()
+      .then(r => {
+        if (runRef.current !== run) return;
+        clearTimeout(timer);
+        if (r?.hasPin) {
+          setHasPin(true);
+          setStep('current');
+          setTimeout(() => currentRefs[0].current?.focus(), 300);
+        } else {
+          setStep('create');
+          setTimeout(() => createRefs[0].current?.focus(), 300);
+        }
+      })
+      .catch(() => {
+        if (runRef.current !== run) return;
+        clearTimeout(timer);
+        setStep('create');
+        setTimeout(() => createRefs[0].current?.focus(), 300);
+      });
+    return () => clearTimeout(timer);
   }, [visible]);
 
-  const currentPin = step === 'create' ? firstPin : confirmPin;
-  const currentRefs = step === 'create' ? createRefs : confirmRefs;
+  const currentPin = step === 'current' ? currentPinArr : step === 'create' ? firstPin : confirmPin;
+  const activeRefs = step === 'current' ? currentRefs : step === 'create' ? createRefs : confirmRefs;
+
+  const clearActive = () => {
+    const empty = ['', '', '', '', '', ''];
+    if (step === 'current') setCurrentPinArr(empty);
+    else if (step === 'create') setFirstPin(empty);
+    else setConfirmPin(empty);
+    setCurrentIndex(0);
+    setTimeout(() => activeRefs[0].current?.focus(), 150);
+  };
+
+  const verifyCurrentPin = async () => {
+    const pin = currentPinArr.join('');
+    setLoading(true);
+    setError('');
+    try {
+      const r = await authAPI.verifyPin(pin);
+      if (r?.valid) {
+        setVerifiedCurrent(pin);
+        setCurrentPinArr(['', '', '', '', '', '']);
+        setStep('create');
+        setCurrentIndex(0);
+        setTimeout(() => createRefs[0].current?.focus(), 200);
+      } else {
+        setError(r?.message || tr('chtPinIncorrect'));
+        Vibration.vibrate([100, 50, 100]);
+        clearActive();
+      }
+    } catch (e: any) {
+      setError(e?.message || tr('chtPinIncorrect'));
+      clearActive();
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const pinString = currentPin.join('');
-    if (pinString.length === 6 && !loading) {
-      if (step === 'create') {
+    if (pinString.length === 6 && !loading && step !== 'checking') {
+      if (step === 'current') {
+        setTimeout(() => verifyCurrentPin(), 250);
+      } else if (step === 'create') {
         // Pasar a confirmación
         setTimeout(() => {
           setStep('confirm');
@@ -74,16 +151,14 @@ export const SetupPinModal: React.FC<SetupPinModalProps> = ({
 
     const newPin = [...currentPin];
     newPin[index] = digit;
-    
-    if (step === 'create') {
-      setFirstPin(newPin);
-    } else {
-      setConfirmPin(newPin);
-    }
+
+    if (step === 'current') setCurrentPinArr(newPin);
+    else if (step === 'create') setFirstPin(newPin);
+    else setConfirmPin(newPin);
 
     if (digit && index < 5) {
       setCurrentIndex(index + 1);
-      currentRefs[index + 1].current?.focus();
+      activeRefs[index + 1].current?.focus();
     }
   };
 
@@ -91,15 +166,13 @@ export const SetupPinModal: React.FC<SetupPinModalProps> = ({
     if (e.nativeEvent.key === 'Backspace') {
       if (currentPin[index] === '' && index > 0) {
         setCurrentIndex(index - 1);
-        currentRefs[index - 1].current?.focus();
+        activeRefs[index - 1].current?.focus();
       } else {
         const newPin = [...currentPin];
         newPin[index] = '';
-        if (step === 'create') {
-          setFirstPin(newPin);
-        } else {
-          setConfirmPin(newPin);
-        }
+        if (step === 'current') setCurrentPinArr(newPin);
+        else if (step === 'create') setFirstPin(newPin);
+        else setConfirmPin(newPin);
       }
     }
   };
@@ -121,48 +194,66 @@ export const SetupPinModal: React.FC<SetupPinModalProps> = ({
 
     setLoading(true);
     setError('');
-    
+
     try {
-      await authAPI.setupPin(firstPinString);
+      // Sin `currentPin` el servidor rechaza el cambio si ya había un PIN.
+      await authAPI.setupPin(firstPinString, hasPin ? verifiedCurrent : undefined);
       Alert.alert(
         '✅ PIN Configurado',
         tr('xtTuPINDeSeguridadHaSidoConfiguradoCorrectamenteAhor'),
-        [{ text: 'Continuar', onPress: onSuccess }],
+        [{ text: 'Continuar', onPress: () => onSuccess(firstPinString) }],
         { cancelable: false }
       );
     } catch (e: any) {
-      setError(e?.message || tr('xtErrorAlConfigurarPIN'));
-      setStep('create');
       setFirstPin(['', '', '', '', '', '']);
       setConfirmPin(['', '', '', '', '', '']);
       setCurrentIndex(0);
-      setTimeout(() => createRefs[0].current?.focus(), 300);
+      if (e?.status === 403) {
+        // Había un PIN que este dispositivo no conocía: pedirlo y reintentar.
+        setHasPin(true);
+        setVerifiedCurrent('');
+        setCurrentPinArr(['', '', '', '', '', '']);
+        setStep('current');
+        setError(e?.message || tr('chtPinIncorrect'));
+        setTimeout(() => currentRefs[0].current?.focus(), 300);
+      } else {
+        setError(e?.message || tr('xtErrorAlConfigurarPIN'));
+        setStep('create');
+        setTimeout(() => createRefs[0].current?.focus(), 300);
+      }
     } finally {
       setLoading(false);
     }
   };
 
   const handleBack = () => {
+    if (loading) return;
     if (step === 'confirm') {
       setStep('create');
       setConfirmPin(['', '', '', '', '', '']);
       setCurrentIndex(0);
       setError('');
       setTimeout(() => createRefs[0].current?.focus(), 300);
+    } else if (step === 'create' && hasPin) {
+      setStep('current');
+      setFirstPin(['', '', '', '', '', '']);
+      setConfirmPin(['', '', '', '', '', '']);
+      setCurrentIndex(0);
+      setError('');
+      setTimeout(() => currentRefs[0].current?.focus(), 300);
     } else {
+      runRef.current = -1;
       onClose();
     }
   };
 
   const handleClear = () => {
     const newPin = ['', '', '', '', '', ''];
-    if (step === 'create') {
-      setFirstPin(newPin);
-    } else {
-      setConfirmPin(newPin);
-    }
+    if (step === 'current') setCurrentPinArr(newPin);
+    else if (step === 'create') setFirstPin(newPin);
+    else setConfirmPin(newPin);
     setCurrentIndex(0);
-    currentRefs[0].current?.focus();
+    activeRefs[0].current?.focus();
     Vibration.vibrate(50);
   };
 
@@ -173,13 +264,15 @@ export const SetupPinModal: React.FC<SetupPinModalProps> = ({
           {/* Header */}
           <LinearGradient colors={['#6366F1', '#4F46E5']} style={s.header}>
             <TouchableOpacity onPress={handleBack} style={s.backBtn}>
-              <MIcon name={step === 'create' ? 'close' : 'chevron-left'} size={20} color="#fff" />
+              <MIcon name={(step === 'create' && !hasPin) || step === 'checking' ? 'close' : 'chevron-left'} size={20} color="#fff" />
             </TouchableOpacity>
-            <Text style={s.title}>{title}</Text>
+            <Text style={s.title}>{step === 'current' ? tr('xtCambiarPINDePago') : title}</Text>
             <Text style={s.subtitle}>
-              {step === 'create' 
-                ? tr('xtCreaUnPINDe6DigitosParaProtegerTusTransferencias')
-                : tr('xtConfirmaTuPINIngresandoloNuevamente')
+              {step === 'current'
+                ? tr('xtIntroduceTuPIN')
+                : step === 'confirm'
+                  ? tr('xtConfirmaTuPINIngresandoloNuevamente')
+                  : tr('xtCreaUnPINDe6DigitosParaProtegerTusTransferencias')
               }
             </Text>
           </LinearGradient>
@@ -187,22 +280,36 @@ export const SetupPinModal: React.FC<SetupPinModalProps> = ({
           {/* Content */}
           <View style={s.content}>
             <View style={s.stepIndicator}>
-              <View style={[s.stepDot, step === 'create' && s.stepDotActive]} />
-              <View style={[s.stepLine, step === 'confirm' && s.stepLineActive]} />
-              <View style={[s.stepDot, step === 'confirm' && s.stepDotActive]} />
+              {(hasPin ? ['current', 'create', 'confirm'] : ['create', 'confirm']).map((st, i, arr) => (
+                <React.Fragment key={st}>
+                  {i > 0 && <View style={[s.stepLine, arr.indexOf(step) >= i && s.stepLineActive]} />}
+                  <View style={[s.stepDot, (arr.indexOf(step) >= i || step === 'checking') && s.stepDotActive]} />
+                </React.Fragment>
+              ))}
             </View>
 
             <Text style={s.stepLabel}>
-              {step === 'create' ? 'Paso 1: Crear PIN' : 'Paso 2: Confirmar PIN'}
+              {step === 'current'
+                ? tr('xtIntroduceTuPIN')
+                : step === 'confirm'
+                  ? tr('xtIntroduceElPINDeNuevoParaConfirmar')
+                  : hasPin
+                    ? tr('xtCambiarPINDePago')
+                    : tr('xtConfigurarPINDePagos')}
             </Text>
 
             {/* PIN Input */}
             <View style={s.pinContainer}>
+              {step === 'checking' ? (
+                <View style={s.loadingContainer}>
+                  <ActivityIndicator color="#6366F1" size="small" />
+                </View>
+              ) : (
               <View style={s.pinRow}>
                 {currentPin.map((digit, index) => (
                   <View key={index} style={s.pinFieldWrapper}>
                     <TextInput
-                      ref={currentRefs[index]}
+                      ref={activeRefs[index]}
                       style={[
                         s.pinField,
                         currentIndex === index && s.pinFieldActive,
@@ -225,6 +332,7 @@ export const SetupPinModal: React.FC<SetupPinModalProps> = ({
                   </View>
                 ))}
               </View>
+              )}
 
               {/* Error Message */}
               {error && (

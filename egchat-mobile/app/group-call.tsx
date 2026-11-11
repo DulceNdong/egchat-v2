@@ -218,6 +218,7 @@ export default function GroupCallScreen() {
     startSFUCall, leaveSFUCall,
     toggleSFUMute, toggleSFUCamera,
     hasWebRTC, handlePeerJoined,
+    removeParticipant,
   } = useSFUGroupCall();
 
   const [duration, setDuration] = useState(0);
@@ -283,6 +284,19 @@ export default function GroupCallScreen() {
 
         timer = setInterval(() => setDuration(d => d + 1), 1000);
         subscribeSSE(me.id);
+
+        // Avisar al resto del grupo de que hay llamada en curso. Si la ruta
+        // aun no esta desplegada, la llamada sigue funcionando igual.
+        (async () => {
+          try {
+            const token = await getToken();
+            await fetch(`${getApiBase()}/api/call/room/${groupId}/invite`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ name: me.full_name || '', callType }),
+            });
+          } catch {}
+        })();
       } catch {
         router.back();
       }
@@ -317,12 +331,15 @@ export default function GroupCallScreen() {
             setJoinToasts(prev => [...prev, `${name} ${t('chtGcSeUnio')}`]);
             setTimeout(() => setJoinToasts(prev => prev.slice(1)), 3000);
           }
+          if (msg.type === 'group_call_participant_left' && msg.roomId === groupId && msg.userId) {
+            removeParticipant(msg.userId);
+          }
         } catch {}
       }
     };
     xhr.send();
     sseRef.current = xhr;
-  }, [groupId, handlePeerJoined]);
+  }, [groupId, handlePeerJoined, removeParticipant]);
 
   const hangUp = useCallback(async () => {
     sseRef.current?.abort();
