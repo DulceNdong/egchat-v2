@@ -13,6 +13,7 @@ import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import Svg, { Path, Line, Circle } from 'react-native-svg';
 import { apiFetch } from '../src/api';
 import { useTranslation } from '../src/context/LanguageContext';
+import { usePaymentPin } from '../src/context/PaymentPinContext';
 
 const LOCALES: Record<string, string> = { es: 'es-ES', fr: 'fr-FR', en: 'en-GB', pt: 'pt-PT' };
 
@@ -45,6 +46,7 @@ interface DjangueInfo {
 
 export default function DjangueSecretaryScreen() {
   const { language, t } = useTranslation();
+  const { runWithPin } = usePaymentPin();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [data, setData] = useState<DjangueInfo | null>(null);
@@ -467,7 +469,14 @@ export default function DjangueSecretaryScreen() {
                       text: t('djhConfirmPayout'),
                       onPress: async () => {
                         try {
-                          await apiFetch(`/api/djangue/${id}/manual-payout`, { method: 'POST' });
+                          const pago = await runWithPin(
+                            pin => apiFetch(`/api/djangue/${id}/manual-payout`, {
+                              method: 'POST',
+                              body: JSON.stringify({ pin }),
+                            }),
+                            t('xtIntroduceTuPIN'),
+                          );
+                          if (!pago) return;
                           Alert.alert(t('djhPayoutDoneTitle'), `${t('djhPayoutTransferredPrefix')} ${name}`);
                           load(true);
                         } catch (e: any) {

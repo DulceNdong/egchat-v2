@@ -334,6 +334,7 @@ export function useSFUGroupCall() {
     toggleSFUMute,
     toggleSFUCamera,
     handlePeerJoined,    // llamar desde el listener SSE del _layout
+    removeParticipant,   // y este para 'group_call_participant_left'
     hasWebRTC: !!NativeRTC,
     maxParticipants: MAX_SFU_PARTICIPANTS,
   };

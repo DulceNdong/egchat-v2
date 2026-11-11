@@ -13,6 +13,7 @@ type StreamEvent = {
        | 'transfer_received' | 'transfer_pending' | 'transfer_accepted' | 'transfer_cancelled'
        | 'message_deleted'
        | 'group_call_participant_joined' | 'group_call_participant_left'
+       | 'group_call_invited' | 'group_call_signal'
        | 'group_call_offer' | 'group_call_answer' | 'group_call_ice'
        | 'call_answered' | 'call_ended';
   chatId?: string;

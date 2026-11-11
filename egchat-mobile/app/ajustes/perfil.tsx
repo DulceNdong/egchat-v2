@@ -357,7 +357,7 @@ export default function PerfilScreen() {
       getCfgString(CFG.bio, ''),
       getCfgString(CFG.gender, 'No especificado'),
       getSoundSettings(),
-      walletPIN.isSet(),
+      walletPIN.syncWithServer(),
     ]);
     setBio(bioVal);
     setGender(genderVal);

@@ -7,6 +7,7 @@ import { segurosAPI, walletAPI } from '../../api';
 import { toast } from '../Toast';
 import { FinancialModuleShell } from './FinancialModuleUI';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
+import { usePaymentPin } from '../../context/PaymentPinContext';
 import { t as tr } from '../../translations';
 
 type SgScreen = 'home' | 'contratar' | 'exitos' | 'polizas' | 'siniestro';
@@ -65,6 +66,7 @@ const marcaDe = (id: string, name: string) => MARCA[id] || {
 };
 
 export const SegurosModal: React.FC<Props> = ({ visible, onClose }) => {
+  const { runWithPin } = usePaymentPin();
   const [screen, setScreen] = useState<SgScreen>('home');
   const [ofertas, setOfertas] = useState<Oferta[]>([]);
   const [companias, setCompanias] = useState<{ id: string; name: string }[]>([]);
@@ -181,12 +183,16 @@ export const SegurosModal: React.FC<Props> = ({ visible, onClose }) => {
     }
     setSending(true);
     try {
-      const res = await segurosAPI.contratar({
-        companyId: selected.companyId,
-        producto: selected.variant,
-        datos: { ...form },
-        external_id: externalId,
-      });
+      const res = await runWithPin(
+        pin => segurosAPI.contratar({
+          companyId: selected.companyId,
+          producto: selected.variant,
+          datos: { ...form },
+          external_id: externalId,
+        }, pin),
+        tr('xtIntroduceTuPIN'),
+      );
+      if (!res) return;
       const prima = Number(res.premium ?? selected.price);
       const tras = res.balance == null ? null : Number(res.balance);
       if (tras != null && Number.isFinite(tras)) setBalance(tras);

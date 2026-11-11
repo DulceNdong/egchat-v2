@@ -886,7 +886,7 @@ export const cemacAPI = {
     beneficiary_account: string;
     amount: number;
     external_id?: string;
-  }) => post<any>('/api/cemac/transfers', data),
+  }, pin?: string) => post<any>('/api/cemac/transfers', { ...data, pin }),
 };
 
 // ══════════════════════════════════════════════════════════════════
@@ -927,21 +927,21 @@ export const serviciosAPI = {
   consultarFacturaElec: (contrato: string) =>
     post<{ ok: boolean; contract: string; importe: number; estado: string; facturas: BillFactura[] }>(
       '/api/servicios/segesa/consultar', { contrato }),
-  pagarElectricidad: (facturaId: string) =>
+  pagarElectricidad: (facturaId: string, pin?: string) =>
     post<{ bill_id: string; importe: number; balance: number; journal_id: string; message: string }>(
-      '/api/servicios/segesa/pagar', { factura_id: facturaId }),
+      '/api/servicios/segesa/pagar', { factura_id: facturaId, pin }),
   consultarFacturaAgua: (contrato: string) =>
     post<{ ok: boolean; contract: string; importe: number; estado: string; facturas: BillFactura[] }>(
       '/api/servicios/snge/consultar', { contrato }),
-  pagarAgua: (facturaId: string) =>
+  pagarAgua: (facturaId: string, pin?: string) =>
     post<{ bill_id: string; importe: number; balance: number; journal_id: string; message: string }>(
-      '/api/servicios/snge/pagar', { factura_id: facturaId }),
+      '/api/servicios/snge/pagar', { factura_id: facturaId, pin }),
   consultarDGI: (nif: string) =>
     post<{ ok: boolean; contract: string; importe: number; estado: string; facturas: BillFactura[] }>(
       '/api/servicios/dgi/consultar', { nif }),
-  pagarDGI: (facturaId: string) =>
+  pagarDGI: (facturaId: string, pin?: string) =>
     post<{ bill_id: string; importe: number; balance: number; journal_id: string; message: string }>(
-      '/api/servicios/dgi/pagar', { factura_id: facturaId }),
+      '/api/servicios/dgi/pagar', { factura_id: facturaId, pin }),
   facturas: (estado: 'pendientes' | 'pagadas' | 'todas' = 'pendientes') =>
     get<{ facturas: BillFactura[]; total: number; por_proveedor: Record<string, number> }>(
       `/api/servicios/facturas?estado=${estado}`),
@@ -951,9 +951,9 @@ export const serviciosAPI = {
     post<{ solicitudId: string; status: string; message: string; idempotent?: boolean }>('/api/servicios/solicitud', datos),
   solicitudes: (provider?: string) =>
     get<Solicitud[]>(`/api/servicios/solicitudes${provider ? `?provider=${encodeURIComponent(provider)}` : ''}`),
-  enviarPaquete: (datos: { destinatario: string; peso?: number; tipo: string }) =>
+  enviarPaquete: (datos: { destinatario: string; peso?: number; tipo: string }, pin?: string) =>
     post<{ tracking: string; tarifa: number; variante: string; estimado: string; balance: number; journal_id: string; message: string }>(
-      '/api/servicios/correos/enviar', datos),
+      '/api/servicios/correos/enviar', { ...datos, pin }),
 };
 
 export const superAPI = {
@@ -961,8 +961,8 @@ export const superAPI = {
   getProducts: (smId: string, catId?: string) =>
     get<ProductoServicio[]>(`/api/supermarkets/${smId}/products${catId ? `?cat=${encodeURIComponent(catId)}` : ''}`),
   // Solo lineas de producto: el total lo pone service_products en el servidor.
-  createOrder: (order: { items: { product_id: string; qty: number }[]; supermarketId?: string; address?: string; external_id?: string }) =>
-    post<{ orderId: string; status: string; total: number; balance: number; eta: string; journal_id: string }>('/api/supermarkets/orders', order),
+  createOrder: (order: { items: { product_id: string; qty: number }[]; supermarketId?: string; address?: string; external_id?: string }, pin?: string) =>
+    post<{ orderId: string; status: string; total: number; balance: number; eta: string; journal_id: string }>('/api/supermarkets/orders', { ...order, pin }),
   getOrders: () => get<any[]>('/api/supermarkets/orders'),
   getOrderById: (id: string) => get<any>(`/api/supermarkets/orders/${id}`),
 };
@@ -974,8 +974,8 @@ export const saludAPI = {
   getMedicamentos: (query: string) =>
     get<ProductoServicio[]>(`/api/salud/medicamentos?q=${encodeURIComponent(query)}`),
   // Mismo contrato que el supermercado: producto y cantidad, nunca precio.
-  orderMeds: (order: { items: { product_id: string; qty: number }[]; farmaciaId?: string; direccion?: string; external_id?: string }) =>
-    post<{ orderId: string; status: string; total: number; balance: number; eta: string; journal_id: string }>('/api/salud/medicamentos/pedido', order),
+  orderMeds: (order: { items: { product_id: string; qty: number }[]; farmaciaId?: string; direccion?: string; external_id?: string }, pin?: string) =>
+    post<{ orderId: string; status: string; total: number; balance: number; eta: string; journal_id: string }>('/api/salud/medicamentos/pedido', { ...order, pin }),
 };
 
 export const segurosAPI = {
@@ -983,9 +983,9 @@ export const segurosAPI = {
   productos: (companyId: string) =>
     get<{ id: string; name: string; price: number; currency: string; coverage: string }[]>(
       `/api/seguros/companias/${companyId}/productos`),
-  contratar: (datos: { companyId: string; producto: string; datos?: any; external_id?: string }) =>
+  contratar: (datos: { companyId: string; producto: string; datos?: any; external_id?: string }, pin?: string) =>
     post<{ solicitudId: string; policyId: string; premium: number; currency: string; expires_at: string; balance: number; journal_id: string; status: string; message: string }>(
-      '/api/seguros/solicitar', datos),
+      '/api/seguros/solicitar', { ...datos, pin }),
   polizas: () => get<any[]>('/api/seguros/polizas'),
   abrirSiniestro: (policyId: string, datos: { amount: number; notes?: string }) =>
     post<{ id: string; claim_ref: string; status: string; message: string }>(`/api/seguros/polizas/${policyId}/siniestros`, datos),
@@ -1000,6 +1000,7 @@ export const taxiAPI = {
     origin: { address: string; lat?: number; lng?: number },
     destination: { address: string; lat?: number; lng?: number },
     rideType: 'moto' | 'basic' | 'premium',
+    pin?: string,
   ) => post<{
     rideId: string; driver: any; eta: number; tarifa: number;
     type: string; status: string; balance: number; journal_id: string;
@@ -1007,6 +1008,7 @@ export const taxiAPI = {
     origin: origin.address,
     dest:   destination.address,
     type:   rideType,
+    pin,
   }),
 
   /** Cancelar viaje: devuelve lo cobrado si aún no se habia devuelto. */

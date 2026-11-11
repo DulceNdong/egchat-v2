@@ -13,6 +13,7 @@ import { router } from 'expo-router';
 import { cemacAPI, walletAPI } from '../src/api';
 import { toast } from '../src/components/Toast';
 import { useLanguage } from '../src/context/LanguageContext';
+import { usePaymentPin } from '../src/context/PaymentPinContext';
 import { CemacLogo } from '../src/components/CemacLogo';
 import {
   LANGS, COUNTRIES, T, SERVICES, LEISURE, CAT_ICON, ATMS, NEWS, RATES, HISTORY, NEWS_COLOR,
@@ -21,6 +22,7 @@ import {
 import { t as tr } from '../src/translations';
 
 export default function CemacScreen() {
+  const { runWithPin } = usePaymentPin();
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
   const insets = useSafeAreaInsets();
@@ -100,14 +102,18 @@ export default function CemacScreen() {
     if (!transferRef) setTransferRef(ref);
     setXferLoading(true);
     try {
-      await cemacAPI.createTransfer({
-        from_country: xfer.from,
-        to_country: xfer.to,
-        beneficiary_name: xfer.name.trim(),
-        beneficiary_account: xfer.account.trim(),
-        amount,
-        external_id: ref,
-      });
+      const enviada = await runWithPin(
+        pin => cemacAPI.createTransfer({
+          from_country: xfer.from,
+          to_country: xfer.to,
+          beneficiary_name: xfer.name.trim(),
+          beneficiary_account: xfer.account.trim(),
+          amount,
+          external_id: ref,
+        }, pin),
+        tr('xtIntroduceTuPIN'),
+      );
+      if (!enviada) return;
       toast.success(`Transferencia enviada — ${total.toLocaleString()} XAF`);
       setTransferOpen(false);
       setTransferRef('');

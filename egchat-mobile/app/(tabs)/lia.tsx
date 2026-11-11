@@ -59,6 +59,7 @@ const LIA_NAV: Record<string, { labelKey: string; href: string }> = {
   bancos: { labelKey: 'banks', href: '/bancos' },
   seguros: { labelKey: 'insurance', href: '/seguros-salud' },
   cemac: { labelKey: 'svcCemacZone', href: '/cemac' },
+  djangue: { labelKey: 'liaDjangueScreen', href: '/djangue-home' },
 };
 
 const TTS_LOCALE: Record<string, string> = { es: 'es-ES', fr: 'fr-FR', en: 'en-US', pt: 'pt-PT' };
@@ -99,10 +100,10 @@ const TTS_RATE: Record<string, number> = {
 };
 
 const CURRENCY_WORDS: Record<string, Record<string, string>> = {
-  es: { XAF: 'francos CFA', XOF: 'francos CFA', FCFA: 'francos CFA', EUR: 'euros', USD: 'dólares' },
-  fr: { XAF: 'francs CFA', XOF: 'francs CFA', FCFA: 'francs CFA', EUR: 'euros', USD: 'dollars' },
-  en: { XAF: 'CFA francs', XOF: 'CFA francs', FCFA: 'CFA francs', EUR: 'euros', USD: 'dollars' },
-  pt: { XAF: 'francos CFA', XOF: 'francos CFA', FCFA: 'francos CFA', EUR: 'euros', USD: 'dólares' },
+  es: { XAF: 'cefas', XOF: 'cefas', FCFA: 'cefas', CFA: 'cefas', XFA: 'cefas', EUR: 'euros', USD: 'dólares' },
+  fr: { XAF: 'cefas', XOF: 'cefas', FCFA: 'cefas', CFA: 'cefas', XFA: 'cefas', EUR: 'euros', USD: 'dollars' },
+  en: { XAF: 'cefas', XOF: 'cefas', FCFA: 'cefas', CFA: 'cefas', XFA: 'cefas', EUR: 'euros', USD: 'dollars' },
+  pt: { XAF: 'cefas', XOF: 'cefas', FCFA: 'cefas', CFA: 'cefas', XFA: 'cefas', EUR: 'euros', USD: 'dólares' },
 };
 
 // Prepara el texto para que suene como una persona: quita formato, enlaces
@@ -114,6 +115,11 @@ const prepareSpeech = (text: string, lang: string) => {
     .replace(/https?:\/\/\S+/g, ' ')
     .replace(/[*_#`>~|]/g, ' ')
     .replace(/[\u{1F000}-\u{1FAFF}\u{2190}-\u{27BF}\u{FE0F}\u{200D}]/gu, ' ');
+  // Pedido del usuario: la marca suena «E. G. CHAT» (las dos letras y luego la
+  // palabra). Las letras van sueltas para que el sintetizador las lea una a una;
+  // «chat» en minúsculas para que no lo deletree.
+  out = out.replace(/\bE\s?G\s?-?\s?CHAT\b/gi, 'E G chat');
+  out = out.replace(/\bEGCHAT\b/gi, 'E G chat');
   const map = CURRENCY_WORDS[lang] || CURRENCY_WORDS.es;
   Object.entries(map).forEach(([code, words]) => {
     out = out.replace(new RegExp(`\\b${code}\\b`, 'gi'), words);
@@ -222,6 +228,14 @@ const SUGGESTIONS = [
     key: 'liaSugMarket', color: '#6B5BD6', bg: '#F0EEFF',
     icon: <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#6B5BD6" strokeWidth="1.8" strokeLinecap="round"><Path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><Line x1="3" y1="6" x2="21" y2="6"/><Path d="M16 10a4 4 0 0 1-8 0"/></Svg>,
   },
+  {
+    key: 'liaSugPending', color: '#00B4E6', bg: '#E6F8FF',
+    icon: <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#00B4E6" strokeWidth="1.8" strokeLinecap="round"><Path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><Path d="M13.73 21a2 2 0 0 1-3.46 0"/></Svg>,
+  },
+  {
+    key: 'liaSugDjangue', color: '#6B5BD6', bg: '#F0EEFF',
+    icon: <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#6B5BD6" strokeWidth="1.8" strokeLinecap="round"><Path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><Circle cx="9" cy="7" r="4"/><Path d="M23 21v-2a4 4 0 0 0-3-3.87"/><Path d="M16 3.13a4 4 0 0 1 0 7.75"/></Svg>,
+  },
 ];
 
 const QUICK_CHIPS = [
@@ -232,6 +246,8 @@ const QUICK_CHIPS = [
   { icon: '🏥', key: 'liaChipHealth' },
   { icon: '🛒', key: 'liaChipShopping' },
   { icon: '☀️', key: 'liaChipWeather' },
+  { icon: '🔔', key: 'liaChipPending' },
+  { icon: '🤝', key: 'liaChipDjangue' },
 ];
 
 // ── Animación onda LIA ────────────────────────────────────────────
@@ -504,6 +520,7 @@ export default function LiaScreen() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingObj, setRecordingObj] = useState<Audio.Recording | null>(null);
   const [showAttach, setShowAttach] = useState(false);
+  const [pendingAttachment, setPendingAttachment] = useState<LIAAttachment | null>(null);
   const [transcribing, setTranscribing] = useState(false);
 
   const listRef = useRef<FlatList>(null);
@@ -658,8 +675,46 @@ export default function LiaScreen() {
     }
   }, [recordingObj, language, t]);
 
+  // ── Enviar archivo (imagen, documento o vídeo) ────────────────────
+  const sendAttachment = useCallback(async (attachment: LIAAttachment, captionText?: string) => {
+    if (loading) return;
+    const caption = (captionText ?? input).trim();
+    setInput('');
+    setPendingAttachment(null);
+    setError(null);
+    setShowAttach(false);
+    const time = formatTime();
+    const userMsg: LIAMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: caption,
+      time,
+      attachment,
+    };
+    setLastMsg(caption || attachment.name);
+    setMessages(prev => { const next = [...prev, userMsg]; sessionHistory = next; return next; });
+    setLoading(true);
+    setBusyKind('file');
+    try {
+      const res = await liaAPI.attach(attachment.uri, attachment.name, attachment.mime, caption, language);
+      const aiMsg: LIAMessage = { id: (Date.now() + 1).toString(), role: 'assistant', content: res.reply, time };
+      setMessages(prev => { const next = [...prev, aiMsg]; sessionHistory = next; return next; });
+      setShowChips(true);
+      speakMessage(res.reply, aiMsg.id);
+    } catch (e: any) {
+      setError(e?.message || t('liaAttachError'));
+    } finally {
+      setLoading(false);
+      setBusyKind(null);
+    }
+  }, [input, loading, language, speakMessage, t]);
+
   // ── Enviar mensaje ────────────────────────────────────────────────
   const send = useCallback(async (text?: string) => {
+    if (pendingAttachment) {
+      await sendAttachment(pendingAttachment, text);
+      return;
+    }
     const msg = (text ?? input).trim();
     if (!msg || loading) return;
     setInput('');
@@ -695,40 +750,7 @@ export default function LiaScreen() {
       setLoading(false);
       setBusyKind(null);
     }
-  }, [input, loading, sendScale, language, speakMessage, t]);
-
-  // ── Enviar archivo (imagen, documento o vídeo) ────────────────────
-  const sendAttachment = useCallback(async (attachment: LIAAttachment) => {
-    if (loading) return;
-    const caption = input.trim();
-    setInput('');
-    setError(null);
-    setShowAttach(false);
-    const time = formatTime();
-    const userMsg: LIAMessage = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: caption,
-      time,
-      attachment,
-    };
-    setLastMsg(caption || attachment.name);
-    setMessages(prev => { const next = [...prev, userMsg]; sessionHistory = next; return next; });
-    setLoading(true);
-    setBusyKind('file');
-    try {
-      const res = await liaAPI.attach(attachment.uri, attachment.name, attachment.mime, caption, language);
-      const aiMsg: LIAMessage = { id: (Date.now() + 1).toString(), role: 'assistant', content: res.reply, time };
-      setMessages(prev => { const next = [...prev, aiMsg]; sessionHistory = next; return next; });
-      setShowChips(true);
-      speakMessage(res.reply, aiMsg.id);
-    } catch (e: any) {
-      setError(e?.message || t('liaAttachError'));
-    } finally {
-      setLoading(false);
-      setBusyKind(null);
-    }
-  }, [input, loading, language, speakMessage, t]);
+  }, [input, loading, sendScale, language, speakMessage, t, pendingAttachment, sendAttachment]);
 
   const retry = useCallback(() => { if (lastMsg) send(lastMsg); }, [lastMsg, send]);
   const stopSpeaking = () => { speechRef.current = null; Speech.stop(); setSpeaking(false); setSpeakingId(null); };
@@ -993,10 +1015,44 @@ export default function LiaScreen() {
           onClose={() => setShowAttach(false)}
           onOpenKeyboard={openKeyboard}
           onSendText={send}
-          onAttach={sendAttachment}
+          onAttach={(att) => { setPendingAttachment(att); openKeyboard(); }}
           isDark={isDark}
           C={C}
         />
+
+        {/* ── Archivo listo para enviar, con comentario opcional ── */}
+        {pendingAttachment && (
+          <View style={[
+            s.pendingStrip,
+            { backgroundColor: isDark ? C.bgSecondary : '#F4FBFF', borderTopColor: isDark ? C.borderLight : '#E4EFF7' },
+          ]}>
+            {pendingAttachment.kind === 'image' ? (
+              <Image source={{ uri: pendingAttachment.uri }} style={s.pendingThumb} />
+            ) : (
+              <View style={[s.pendingThumb, s.pendingDocThumb]}>
+                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <Path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <Polyline points="14 2 14 8 20 8"/>
+                </Svg>
+              </View>
+            )}
+            <View style={{ flex: 1 }}>
+              <Text numberOfLines={1} style={[s.pendingName, { color: C.textPrimary }]}>{pendingAttachment.name}</Text>
+              <Text numberOfLines={1} style={[s.pendingHint, { color: C.textTertiary }]}>{t('liaCaptionHint')}</Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => setPendingAttachment(null)}
+              style={s.pendingRemove}
+              activeOpacity={0.75}
+              accessibilityLabel={t('liaAttachRemove')}
+            >
+              <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2.4" strokeLinecap="round">
+                <Line x1="18" y1="6" x2="6" y2="18"/>
+                <Line x1="6" y1="6" x2="18" y2="18"/>
+              </Svg>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* ── Barra de input ── */}
         <View style={[
@@ -1058,7 +1114,7 @@ export default function LiaScreen() {
                 style={[s.input, { color: C.textPrimary }]}
                 value={input}
                 onChangeText={setInput}
-                placeholder={t('liaPlaceholder')}
+                placeholder={pendingAttachment ? t('liaCaptionPlaceholder') : t('liaPlaceholder')}
                 placeholderTextColor={C.textTertiary}
                 onSubmitEditing={() => send()}
                 onFocus={() => setShowAttach(false)}
@@ -1072,15 +1128,15 @@ export default function LiaScreen() {
           {/* Botón enviar */}
           <Animated.View style={{ transform: [{ scale: sendScale }] }}>
             <TouchableOpacity
-              style={[s.sendBtn, (!input.trim() || loading) && s.sendBtnOff]}
+              style={[s.sendBtn, ((!input.trim() && !pendingAttachment) || loading) && s.sendBtnOff]}
               onPress={() => send()}
-              disabled={(!input.trim() && !isRecording) || loading}
+              disabled={((!input.trim() && !pendingAttachment) && !isRecording) || loading}
               activeOpacity={0.8}
             >
               {loading ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={input.trim() ? '#fff' : '#9CA3AF'} strokeWidth="2.5" strokeLinecap="round">
+                <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={input.trim() || pendingAttachment ? '#fff' : '#9CA3AF'} strokeWidth="2.5" strokeLinecap="round">
                   <Line x1="22" y1="2" x2="11" y2="13"/>
                   <Polygon points="22 2 15 22 11 13 2 9 22 2"/>
                 </Svg>
@@ -1265,6 +1321,12 @@ const s = StyleSheet.create({
   },
 
   // Barra de input
+  pendingStrip: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12, paddingVertical: 8, borderTopWidth: 1 },
+  pendingThumb: { width: 44, height: 44, borderRadius: 10, backgroundColor: '#E5E7EB' },
+  pendingDocThumb: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF8E6' },
+  pendingName: { fontSize: 12, fontWeight: '700' },
+  pendingHint: { fontSize: 10, marginTop: 2 },
+  pendingRemove: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.06)', alignItems: 'center', justifyContent: 'center' },
   inputBar: { flexDirection: 'row', alignItems: 'flex-end', gap: 6, paddingHorizontal: 10, paddingTop: 8, borderTopWidth: 1 },
   attachBtn: {
     width: 40, height: 40, borderRadius: 20,

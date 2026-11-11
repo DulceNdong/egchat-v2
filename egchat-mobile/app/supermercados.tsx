@@ -12,6 +12,7 @@ import { Colors, Typography, Spacing, BorderRadius, FontSize, FontWeight, Shadow
 import { useThemeContext } from '../src/theme/ThemeContext';
 import { DarkColors } from '../src/theme/darkMode';
 import { useTranslation } from '../src/context/LanguageContext';
+import { usePaymentPin } from '../src/context/PaymentPinContext';
 
 interface Supermarket {
   id: string;
@@ -90,6 +91,7 @@ async function createOrder(
   address: string,
   externalId: string,
   t: (key: string) => string,
+  pin: string,
 ): Promise<any> {
   const BASE = getApiBase();
   const token = await getToken();
@@ -106,11 +108,15 @@ async function createOrder(
       supermarketId,
       address,
       external_id: externalId,
+      pin,
     })
   });
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
-    throw new Error(error.message || t('svcOrderError'));
+    // El estado viaja en el error para que el PIN rechazado se pueda reintentar.
+    const e = new Error(error.message || t('svcOrderError')) as Error & { status?: number };
+    e.status = res.status;
+    throw e;
   }
   return res.json();
 }
@@ -133,6 +139,7 @@ export default function SupermercadosScreen() {
   const [externalId, setExternalId] = useState('');
 
   const { t } = useTranslation();
+  const { runWithPin } = usePaymentPin();
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
   const insets = useSafeAreaInsets();
@@ -245,7 +252,11 @@ export default function SupermercadosScreen() {
 
     setOrdering(true);
     try {
-      const result = await createOrder(selectedSupermarket.id, cart, address.trim(), externalId, t);
+      const result = await runWithPin(
+        pin => createOrder(selectedSupermarket.id, cart, address.trim(), externalId, t, pin),
+        t('xtIntroduceTuPIN'),
+      );
+      if (!result) return;
       // El cargo real lo fija service_products; si la tabla cambió mientras el
       // carrito estaba abierto, el usuario ve lo que realmente salió del monedero.
       const cobrado = Number(result.total ?? cartTotal);

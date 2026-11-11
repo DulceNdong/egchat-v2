@@ -13,6 +13,7 @@ import { FinancialModuleShell } from './FinancialModuleUI';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
 import { PayMethodPicker, ServiceOptionRow } from './PublicModuleUI';
 import { useTranslation } from '../../context/LanguageContext';
+import { usePaymentPin } from '../../context/PaymentPinContext';
 import { t as tr } from '../../translations';
 
 interface Props { visible: boolean; onClose: () => void; }
@@ -23,6 +24,7 @@ const ACCENT = '#C62828';
 
 export const CorreosModal: React.FC<Props> = ({ visible, onClose }) => {
   const { t } = useTranslation();
+  const { runWithPin } = usePaymentPin();
   const [screen, setScreen] = useState<Screen>('home');
   const [tarifas, setTarifas] = useState<Tarifa[]>([]);
   const [selected, setSelected] = useState<Tarifa | null>(null);
@@ -69,11 +71,15 @@ export const CorreosModal: React.FC<Props> = ({ visible, onClose }) => {
     if (!selected || !canSubmit) return;
     setLoading(true); setError('');
     try {
-      const data = await serviciosAPI.enviarPaquete({
-        destinatario: form.dest,
-        peso: Number(form.peso) || undefined,
-        tipo: selected.variant,
-      });
+      const data = await runWithPin(
+        pin => serviciosAPI.enviarPaquete({
+          destinatario: form.dest,
+          peso: Number(form.peso) || undefined,
+          tipo: selected.variant,
+        }, pin),
+        tr('xtIntroduceTuPIN'),
+      );
+      if (!data) return;
       // El numero de seguimiento y lo cobrado los decide el servidor.
       setRecibo({
         tracking: data.tracking,

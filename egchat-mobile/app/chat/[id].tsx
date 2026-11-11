@@ -2944,6 +2944,9 @@ export default function ChatScreen() {
           currentUserId={currentUserId}
           onClose={() => setShowGroupInfo(false)}
           onLeft={() => { setShowGroupInfo(false); router.back(); }}
+          onAvatarUpdated={(url) => setChat((prev: any) => prev ? { ...prev, avatar_url: url } : prev)}
+          onAudioCall={() => { setShowGroupInfo(false); goToCall('audio'); }}
+          onVideoCall={() => { setShowGroupInfo(false); goToCall('video'); }}
         />
       )}
 

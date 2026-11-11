@@ -13,6 +13,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router';
 import Svg, { Path, Line, Circle } from 'react-native-svg';
 import { apiFetch } from '../src/api';
+import { usePaymentPin } from '../src/context/PaymentPinContext';
 import { t as tr } from '../src/translations';
 
 const fmtAmount = (n: number, currency = 'XAF') =>
@@ -34,6 +35,7 @@ interface WalletInfo {
 
 export default function DjanguePayScreen() {
   const insets = useSafeAreaInsets();
+  const { runWithPin } = usePaymentPin();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [group, setGroup]   = useState<DjangueInfo | null>(null);
   const [wallet, setWallet] = useState<WalletInfo | null>(null);
@@ -86,7 +88,14 @@ export default function DjanguePayScreen() {
           onPress: async () => {
             setPaying(true);
             try {
-              const result = await apiFetch(`/api/djangue/${id}/pay`, { method: 'POST' });
+              const result = await runWithPin(
+                pin => apiFetch(`/api/djangue/${id}/pay`, {
+                  method: 'POST',
+                  body: JSON.stringify({ pin }),
+                }),
+                tr('xtIntroduceTuPIN'),
+              );
+              if (!result) return;
               setPaid(true);
               setWallet(prev => prev ? { ...prev, balance: result.new_balance } : prev);
               if (result.all_paid) {

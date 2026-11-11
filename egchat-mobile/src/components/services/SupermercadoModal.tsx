@@ -10,6 +10,7 @@ import {
 import { FinancialModuleShell, FilterChips } from './FinancialModuleUI';
 import { SearchField } from './PublicModuleUI';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
+import { usePaymentPin } from '../../context/PaymentPinContext';
 import { t as tr } from '../../translations';
 
 type Screen = 'home' | 'cities' | 'stores' | 'products' | 'cart' | 'checkout' | 'success' | 'history';
@@ -18,6 +19,7 @@ type SuperOrder = { id: string; store: string; total: number; items: number; cre
 interface Props { visible: boolean; onClose: () => void; }
 
 export const SupermercadoModal: React.FC<Props> = ({ visible, onClose }) => {
+  const { runWithPin } = usePaymentPin();
   const [screen, setScreen] = useState<Screen>('home');
   const [cityId, setCityId] = useState<string | null>(null);
   const [store, setStore] = useState<Supermarket | null>(null);
@@ -120,13 +122,17 @@ export const SupermercadoModal: React.FC<Props> = ({ visible, onClose }) => {
     if (!store || !cart.length || !address.trim() || !phone.trim() || !name.trim()) return;
     setLoading(true);
     try {
-      const res = await superAPI.createOrder({
-        supermarketId: store.id,
-        address: address.trim(),
-        external_id: externalId,
-        // Solo producto y cantidad: el importe lo lee el servidor de la tabla.
-        items: cart.map(i => ({ product_id: i.product.id, qty: i.qty })),
-      });
+      const res = await runWithPin(
+        pin => superAPI.createOrder({
+          supermarketId: store.id,
+          address: address.trim(),
+          external_id: externalId,
+          // Solo producto y cantidad: el importe lo lee el servidor de la tabla.
+          items: cart.map(i => ({ product_id: i.product.id, qty: i.qty })),
+        }, pin),
+        tr('xtIntroduceTuPIN'),
+      );
+      if (!res) return;
       setRecibo({
         total: Number(res.total),
         balance: res.balance == null ? null : Number(res.balance),

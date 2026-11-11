@@ -1,13 +1,13 @@
 {
   "expo": {
     "name": "EGCHAT",
-    "slug": "egchat-frontend",
-    "owner": "reddington120",
+    "slug": "egchat",
+    "owner": "reddington120s-organization",
     "version": "1.0.0",
     "orientation": "portrait",
     "updates": {
       "enabled": true,
-      "url": "https://u.expo.dev/1cf45e7c-dc1f-47e7-88bd-72b70fa4c1c5"
+      "url": "https://u.expo.dev/6ec282e1-bbe9-4f66-98ba-8ece54592e47"
     },
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -71,11 +71,11 @@
         ],
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "133"
+      "buildNumber": "146"
     },
     "android": {
       "package": "com.egchat.app",
-      "versionCode": 131,
+      "versionCode": 132,
       "permissions": [
         "CAMERA",
         "RECORD_AUDIO",
@@ -175,7 +175,7 @@
         "origin": false
       },
       "eas": {
-        "projectId": "fbed710e-d18c-417b-ab31-0dc18bc13338"
+        "projectId": "6ec282e1-bbe9-4f66-98ba-8ece54592e47"
       }
     },
     "runtimeVersion": "1.0.0"
