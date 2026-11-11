@@ -120,6 +120,7 @@ import {
 } from '../../src/features/chat/messageUtils';
 import Svg, { Path, Circle, Line, Polyline, Polygon, Rect } from 'react-native-svg';
 import { t as tr } from '../../src/translations';
+import { TabErrorBoundary } from '../../src/components/TabErrorBoundary';
 
 const KEYBOARD_INPUT_GAP = 0;
 
@@ -212,7 +213,7 @@ const DateSeparator = ({ label }: { label: string }) => (
 );
 
 // ── Pantalla principal ────────────────────────────────────────────
-export default function ChatScreen() {
+function ChatScreenInner() {
   const { t } = useTranslation();
   const { id: chatId } = useLocalSearchParams<{ id: string }>();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -316,6 +317,8 @@ export default function ChatScreen() {
   const [showPTT, setShowPTT] = useState(false);
   // ── C4 Reacciones reales ───────────────────────────────────────
   const [reactionsMap, setReactionsMap] = useState<Record<string, ReactionsMap>>({});
+  // ── C4b Contador plano de reacciones (debe declararse antes de useChatStream) ──
+  const [messageReactions, setMessageReactions] = useState<Record<string, Record<string, number>>>({});
   // ── C9 Receipts de lectura ─────────────────────────────────────
   const [receiptsMsgId, setReceiptsMsgId] = useState<string | null>(null);
   // ── #9 Contador de no leídos al scrollear ─────────────────────
@@ -1044,7 +1047,6 @@ export default function ChatScreen() {
     toast.info(t('chtStarred'), starredIds.includes(contextMsg.id) ? t('chtRemovedFromStarred') : t('chtMessageStarred'));
   }, [contextMsg, starredIds, persistStarred]);
 
-  const [messageReactions, setMessageReactions] = useState<Record<string, Record<string, number>>>({});
   const [translatedMessages, setTranslatedMessages] = useState<Record<string, string>>({});
 
   const handleTranslate = useCallback(async () => {
@@ -3520,6 +3522,14 @@ export default function ChatScreen() {
       {/* iOS Privacy Blur — oculta el chat cuando está en background/app-switcher */}
       <PrivacyBlurOverlay visible={showBlur} />
     </SafeAreaView>
+  );
+}
+
+export default function ChatScreen() {
+  return (
+    <TabErrorBoundary tabName="Chat">
+      <ChatScreenInner />
+    </TabErrorBoundary>
   );
 }
 
