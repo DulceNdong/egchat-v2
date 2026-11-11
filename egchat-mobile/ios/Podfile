@@ -68,6 +68,8 @@ target 'EGCHAT' do
         if deployment_target && deployment_target.to_f < 15.0
           config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
         end
+        # FIX: Xcode 14+ requires DEVELOPMENT_TEAM on all resource bundle targets
+        config.build_settings['DEVELOPMENT_TEAM'] = 'XU6YD7ZJ2K'
       end
     end
   end
