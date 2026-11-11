@@ -1114,6 +1114,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     authCreateNewAccount: "Crear nueva cuenta",
     authNameRequired: "Escribe tu nombre completo",
     authPhoneInvalid: "Número de teléfono inválido",
+    authPhoneDigitsWrong: "El número no tiene los dígitos que corresponden a ese país",
     authPhoneAlreadyRegistered: "Este número ya está registrado. Usa \"Ya tengo cuenta\".",
     setOk: "OK",
     // chat
@@ -4399,6 +4400,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     authCreateNewAccount: "Créer un nouveau compte",
     authNameRequired: "Saisissez votre nom complet",
     authPhoneInvalid: "Numéro de téléphone invalide",
+    authPhoneDigitsWrong: "Le numéro n'a pas le nombre de chiffres de ce pays",
     authPhoneAlreadyRegistered: "Ce numéro est déjà enregistré. Utilisez « J'ai déjà un compte ».",
     setOk: "OK",
     // chat
@@ -7684,6 +7686,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     authCreateNewAccount: "Create new account",
     authNameRequired: "Enter your full name",
     authPhoneInvalid: "Invalid phone number",
+    authPhoneDigitsWrong: "This number does not have the right number of digits for this country",
     authPhoneAlreadyRegistered: "This number is already registered. Use \"I already have an account\".",
     setOk: "OK",
     // chat
@@ -10969,6 +10972,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     authCreateNewAccount: "Criar nova conta",
     authNameRequired: "Escreva o seu nome completo",
     authPhoneInvalid: "Número de telefone inválido",
+    authPhoneDigitsWrong: "Este número não tem os dígitos correspondentes a este país",
     authPhoneAlreadyRegistered: "Este número já está registado. Use \"Já tenho conta\".",
     setOk: "OK",
     // chat
