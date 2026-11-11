@@ -149,15 +149,7 @@
         "expo-task-manager",
         {}
       ],
-      "./plugins/withNotificationServiceExtension.js",
-      [
-        "react-native-vision-camera",
-        {
-          "cameraPermissionText": "EGCHAT necesita la cámara para el streaming en vivo.",
-          "enableMicrophonePermission": true,
-          "microphonePermissionText": "EGCHAT necesita el micrófono para el streaming en vivo."
-        }
-      ]
+      "./plugins/withNotificationServiceExtension.js"
     ],
     "platforms": [
       "ios",
