@@ -30,6 +30,7 @@ import { walletPIN } from '../src/services/walletPin';
 import { FloatingCallBar } from '../src/components/call/FloatingCallBar';
 import { useChatStream } from '../src/hooks/useChatStream';
 import { ToastContainer } from '../src/components/Toast';
+import { LegalConsentGate } from '../src/components/legal/LegalConsentGate';
 import { OfflineBanner } from '../src/components/ui';
 import { UpdateBanner } from '../src/components/UpdateBanner';
 import { trackUserPresence } from '../src/supabase';
@@ -1320,6 +1321,7 @@ export default function RootLayout() {
               </View>
             )}
             <ToastContainer />
+            <LegalConsentGate enabled={!checking} />
             <OfflineBanner />
             <UpdateBanner />
             <FloatingCallBar />
