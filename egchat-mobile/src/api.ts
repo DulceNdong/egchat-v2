@@ -1148,3 +1148,23 @@ export const kycAPI = {
     }
   },
 };
+
+// ── Centro Legal ──────────────────────────────────────────────────
+// El cuerpo de los documentos vive en el bundle; el servidor guarda versiones
+// vigentes y el libro de aceptaciones (sin direcciones IP).
+export interface LegalAcceptancePayload {
+  documentId: string;
+  version: string;
+  language: string;
+  acceptedAt: string;
+}
+
+export const legalAPI = {
+  requirements: () =>
+    get<{
+      documents: { id: string; version: string }[];
+      accepted: LegalAcceptancePayload[];
+    }>('/api/legal/requirements'),
+  accept: (acceptances: LegalAcceptancePayload[]) =>
+    post<{ success: boolean; saved: number }>('/api/legal/acceptance', { acceptances }),
+};

@@ -1114,7 +1114,7 @@ const AddBankModal = ({
         </View>
         <Field label={t('walInitialBalance')} value={balance} onChangeText={setBalance} placeholder="0" keyboardType="numeric" />
         <Text style={{ fontSize: 11, color: '#8A9BB5', lineHeight: 16, marginBottom: 10 }}>
-          Es el saldo que tú anotas. No se verifica con el banco ni se puede usar para pagar desde EGChat.
+          {t('walInitialBalanceHint')}
         </Text>
         <TouchableOpacity style={[s.primaryBtn, { backgroundColor: '#00c8a0' }]} onPress={save} activeOpacity={0.85}>
           <Text style={s.primaryBtnText}>{t('walSaveAccount')}</Text>

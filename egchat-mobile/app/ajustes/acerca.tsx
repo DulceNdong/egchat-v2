@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, Alert, Linking, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Alert, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import * as Updates from 'expo-updates';
@@ -164,12 +165,12 @@ export default function AcercaScreen() {
       <SettingsCard>
         <SettingsRow
           label={t('termsOfService')}
-          onPress={() => Linking.openURL('https://egchat-v2.vercel.app/terms').catch(() => {})}
+          onPress={() => router.push({ pathname: '/ajustes/legal', params: { doc: 'terms' } })}
         />
         <SettingsDivider />
         <SettingsRow
           label={t('privacyPolicy')}
-          onPress={() => Linking.openURL('https://egchat-v2.vercel.app/privacy').catch(() => {})}
+          onPress={() => router.push({ pathname: '/ajustes/legal', params: { doc: 'privacy' } })}
         />
         <SettingsDivider />
         <SettingsRow
