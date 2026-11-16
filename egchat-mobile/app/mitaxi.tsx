@@ -13,7 +13,7 @@ import { taxiAPI, walletAPI, serviciosAPI, Tarifa } from '../src/api';
 import { subscribe, getState } from '../src/store/appStore';
 import { toast } from '../src/components/Toast';
 import { MiTaxiMap } from '../src/components/mitaxi/MiTaxiMap';
-import { usePaymentPin } from '../src/context/PaymentPinContext';
+import { usePinGate } from '../src/components/wallet/usePinGate';
 import {
   MALABO_CENTER, MITAXI_PLACE_NAMES, MapCoord,
   findPlaceCoords, isCurrentLocationLabel,
@@ -58,7 +58,6 @@ interface DriverInfo {
 
 export default function MiTaxiScreen() {
   const insets = useSafeAreaInsets();
-  const { runWithPin } = usePaymentPin();
   const [sheetCollapsed, setSheetCollapsed] = useState(false);
   const sheetAnim = useRef(new Animated.Value(SH * 0.68)).current;
 
@@ -76,6 +75,7 @@ export default function MiTaxiScreen() {
   const [dest, setDest]               = useState('');
   const [selected, setSelected]       = useState<RideOption>(RIDES[1]);
   const [step, setStep]               = useState<Step>('form');
+  const { request: requestPin, elements: pinElements } = usePinGate((msg) => toast.error(msg));
   const [rideId, setRideId]           = useState('');
   const [driver, setDriver]           = useState<DriverInfo | null>(null);
   const [fare, setFare]               = useState(0);
@@ -244,7 +244,7 @@ export default function MiTaxiScreen() {
     }, 2000);
   };
 
-  const requestRide = async () => {
+  const requestRide = () => {
     if (!canGo) return;
     // Sin la tarifa leida de la tabla no se pide el viaje: el servidor cobra un
     // importe que la pantalla no puede mostrar antes de debitarse.
@@ -257,38 +257,33 @@ export default function MiTaxiScreen() {
         [{ text: 'Recargar', onPress: () => router.push('/(tabs)/monedero' as any) }, { text: tr('cancel'), style: 'cancel' }]);
       return;
     }
-    const destCoords  = await resolvePlace(dest, userLocation);
-    const origCoords  = await resolvePlace(origin, userLocation);
-    if (destCoords)  setDestLoc(destCoords);
-    if (origCoords && isCurrentLocationLabel(origin)) setUserLoc(origCoords);
-    try {
-      const res = await runWithPin(
-        pin => {
-          // Buscar solo cuando haya PIN: sin este paso el botón seguía activo
-          // y un segundo toque creaba otro viaje.
-          setStep('searching');
-          return taxiAPI.requestRide(
-            { address: origin, lat: origCoords?.latitude, lng: origCoords?.longitude },
-            { address: dest,   lat: destCoords?.latitude,  lng: destCoords?.longitude  },
-            selected.id,
-            pin,
-          );
-        },
-        tr('xtIntroduceTuPIN'),
-      );
-      if (!res) { setStep('form'); return; }
-      setRideId(res.rideId);
-      setFare(res.tarifa || estimatedFare || minFare);
-      const n = res.driver?.name || 'Carlos Nguema';
-      setDriver({ name: n, rating: res.driver?.rating||4.9, plate: res.driver?.plate||'GE-1234',
-        vehicle: res.driver?.vehicle||selected.name, phone: res.driver?.phone,
-        initials: n.split(' ').map((w:string)=>w[0]).join('').slice(0,2).toUpperCase() });
-      startPolling(res.rideId);
-      setTimeout(() => setStep(s => s === 'searching' ? (animateDriverToUser(), 'matched') : s), 5000);
-    } catch (e: any) {
-      toast.error(e?.message || tr('xtNoSePudoSolicitarElViaje'));
-      setStep('form');
-    }
+    const tipo = selected;
+    void requestPin(async (pin) => {
+      const destCoords = await resolvePlace(dest, userLocation);
+      const origCoords = await resolvePlace(origin, userLocation);
+      if (destCoords) setDestLoc(destCoords);
+      if (origCoords && isCurrentLocationLabel(origin)) setUserLoc(origCoords);
+      setStep('searching');
+      try {
+        const res = await taxiAPI.requestRide(
+          { address: origin, lat: origCoords?.latitude, lng: origCoords?.longitude },
+          { address: dest,   lat: destCoords?.latitude,  lng: destCoords?.longitude  },
+          tipo.id,
+          pin,
+        );
+        setRideId(res.rideId);
+        setFare(res.tarifa || estimatedFare || minFare);
+        const n = res.driver?.name || 'Carlos Nguema';
+        setDriver({ name: n, rating: res.driver?.rating||4.9, plate: res.driver?.plate||'GE-1234',
+          vehicle: res.driver?.vehicle||tipo.name, phone: res.driver?.phone,
+          initials: n.split(' ').map((w:string)=>w[0]).join('').slice(0,2).toUpperCase() });
+        startPolling(res.rideId);
+        setTimeout(() => setStep(s => s === 'searching' ? (animateDriverToUser(), 'matched') : s), 5000);
+      } catch (e: any) {
+        toast.error(e?.message || tr('xtNoSePudoSolicitarElViaje'));
+        setStep('form');
+      }
+    });
   };
 
   const cancelRide = async () => {
@@ -631,6 +626,7 @@ export default function MiTaxiScreen() {
           </View>
         </Pressable>
       </Modal>
+      {pinElements}
     </View>
   );
 }

@@ -10,8 +10,13 @@ node_modules/
 # Control de versiones
 .git/
 
-# iOS/Android locales (EAS regenera Pods y builds)
+# Conservar el proyecto nativo móvil: prebuild no recrea sus extensiones completas.
 ios/
+!egchat-mobile/ios/
+egchat-mobile/ios/Pods/
+egchat-mobile/ios/build/
+egchat-mobile/ios/.xcode.env.local
+egchat-mobile/ios/**/xcuserdata/
 android/build/
 android/app/build/
 android/.gradle/
@@ -52,6 +57,9 @@ public/
 supabase/
 
 # Entornos y secretos
+/PEGAR_*
+.kiro/
+.agents/
 .env
 .env.*
 !.env.example

@@ -13,8 +13,8 @@ import { router } from 'expo-router';
 import { cemacAPI, walletAPI } from '../src/api';
 import { toast } from '../src/components/Toast';
 import { useLanguage } from '../src/context/LanguageContext';
-import { usePaymentPin } from '../src/context/PaymentPinContext';
 import { CemacLogo } from '../src/components/CemacLogo';
+import { usePinGate } from '../src/components/wallet/usePinGate';
 import {
   LANGS, COUNTRIES, T, SERVICES, LEISURE, CAT_ICON, ATMS, NEWS, RATES, HISTORY, NEWS_COLOR,
   type Lang, type CountryCode, type CemacTab,
@@ -22,7 +22,6 @@ import {
 import { t as tr } from '../src/translations';
 
 export default function CemacScreen() {
-  const { runWithPin } = usePaymentPin();
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
   const insets = useSafeAreaInsets();
@@ -38,6 +37,7 @@ export default function CemacScreen() {
   const [xfer, setXfer] = useState({ from: 'GQ', to: 'CM', name: '', account: '', amount: '' });
   const [xferLoading, setXferLoading] = useState(false);
   const [transferRef, setTransferRef] = useState('');
+  const { request: requestPin, elements: pinElements } = usePinGate((msg) => toast.error(msg));
   const [fromCur, setFromCur] = useState('XAF');
   const [toCur, setToCur] = useState('EUR');
   const [amt, setAmt] = useState('');
@@ -77,7 +77,7 @@ export default function CemacScreen() {
     return (n * (RATES[toCur] || 0) / (RATES[fromCur] || 1)).toFixed(4);
   }, [amt, fromCur, toCur]);
 
-  const sendTransfer = async () => {
+  const sendTransfer = () => {
     const amount = parseInt(xfer.amount, 10);
     if (!xfer.name.trim() || !xfer.account.trim() || !amount) {
       toast.error(tr('xtDatosIncompletosOSaldoInsuficiente'));
@@ -100,31 +100,28 @@ export default function CemacScreen() {
     // creada en vez de volver a cobrar.
     const ref = transferRef || `CEM-${Date.now()}`;
     if (!transferRef) setTransferRef(ref);
-    setXferLoading(true);
-    try {
-      const enviada = await runWithPin(
-        pin => cemacAPI.createTransfer({
-          from_country: xfer.from,
-          to_country: xfer.to,
-          beneficiary_name: xfer.name.trim(),
-          beneficiary_account: xfer.account.trim(),
-          amount,
-          external_id: ref,
-        }, pin),
-        tr('xtIntroduceTuPIN'),
-      );
-      if (!enviada) return;
-      toast.success(`Transferencia enviada — ${total.toLocaleString()} XAF`);
-      setTransferOpen(false);
-      setTransferRef('');
-      setXfer({ from: 'GQ', to: 'CM', name: '', account: '', amount: '' });
-      const r = await walletAPI.getBalance();
-      setBalance(r.balance || 0);
-    } catch (e: any) {
-      toast.error(e?.message || tr('xtNoSePudoEnviarLaTransferencia'));
-    } finally {
-      setXferLoading(false);
-    }
+    const datos = {
+      from_country: xfer.from,
+      to_country: xfer.to,
+      beneficiary_name: xfer.name.trim(),
+      beneficiary_account: xfer.account.trim(),
+      amount,
+      external_id: ref,
+    };
+    void requestPin(async (pin) => {
+      setXferLoading(true);
+      try {
+        await cemacAPI.createTransfer(datos, pin);
+        toast.success(`Transferencia enviada — ${total.toLocaleString()} XAF`);
+        setTransferOpen(false);
+        setTransferRef('');
+        setXfer({ from: 'GQ', to: 'CM', name: '', account: '', amount: '' });
+        const r = await walletAPI.getBalance();
+        setBalance(r.balance || 0);
+      } finally {
+        setXferLoading(false);
+      }
+    });
   };
 
   const ctry = COUNTRIES.find(c => c.code === country);
@@ -405,6 +402,7 @@ export default function CemacScreen() {
         </Pressable>
         </KeyboardAvoidingView>
       </Modal>
+      {pinElements}
     </SafeAreaView>
   );
 }

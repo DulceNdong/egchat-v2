@@ -463,46 +463,43 @@ export class CallManager {
       console.warn('[CallManager] acceptCall: sin sesión de llamada');
       return;
     }
-    if (this._commState !== 'ringing') {
-      console.warn('[CallManager] acceptCall: estado interno', this._commState);
-      // El estado interno puede llegar sucio (CallKit contesta con la app
-      // suspendida y el poll aún no había marcado 'ringing'). Si el servidor
-      // dice que la llamada sigue viva hay que aceptar igualmente: si no, el
-      // llamante se queda sonando una llamada que ya fue atendida.
-      const live = await callAPI.get(this._session.callId).catch(() => null);
-      if (live && !live.ended && !live.answer && ['new', 'calling', 'ringing'].includes(live.status)) {
-        this._setCommState('ringing');
-      } else {
-        // La UI puede seguir abierta aunque la llamada ya haya terminado o se
-        // haya aceptado en otro dispositivo: el timbre debe parar igualmente.
-        this._stopRingOnce();
-        return;
-      }
-    }
+    if (this._session.role !== 'callee' || this._isAcceptingLocally || this._answeredHere || this._isEnding) return;
+    const session = this._session;
     this._isAcceptingLocally = true;
 
     try {
-      // M3 fix: guard contra doble-aceptación desde dos dispositivos del mismo usuario.
-      // Intentar reclamar la llamada de forma atómica en el servidor.
-      // Si ya fue aceptada por otro dispositivo, el servidor devuelve alreadyAccepted.
+      await this._stopRingOnce();
+      if (this._session !== session || this._isEnding) return;
+      if (this._commState !== 'ringing') {
+        const live = await callAPI.get(session.callId).catch(() => null);
+        if (this._session !== session || this._isEnding) return;
+        if (live && !live.ended && !live.answer && ['new', 'calling', 'ringing'].includes(live.status)) {
+          this._setCommState('ringing');
+        } else {
+          return;
+        }
+      }
       try {
-        const result = await callAPI.claimCall?.(this._session.callId);
+        const result = await callAPI.claimCall?.(session.callId);
+        if (this._session !== session || this._isEnding) return;
         if (result?.alreadyAccepted) {
           this._stopRingOnce();
           // 'rejected' cierra la pantalla sin escribir historial: la llamada no
           // se perdió, la contestó otra máquina de este mismo usuario.
           this._setCommState('rejected');
           this._finalCleanup();
-          setTimeout(() => { this._setCommState('idle'); this._session = null; this._notify(); }, 400);
+          this._session = null;
+          this._setCommState('idle');
           return;
         }
       } catch { /* endpoint opcional — no bloquear si no existe */ }
+      if (this._session !== session || this._isEnding) return;
 
       // FIX: la sesión debe leerse ANTES de avisar a CallKit. Antes se usaba
       // `callId` en la línea de answerCall y el `const` se declaraba después,
       // provocando un ReferenceError que el catch silenciaba: CallKit nunca
       // recibía la aceptación y seguía mostrando/timbrando la llamada.
-      const { callId, callType, offer: rawOffer } = this._session;
+      const { callId, callType, offer: rawOffer } = session;
 
       this._setCommState('accepted');
       this._answeredHere = true;
@@ -511,26 +508,33 @@ export class CallManager {
       // iOS sigue mostrando la UI de llamada entrante y el tono continúa
       try { NativeCallKit.answerCall(callId); } catch { /* */ }
       // Descartar la notificación de llamada entrante en Android
-      try { NativeCallKit.dismissIncomingCall(); } catch { /* */ }
+      if (Platform.OS === 'android') {
+        try { NativeCallKit.dismissIncomingCall(); } catch { /* */ }
+      }
 
       if (!HAS_NATIVE_MEDIA) {
         this._isSignalingOnly = true;
         await this._sendAnswer(callId, { type: 'answer', sdp: 'egchat-expo-go-answer' });
+        if (this._session !== session || this._isEnding) return;
         this._setCommState('connected');
         this._onCallConnected();
         return;
       }
 
-      if (!await this._ensurePermissions(callType)) {
+      const permitted = await this._ensurePermissions(callType);
+      if (this._session !== session || this._isEnding) return;
+      if (!permitted) {
         await this.endCall();
         throw new Error(tr('xtPermisosDenegadosActivalosEnAjustes'));
       }
 
       let offer: any = rawOffer;
       if (!this._isValidSdp(offer)) offer = await this._fetchOfferWithRetry(callId);
+      if (this._session !== session || this._isEnding) return;
       if (!this._isValidSdp(offer)) { await this.endCall(); throw new Error(tr('xtNoSePudoObtenerLosDatosDeLaLlamada')); }
 
       const iceServers = await this._getIceServers();
+      if (this._session !== session || this._isEnding) return;
 
       // Guardia contra tracks duplicados: si ya hay un stream con tracks vivos,
       // reutilizarlo en lugar de crear uno nuevo (protege contra doble-tap en "Aceptar").
@@ -549,24 +553,34 @@ export class CallManager {
           this._localStream = null;
         }
         stream = await this._getUserMedia(callType);
+        if (this._session !== session || this._isEnding) {
+          stream.getTracks().forEach((track: any) => track.stop());
+          return;
+        }
       }
       this._localStream = stream;
       this._notify();
 
       const pc = await this._createPC(iceServers);
+      if (this._session !== session || this._isEnding) return;
       this._addTracks(pc, stream);
       pc.onicecandidate = (e: any) => this._onLocalIceCandidate(e, 'callee');
 
       // setRemoteDescription → luego vaciar la cola ICE
       await pc.setRemoteDescription(new NativeRTC!.RTCSessionDescription(offer));
+      if (this._session !== session || this._isEnding) return;
       this._remoteDescSet = true;
       this._appliedOfferSdp = this._sdpKey(offer);
       await this._drainIceQueue();
+      if (this._session !== session || this._isEnding) return;
 
       const answer = await pc.createAnswer();
+      if (this._session !== session || this._isEnding) return;
       await pc.setLocalDescription(answer);
+      if (this._session !== session || this._isEnding) return;
       this._setPcState('connecting');
       await this._sendAnswer(callId, pc.localDescription);
+      if (this._session !== session || this._isEnding) return;
 
       this._setCommState('connecting');
       // El answer ya está en el servidor: si ICE no conecta, cerrar en 30s
@@ -576,7 +590,7 @@ export class CallManager {
       this._subscribeAppState();
       this._subscribeRealtime();
     } finally {
-      this._isAcceptingLocally = false;
+      if (this._session === session) this._isAcceptingLocally = false;
     }
   }
 
@@ -799,7 +813,7 @@ export class CallManager {
     // El servidor emite a los dos usuarios, así que esto también lo dispara la
     // propia máquina que contestó: su eco se ignora.
     if (this._session.role === 'callee') {
-      if (this._answeredHere) return;
+      if (this._answeredHere || this._isAcceptingLocally) return;
       // Contestó otro dispositivo del mismo usuario. Conectarse una segunda vez
       // duplicaría la llamada; lo suyo es callar el timbre.
       // Cierre SOLO local: callAPI.end() mataría desde aquí la conversación viva
@@ -2023,7 +2037,9 @@ export class CallManager {
       this._session = { ...session, startedAt: Date.now() };
 
       LiveActivity.startCall(session.callId, session.targetName, session.callType === 'video');
-      try { NativeCallKit.dismissIncomingCall(); } catch { /* */ }
+      if (Platform.OS === 'android') {
+        try { NativeCallKit.dismissIncomingCall(); } catch { /* */ }
+      }
 
       if (Platform.OS === 'android') {
         try { NativeCallKit.startCallForegroundService(session.callId, session.targetName, session.callType === 'video'); } catch { /* */ }
@@ -2043,10 +2059,10 @@ export class CallManager {
   // ══════════════════════════════════════════════════════════════
   // PRIVADOS — Limpieza completa
   // ══════════════════════════════════════════════════════════════
-  private _stopRingOnce(): void {
-    if (this._ringStopped) return;
+  private _stopRingOnce(): Promise<void> {
+    if (this._ringStopped) return Promise.resolve();
     this._ringStopped = true;
-    stopRingtone().catch(() => {});
+    return stopRingtone().catch(() => {});
   }
 
   /** Limpieza completa de recursos — no deja nada activo */

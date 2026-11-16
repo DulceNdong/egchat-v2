@@ -21,6 +21,8 @@ export interface ChatHeaderProps {
   onVideoCall: () => void;
   onGroupCall?: () => void;
   onMenuPress: () => void;
+  /** En grupos las acciones viven en la ficha; el menu de tres puntos es solo para 1:1. */
+  hideMenu?: boolean;
 }
 
 export function ChatHeader({
@@ -36,6 +38,7 @@ export function ChatHeader({
   onVideoCall,
   onGroupCall,
   onMenuPress,
+  hideMenu,
 }: ChatHeaderProps) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -89,13 +92,15 @@ export function ChatHeader({
             <Path d="M15 10.5l5.5-2.5v9L15 14.5"/>
           </Svg>
         </TouchableOpacity>
-        <TouchableOpacity style={s.iconBtn} onPress={onMenuPress} activeOpacity={0.75}>
-          <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth={2.2} strokeLinecap="round">
-            <Circle cx="12" cy="5" r="1.2" fill={iconColor}/>
-            <Circle cx="12" cy="12" r="1.2" fill={iconColor}/>
-            <Circle cx="12" cy="19" r="1.2" fill={iconColor}/>
-          </Svg>
-        </TouchableOpacity>
+        {!hideMenu && (
+          <TouchableOpacity style={s.iconBtn} onPress={onMenuPress} activeOpacity={0.75}>
+            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth={2.2} strokeLinecap="round">
+              <Circle cx="12" cy="5" r="1.2" fill={iconColor}/>
+              <Circle cx="12" cy="12" r="1.2" fill={iconColor}/>
+              <Circle cx="12" cy="19" r="1.2" fill={iconColor}/>
+            </Svg>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );

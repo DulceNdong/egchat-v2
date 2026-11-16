@@ -22,6 +22,8 @@ import { CardsScreen } from '../../src/components/services/CardsScreen';
 import { DraggableHomeButton } from '../../src/components/DraggableHomeButton';
 import { buildReceiveQr, buildPayQr } from '../../src/utils/walletQr';
 import { loadBankAccounts, saveBankAccounts, DEFAULT_BANK_ACCOUNTS } from '../../src/utils/bankAccounts';
+import { PinInputModal } from '../../src/components/ui/PinInputModal';
+import { SetupPINModal } from '../../src/components/wallet/SetupPINModal';
 import { checkLimitForTransaction, updateLimitForTransaction } from '../../src/services/limits';
 import { mergePersistentAvatar, onProfileUpdated } from '../../src/utils/profileEvents';
 import {
@@ -837,6 +839,10 @@ const RetiroModal = ({
   const set = (k: string, v: string) => setData(p => ({ ...p, [k]: v }));
   const [loading, setLoading] = useState(false);
   const [hasPin, setHasPin] = useState(false);
+  const [showPin, setShowPin] = useState(false);
+  const [pinLoading, setPinLoading] = useState(false);
+  const [pinError, setPinError] = useState('');
+  const [showSetupPin, setShowSetupPin] = useState(false);
   const { t } = useTranslation();
   const amountNum = parseInt(data.amount || '0');
   const isValid = amountNum >= 1000 && amountNum <= balance;
@@ -852,28 +858,27 @@ const RetiroModal = ({
   const close = () => { reset(); onClose(); };
   const goBack = () => step === 'menu' ? close() : setStep('menu');
 
-  const doWithdraw = async (method: string, destination: string) => {
+  const doWithdraw = async (method: string, destination: string, pin: string) => {
     setLoading(true);
+    setPinLoading(true);
+    setPinError('');
     try {
       const checkResult = await checkLimitForTransaction('withdrawal', amountNum);
       if (!checkResult.allowed) {
         Alert.alert(t('walLimitExceeded'), checkResult.reason || t('walLimitNotAllowed'));
-        setLoading(false);
+        setShowPin(false);
         return;
       }
-      if (checkResult.requiresPin && !data.pin) {
-        Alert.alert(t('walPinRequired'), t('walPinRequiredBody'));
-        setLoading(false);
-        return;
-      }
-      await walletAPI.withdraw(amountNum, method, destination, data.pin);
+      await walletAPI.withdraw(amountNum, method, destination, pin);
       await updateLimitForTransaction('withdrawal', amountNum);
+      setShowPin(false);
       onSuccess();
       setStep('success');
     } catch (error: any) {
-      Alert.alert(t('error'), error?.message || t('walPaymentCreateFailed'));
+      setPinError(error?.message || t('walPaymentCreateFailed'));
     } finally {
       setLoading(false);
+      setPinLoading(false);
     }
   };
 
@@ -889,6 +894,11 @@ const RetiroModal = ({
     confirm: t('walConfirmWithdraw'), success: t('walWithdrawDone'),
   };
 
+  const withdrawMethod = data.card ? 'Tarjeta bancaria' : data.cuenta ? tr('walBankTransfer') : 'Retiro en agente';
+  const withdrawDestination = data.card
+    || (data.banco && data.cuenta ? `${data.banco}-${data.cuenta}` : '')
+    || tr('xtCodigoAgente');
+
   const InsufficientAlert = () => amountNum > balance && amountNum > 0 ? (
     <View style={s.alertBox}>
       <Text style={s.alertText}>{t('walInsufficientWarn')}</Text>
@@ -896,6 +906,7 @@ const RetiroModal = ({
   ) : null;
 
   return (
+    <>
     <Sheet visible={visible} title={TITLES[step]} subtitle={`${t('walAvailablePrefix')} ${fmt(balance)} XAF`} onClose={close}>
       <View style={s.sheetBody}>
 
@@ -928,12 +939,11 @@ const RetiroModal = ({
             <QuickAmounts amounts={[5000,10000,25000,50000]} selected={data.amount||''} onSelect={v=>set('amount',v)} />
             <Field label={t('walAmountMin1k')} value={data.amount||''} onChangeText={v=>set('amount',v)} placeholder="5000" keyboardType="numeric" />
             <Field label={t('walCardLast4')} value={data.card||''} onChangeText={v=>set('card',v)} placeholder="1234" keyboardType="numeric" />
-            <Field label={`${t('walConfirmPinLabel')}${hasPin ? '' : ` (${t('optional')})`}`} value={data.pin||''} onChangeText={v=>set('pin',v)} placeholder="••••" secureTextEntry keyboardType="numeric" />
             <InsufficientAlert />
             <TouchableOpacity
-              style={[s.primaryBtn, s.withdrawBtn, (!isValid||!data.card||(hasPin&&!data.pin)) && s.primaryBtnDisabled]}
-              onPress={() => { if (isValid && data.card && (!hasPin || data.pin)) setStep('confirm'); }}
-              disabled={!isValid || !data.card || (hasPin && !data.pin)} activeOpacity={0.85}>
+              style={[s.primaryBtn, s.withdrawBtn, (!isValid||!data.card) && s.primaryBtnDisabled]}
+              onPress={() => { if (isValid && data.card) setStep('confirm'); }}
+              disabled={!isValid || !data.card} activeOpacity={0.85}>
               <Text style={s.primaryBtnText}>{t('continue')} — {isValid ? fmt(amountNum) : '0'} XAF</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.backBtn} onPress={goBack}><Text style={s.backBtnText}>← {t('back')}</Text></TouchableOpacity>
@@ -950,12 +960,11 @@ const RetiroModal = ({
             <Field label={t('walDestBank')} value={data.banco||''} onChangeText={v=>set('banco',v)} placeholder="BANGE, BGFI, CCEI..." />
             <Field label={t('accountNumber')} value={data.cuenta||''} onChangeText={v=>set('cuenta',v)} placeholder="GQ-XXXX-XXXX" />
             <Field label={t('walAccountHolder')} value={data.titular||''} onChangeText={v=>set('titular',v)} placeholder={t('name')} />
-            <Field label={`${t('walConfirmPinLabel')}${hasPin ? '' : ` (${t('optional')})`}`} value={data.pin||''} onChangeText={v=>set('pin',v)} placeholder="••••" secureTextEntry keyboardType="numeric" />
             <InsufficientAlert />
             <TouchableOpacity
-              style={[s.primaryBtn, s.withdrawBtn, (!isValid||!data.banco||!data.cuenta||!data.titular||(hasPin&&!data.pin)) && s.primaryBtnDisabled]}
-              onPress={() => { if (isValid && data.banco && data.cuenta && data.titular && (!hasPin || data.pin)) setStep('confirm'); }}
-              disabled={!isValid || !data.banco || !data.cuenta || !data.titular || (hasPin && !data.pin)} activeOpacity={0.85}>
+              style={[s.primaryBtn, s.withdrawBtn, (!isValid||!data.banco||!data.cuenta||!data.titular) && s.primaryBtnDisabled]}
+              onPress={() => { if (isValid && data.banco && data.cuenta && data.titular) setStep('confirm'); }}
+              disabled={!isValid || !data.banco || !data.cuenta || !data.titular} activeOpacity={0.85}>
               <Text style={s.primaryBtnText}>{t('continue')} — {isValid ? fmt(amountNum) : '0'} XAF</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.backBtn} onPress={goBack}><Text style={s.backBtnText}>← {t('back')}</Text></TouchableOpacity>
@@ -985,12 +994,11 @@ const RetiroModal = ({
             ))}
             <QuickAmounts amounts={[5000,10000,25000,50000]} selected={data.amount||''} onSelect={v=>set('amount',v)} />
             <Field label={t('walAmountMin1k')} value={data.amount||''} onChangeText={v=>set('amount',v)} placeholder="5000" keyboardType="numeric" />
-            <Field label={`${t('walConfirmPinLabel')} (${t('optional')})`} value={data.pin||''} onChangeText={v=>set('pin',v)} placeholder="••••" secureTextEntry keyboardType="numeric" />
             <InsufficientAlert />
             <TouchableOpacity
-              style={[s.primaryBtn, s.withdrawBtn, (!isValid || (hasPin && !data.pin)) && s.primaryBtnDisabled]}
-              onPress={() => { if (isValid && (!hasPin || data.pin)) setStep('confirm'); }}
-              disabled={!isValid || (hasPin && !data.pin)} activeOpacity={0.85}>
+              style={[s.primaryBtn, s.withdrawBtn, !isValid && s.primaryBtnDisabled]}
+              onPress={() => { if (isValid) setStep('confirm'); }}
+              disabled={!isValid} activeOpacity={0.85}>
               <Text style={s.primaryBtnText}>{t('walGenerateWithdrawCode')} — {isValid ? fmt(amountNum) : '0'} XAF</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.backBtn} onPress={goBack}><Text style={s.backBtnText}>← {t('back')}</Text></TouchableOpacity>
@@ -1024,9 +1032,9 @@ const RetiroModal = ({
             <TouchableOpacity
               style={[s.primaryBtn, s.withdrawBtn]}
               onPress={() => {
-                const method = data.card ? 'Tarjeta bancaria' : data.cuenta ? tr('walBankTransfer') : 'Retiro en agente';
-                const dest = data.card || `${data.banco}-${data.cuenta}` || tr('xtCodigoAgente');
-                doWithdraw(method, dest);
+                if (!hasPin) { setShowSetupPin(true); return; }
+                setPinError('');
+                setShowPin(true);
               }}
               activeOpacity={0.85}>
               {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryBtnText}>{t('walConfirmWithdraw')} — {fmt(amountNum)} XAF</Text>}
@@ -1063,6 +1071,22 @@ const RetiroModal = ({
 
       </View>
     </Sheet>
+    <PinInputModal
+      visible={showPin}
+      onClose={() => { if (!pinLoading) { setShowPin(false); setPinError(''); } }}
+      onSuccess={(pin) => doWithdraw(withdrawMethod, withdrawDestination, pin)}
+      title={t('walPinRequired')}
+      subtitle={t('walPinRequiredBody')}
+      loading={pinLoading}
+      error={pinError}
+    />
+    <SetupPINModal
+      visible={showSetupPin}
+      hasPin={false}
+      onDone={() => { setShowSetupPin(false); setHasPin(true); setPinError(''); setShowPin(true); }}
+      onCancel={() => setShowSetupPin(false)}
+    />
+    </>
   );
 };
 
@@ -1212,6 +1236,7 @@ function MonederoScreenInner() {
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [bankAccounts, setBankAccounts] = useState(DEFAULT_BANK_ACCOUNTS);
+  const [accountsVisible, setAccountsVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [balanceRevealed, setBalanceRevealed] = useState(false);
@@ -1400,7 +1425,6 @@ function MonederoScreenInner() {
     }).catch(() => {});
     void loadData();
     void loadPendingTransfers();
-    void loadBankAccounts().then(setBankAccounts);
     void SessionManager.getInstance().getUser().then(async cachedUser => {
       if (!cachedUser || !active) return;
       const profile = await mergePersistentAvatar(cachedUser);
@@ -1419,6 +1443,13 @@ function MonederoScreenInner() {
     }).catch(() => {});
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    if (!userId) return;
+    let active = true;
+    void loadBankAccounts(userId).then(list => { if (active) setBankAccounts(list); });
+    return () => { active = false; };
+  }, [userId]);
 
   useEffect(() => {
     return onProfileUpdated(patch => {
@@ -1791,10 +1822,18 @@ function MonederoScreenInner() {
                       <Text style={[s.bankName, { color: C.textPrimary }]}>{acc.bank}</Text>
                       <Text style={[s.bankType, { color: C.textSecondary }]}>{ACCOUNT_TYPE_KEYS[acc.type] ? t(ACCOUNT_TYPE_KEYS[acc.type]) : acc.type}</Text>
                     </View>
-                    <View style={s.bankBalanceWrap}>
-                      <Text style={[s.bankBalance, { color: C.textPrimary }]}>{fmt(acc.balance)}</Text>
-                      <Text style={[s.bankCurrency, { color: C.textSecondary }]}>XAF</Text>
-                    </View>
+                    <TouchableOpacity
+                      style={s.bankBalanceWrap}
+                      onPress={() => setAccountsVisible(v => !v)}
+                      hitSlop={8}
+                    >
+                      <Text style={[s.bankBalance, { color: C.textPrimary }]}>
+                        {accountsVisible ? fmt(acc.balance) : '••••••'}
+                      </Text>
+                      <Text style={[s.bankCurrency, { color: C.textSecondary }]}>
+                        {accountsVisible ? 'XAF' : '🔒'}
+                      </Text>
+                    </TouchableOpacity>
                   </View>
                   {i < bankAccounts.length - 1 && <View style={[s.divider, { backgroundColor: C.borderLight }]} />}
                 </View>
@@ -1992,7 +2031,7 @@ function MonederoScreenInner() {
         onAdd={acc => {
           const next = [...bankAccounts, acc];
           setBankAccounts(next);
-          saveBankAccounts(next);
+          saveBankAccounts(userId, next);
         }} />
       {/* Modal Mis Tarjetas */}
       <Modal visible={showCards} animationType="slide" onRequestClose={() => setShowCards(false)}>

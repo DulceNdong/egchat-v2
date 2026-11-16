@@ -22,12 +22,22 @@ interface EGAvatarProps {
   size?: number;
 }
 
-// URL válida: no vacía, debe tener protocolo http/https/file
+// URL válida: no vacía, debe tener protocolo http/https/file/data o un base64
+// crudo (fotos de grupo guardadas así cuando Storage falló).
 // Excluimos solo las rutas de avatares estáticos genéricos del backend (placeholder)
+const BASE64_IMAGE_RE = /^[A-Za-z0-9+/=\r\n]{200,}$/;
+
+const toRenderableUri = (url: string): string => {
+  if (BASE64_IMAGE_RE.test(url.trim())) return `data:image/jpeg;base64,${url.trim()}`;
+  return url;
+};
+
 const isValidAvatarUrl = (url?: string | null): url is string =>
   !!url &&
   url.trim().length > 0 &&
-  (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('file://')) &&
+  (url.startsWith('http://') || url.startsWith('https://') ||
+   url.startsWith('file://') || url.startsWith('data:image/') ||
+   BASE64_IMAGE_RE.test(url.trim())) &&
   !url.includes('egchat-api-xlxj.onrender.com/static/avatars/') &&
   !url.includes('ui-avatars.com/api/?name=D&');
 
@@ -52,7 +62,7 @@ export const EGAvatar: React.FC<EGAvatarProps> = React.memo(({ src, name, size =
   if (isValidAvatarUrl(src) && !imgError) {
     return (
       <Image
-        source={{ uri: src }}
+        source={{ uri: toRenderableUri(src) }}
         style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }]}
         contentFit="cover"
         cachePolicy="memory-disk"

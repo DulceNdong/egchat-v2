@@ -12,7 +12,10 @@
     "build:android:apk": "eas build --profile preview --platform android",
     "prepare:ios:xcode": "expo prebuild --platform ios",
     "start:dev-client": "expo start --dev-client",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "release:verify": "node scripts/verify-release.cjs",
+    "release:preflight": "node scripts/verify-release.cjs --require-clean",
+    "test:release": "node --test scripts/verify-release.test.cjs"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.1.0",

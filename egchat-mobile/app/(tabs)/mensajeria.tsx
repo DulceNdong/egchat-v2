@@ -22,7 +22,7 @@ const ChatFlatList: React.ComponentType<any> = Platform.OS === 'web' ? FlatList 
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Line, Rect, Polyline } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useNavigation } from 'expo-router';
+import { router, useNavigation, useFocusEffect } from 'expo-router';
 import { chatAPI, authAPI, contactsAPI } from '../../src/api';
 import { onProfileUpdated } from '../../src/utils/profileEvents';
 import { useChatStream } from '../../src/hooks/useChatStream';
@@ -344,15 +344,30 @@ const ChatItem = React.memo(({ chat, currentUserId, onPress, onLongPress, static
 
 // ── Favoritos horizontales (como web) ─────────────────────────────
 const FavoriteSection = ({
-  title, empty, C, children,
-}: { title: string; empty: string; C: typeof Colors; children?: React.ReactNode }) => {
+  title, empty, C, children, onAdd, addLabel,
+}: {
+  title: string; empty: string; C: typeof Colors; children?: React.ReactNode;
+  onAdd?: () => void; addLabel?: string;
+}) => {
   const [collapsed, setCollapsed] = useState(true);
   const hasItems = React.Children.count(children) > 0;
   return (
     <View style={[st.favSection, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}>
       <TouchableOpacity style={st.favHeader} onPress={() => setCollapsed(v => !v)} activeOpacity={0.7}>
         <Text style={[st.favTitle, { color: C.textTertiary }]}>{title}</Text>
-        <Text style={[st.favToggle, { color: C.textTertiary }]}>{collapsed ? '+' : '−'}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          {onAdd ? (
+            <TouchableOpacity
+              onPress={() => { setCollapsed(false); onAdd(); }}
+              hitSlop={10}
+              style={st.favAddBtn}
+              accessibilityLabel={addLabel}
+            >
+              <Text style={st.favAddBtnText}>+</Text>
+            </TouchableOpacity>
+          ) : null}
+          <Text style={[st.favToggle, { color: C.textTertiary }]}>{collapsed ? '⌄' : '⌃'}</Text>
+        </View>
       </TouchableOpacity>
       {!collapsed && (
         hasItems ? (
@@ -400,6 +415,7 @@ function MensajeriaScreenInner() {
   const { indicators: newContentMap } = useNewContentIndicators(currentUserId);
   const [favoriteContacts, setFavoriteContacts] = useState<any[]>([]);
   const [favoriteGroupIds, setFavoriteGroupIds] = useState<string[]>([]);
+  const [showFavGroupPicker, setShowFavGroupPicker] = useState(false);
   const [archivedChats, setArchivedChats] = useState<Chat[]>([]);
   const [archivePassword, setArchivePasswordState] = useState('');
   const [archiveUnlocked, setArchiveUnlocked] = useState(false);
@@ -561,6 +577,14 @@ function MensajeriaScreenInner() {
   }, [readCache, saveCache, currentUserId, t]);
   // Actualizar ref para que debouncedLoadChats siempre tenga la versión más reciente
   loadChatsRef.current = loadChats;
+
+  // Al volver de un chat (p. ej. tras cambiar la foto o el nombre del grupo)
+  // refrescar la lista para que la fila muestre el cambio sin esperar al poll.
+  const firstFocusRef = useRef(true);
+  useFocusEffect(useCallback(() => {
+    if (firstFocusRef.current) { firstFocusRef.current = false; return; }
+    if (currentUserId) void loadChats(currentUserId);
+  }, [currentUserId, loadChats]));
 
   useEffect(() => {
     const init = async () => {
@@ -942,7 +966,13 @@ function MensajeriaScreenInner() {
             })}
           </FavoriteSection>
 
-          <FavoriteSection title={t('favoriteGroups')} empty={t('noFavoriteGroups')} C={C}>
+          <FavoriteSection
+            title={t('favoriteGroups')}
+            empty={t('noFavoriteGroups')}
+            C={C}
+            onAdd={() => setShowFavGroupPicker(true)}
+            addLabel={t('addToFavoriteGroups')}
+          >
             {favoriteGroupChats.map(chat => {
               const { name, avatar } = getChatMeta(chat);
               return <FavoriteChip key={chat.id} name={name} avatar={avatar} onPress={() => openChat(chat)} />;
@@ -1240,6 +1270,54 @@ function MensajeriaScreenInner() {
         }}
       />
 
+      {/* Selector de grupos favoritos */}
+      <Modal
+        visible={showFavGroupPicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowFavGroupPicker(false)}
+      >
+        <Pressable style={st.modalOverlay} onPress={() => setShowFavGroupPicker(false)}>
+          <Pressable style={st.modalSheet} onPress={() => {}}>
+            <Text style={st.modalTitle}>{t('favoriteGroups')}</Text>
+            <FlatList
+              data={chats.filter(c => c.type === 'group')}
+              keyExtractor={c => c.id}
+              style={{ maxHeight: 420 }}
+              ListEmptyComponent={
+                <Text style={{ color: '#9ca3af', textAlign: 'center', paddingVertical: 24 }}>{t('noFavoriteGroups')}</Text>
+              }
+              renderItem={({ item }) => {
+                const { name, avatar } = getChatMeta(item);
+                const isFav = favoriteGroupIds.includes(item.id);
+                return (
+                  <TouchableOpacity
+                    style={st.favPickRow}
+                    activeOpacity={0.75}
+                    onPress={async () => {
+                      const next = await toggleFavoriteGroup(item.id);
+                      setFavoriteGroupIds(next);
+                    }}
+                  >
+                    <EGAvatar src={avatar} name={name} size={40} />
+                    <Text style={st.favPickName} numberOfLines={1}>{name}</Text>
+                    <Text style={[st.favPickStar, isFav && st.favPickStarOn]}>{isFav ? '★' : '☆'}</Text>
+                  </TouchableOpacity>
+                );
+              }}
+            />
+            <View style={st.modalActions}>
+              <TouchableOpacity
+                style={[st.modalBtn, { backgroundColor: '#00C8A0' }]}
+                onPress={() => setShowFavGroupPicker(false)}
+              >
+                <Text style={{ fontWeight: '700', color: '#fff' }}>{t('done')}</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* Modal contraseña archivo */}
       <Modal
         visible={showArchiveSetup || showArchiveUnlock}
@@ -1436,6 +1514,18 @@ const st = StyleSheet.create({
   favScroll: { gap: 8, paddingVertical: 4, paddingRight: 8 },
   favChip: { alignItems: 'center', width: 72, gap: 6 },
   favChipName: { fontSize: 13, fontWeight: '600', color: '#111827', maxWidth: 70, textAlign: 'center' },
+  favAddBtn: {
+    width: 22, height: 22, borderRadius: 11,
+    backgroundColor: '#00C8A0', alignItems: 'center', justifyContent: 'center',
+  },
+  favAddBtnText: { fontSize: 16, lineHeight: 18, fontWeight: '700', color: '#fff' },
+  favPickRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e5e7eb',
+  },
+  favPickName: { flex: 1, fontSize: 15, fontWeight: '600', color: '#111827' },
+  favPickStar: { fontSize: 22, color: '#cbd5e1' },
+  favPickStarOn: { color: '#F59E0B' },
 
   // ── Filtros ──────────────────────────────────────────────────────
   filtersWrap: {

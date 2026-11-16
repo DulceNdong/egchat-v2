@@ -1,8 +1,11 @@
 # ── Dependencias — EAS las instala en el servidor ────────────────
 node_modules/
 
-# ── iOS — EAS genera el proyecto completo en el servidor ─────────
-ios/
+# Conservar iOS nativo; EAS solo regenera dependencias y productos de compilación.
+ios/Pods/
+ios/build/
+ios/.xcode.env.local
+ios/**/xcuserdata/
 
 # ── Builds locales de Android ─────────────────────────────────────
 android/build/

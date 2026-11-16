@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, Alert, Linking, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Alert, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import * as Updates from 'expo-updates';
@@ -24,11 +25,8 @@ export default function AcercaScreen() {
 
   // ── Datos de versión ──────────────────────────────────────────
   const appVersion   = Constants.expoConfig?.version ?? '1.0.0';
-  const buildNumber  =
-    (Constants.expoConfig?.ios as any)?.buildNumber ??
-    (Constants.expoConfig?.android as any)?.versionCode ??
-    '—';
-  const runtimeVer   = Constants.expoConfig?.runtimeVersion ?? '—';
+  const buildNumber  = Constants.nativeBuildVersion ?? '—';
+  const runtimeVer   = Updates.runtimeVersion ?? '—';
   const updateId     = Updates.updateId ? Updates.updateId.substring(0, 8) + '...' : t('setLocalChannel');
   const updateChan   = Updates.channel ?? 'development';
 
@@ -64,7 +62,7 @@ export default function AcercaScreen() {
                   Alert.alert(
                     `✅ ${t('setUpdateDownloaded')}`,
                     t('setUpdateDownloadedBody'),
-                    [{ text: t('setRestart'), onPress: () => Updates.reloadAsync() }],
+                    [{ text: t('setOk') }],
                   );
                 } catch (e: any) {
                   toast.error(t('setUpdateDownloadError'));
@@ -164,12 +162,12 @@ export default function AcercaScreen() {
       <SettingsCard>
         <SettingsRow
           label={t('termsOfService')}
-          onPress={() => Linking.openURL('https://egchat-v2.vercel.app/terms').catch(() => {})}
+          onPress={() => router.push({ pathname: '/ajustes/legal', params: { doc: 'terms' } })}
         />
         <SettingsDivider />
         <SettingsRow
           label={t('privacyPolicy')}
-          onPress={() => Linking.openURL('https://egchat-v2.vercel.app/privacy').catch(() => {})}
+          onPress={() => router.push({ pathname: '/ajustes/legal', params: { doc: 'privacy' } })}
         />
         <SettingsDivider />
         <SettingsRow

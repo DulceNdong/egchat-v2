@@ -76,7 +76,10 @@ export const UpdateBanner: React.FC = () => {
         setPhase('ready');
         return;
       }
-      await Updates.reloadAsync();
+      // NO usar reloadAsync() — provoca crash nativo en expo-av.
+      // La OTA ya está descargada; se aplica en el próximo arranque natural.
+      // Solo ocultamos el banner para que el usuario sepa que ya está lista.
+      setPhase('idle');
     } catch {
       setPhase(stateRef.current === 'ready' ? 'ready' : 'available');
     }
@@ -87,10 +90,13 @@ export const UpdateBanner: React.FC = () => {
   const busy = state === 'downloading';
   const label = busy
     ? tr('setUpdating')
-    : state === 'ready'
-      ? tr('setRestart')
-      : tr('setUpdate');
+    : tr('setOk');
 
+  const bannerText = busy
+    ? tr('sysNewVersion')
+    : state === 'ready'
+      ? tr('setUpdateDownloadedBody')
+      : tr('sysNewVersion');
   return (
     <Animated.View
       style={[
@@ -100,8 +106,8 @@ export const UpdateBanner: React.FC = () => {
     >
       <View style={styles.card}>
         <Text style={styles.icon}>⤓</Text>
-        <Text style={styles.text} numberOfLines={2}>
-          {state === 'ready' ? tr('setUpdateDownloaded') : tr('sysNewVersion')}
+        <Text style={styles.text}>
+          {bannerText}
         </Text>
         <TouchableOpacity
           style={[styles.btn, busy && styles.btnDisabled]}

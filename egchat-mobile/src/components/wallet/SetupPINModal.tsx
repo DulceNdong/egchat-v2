@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  View, Text, Modal, Pressable, TouchableOpacity, StyleSheet, Platform, ActivityIndicator,
+  View, Text, Modal, Pressable, TouchableOpacity, StyleSheet, Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { walletPIN } from '../../services/walletPin';
@@ -23,7 +23,7 @@ function PinDots({ value }: { value: string }) {
   );
 }
 
-function NumPad({ onPress, disabled }: { onPress: (k: string) => void; disabled?: boolean }) {
+function NumPad({ onPress }: { onPress: (k: string) => void }) {
   return (
     <View style={s.pad}>
       {KEYS.map((k, i) => (
@@ -31,7 +31,7 @@ function NumPad({ onPress, disabled }: { onPress: (k: string) => void; disabled?
           key={i}
           style={[s.padKey, k === '⌫' && s.padDel, !k && s.padBlank]}
           onPress={() => k && onPress(k)}
-          disabled={!k || disabled}
+          disabled={!k}
           activeOpacity={0.7}
         >
           <Text style={[s.padKeyText, k === '⌫' && s.padDelText]}>{k}</Text>
@@ -41,132 +41,64 @@ function NumPad({ onPress, disabled }: { onPress: (k: string) => void; disabled?
   );
 }
 
+type Step = 'current' | 'create' | 'confirm';
+
 interface Props {
   visible: boolean;
   onDone: () => void;
   onCancel: () => void;
+  /**
+   * El servidor ya tiene un PIN: setup-pin exige el actual para reemplazarlo.
+   * Sin este paso, crear el PIN falla con 403 en cualquier dispositivo nuevo.
+   */
+  hasPin?: boolean;
 }
 
-type Step = 'checking' | 'current' | 'create' | 'confirm';
-
-export function SetupPINModal({ visible, onDone, onCancel }: Props) {
-  const [step, setStep] = useState<Step>('checking');
-  const [hasPin, setHasPin] = useState(false);
+export function SetupPINModal({ visible, onDone, onCancel, hasPin = false }: Props) {
+  const [step, setStep] = useState<Step>(hasPin ? 'current' : 'create');
   const [currentPin, setCurrentPin] = useState('');
-  const [typedCurrent, setTypedCurrent] = useState('');
   const [pin1, setPin1] = useState('');
   const [pin2, setPin2] = useState('');
   const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-  // Cada apertura invalida las respuestas de la comprobación anterior.
-  const runRef = useRef(0);
 
-  useEffect(() => {
-    if (!visible) return;
-    const run = ++runRef.current;
-    setStep('checking');
-    setHasPin(false);
+  const reset = (withCurrent = hasPin) => {
+    setStep(withCurrent ? 'current' : 'create');
     setCurrentPin('');
-    setTypedCurrent('');
     setPin1('');
     setPin2('');
     setError('');
-    setBusy(false);
-    // Si la consulta se cuelga no bloqueamos la hoja: el servidor responde
-    // 403 al guardar y entonces pedimos el PIN actual.
-    const timer = setTimeout(() => {
-      if (runRef.current === run) { runRef.current = -1; setStep('create'); }
-    }, 8000);
-    authAPI.hasPinConfigured()
-      .then(r => {
-        if (runRef.current !== run) return;
-        clearTimeout(timer);
-        if (r?.hasPin) { setHasPin(true); setStep('current'); }
-        else setStep('create');
-      })
-      .catch(() => {
-        if (runRef.current !== run) return;
-        clearTimeout(timer);
-        setStep('create');
-      });
-    return () => clearTimeout(timer);
-  }, [visible]);
-
-  const reset = () => {
-    setStep('checking');
-    setHasPin(false);
-    setCurrentPin('');
-    setTypedCurrent('');
-    setPin1('');
-    setPin2('');
-    setError('');
-    setBusy(false);
   };
 
+  useEffect(() => {
+    if (visible) reset(hasPin);
+  }, [visible, hasPin]);
+
   const handleClose = () => {
-    if (busy) return;
-    runRef.current = -1;
     reset();
     onCancel();
   };
 
   const verifyCurrent = async (pin: string) => {
-    setBusy(true);
-    setError('');
     try {
-      const r = await authAPI.verifyPin(pin);
-      if (r?.valid) {
-        setCurrentPin(pin);
-        setTypedCurrent('');
-        setPin1('');
-        setPin2('');
+      const res = await authAPI.verifyPin(pin);
+      if (res?.valid) {
         setStep('create');
-      } else {
-        setTypedCurrent('');
-        setError(r?.message || tr('chtPinIncorrect'));
+        return;
       }
+      setError(tr('chtPinIncorrect'));
     } catch (e: any) {
-      setTypedCurrent('');
       setError(e?.message || tr('chtPinIncorrect'));
     }
-    setBusy(false);
-  };
-
-  const savePin = async (pin: string) => {
-    setBusy(true);
-    setError('');
-    try {
-      // Sin `currentPin` el servidor rechaza el cambio si ya había un PIN.
-      await authAPI.setupPin(pin, hasPin ? currentPin : undefined);
-      await walletPIN.save(pin);
-      reset();
-      onDone();
-    } catch (e: any) {
-      setPin1('');
-      setPin2('');
-      if (e?.status === 403) {
-        // Había un PIN que este dispositivo no conocía: pedirlo y reintentar.
-        setHasPin(true);
-        setCurrentPin('');
-        setTypedCurrent('');
-        setStep('current');
-        setError(e?.message || tr('chtPinIncorrect'));
-      } else {
-        setStep('create');
-        setError(e?.message || tr('xtErrorAlConfigurarPIN'));
-      }
-    }
-    setBusy(false);
+    setCurrentPin('');
   };
 
   const handlePress = (k: string) => {
-    if (busy || step === 'checking') return;
     setError('');
     if (step === 'current') {
-      if (k === '⌫') { setTypedCurrent(p => p.slice(0, -1)); return; }
-      if (typedCurrent.length >= PIN_LEN) return;
-      const next = typedCurrent + k;
-      setTypedCurrent(next);
+      if (k === '⌫') { setCurrentPin(p => p.slice(0, -1)); return; }
+      if (currentPin.length >= PIN_LEN) return;
+      const next = currentPin + k;
+      setCurrentPin(next);
       if (next.length === PIN_LEN) setTimeout(() => verifyCurrent(next), 200);
       return;
     }
@@ -176,36 +108,38 @@ export function SetupPINModal({ visible, onDone, onCancel }: Props) {
       const next = pin1 + k;
       setPin1(next);
       if (next.length === PIN_LEN) setTimeout(() => setStep('confirm'), 200);
-      return;
-    }
-    if (k === '⌫') { setPin2(p => p.slice(0, -1)); return; }
-    if (pin2.length >= PIN_LEN) return;
-    const next = pin2 + k;
-    setPin2(next);
-    if (next.length === PIN_LEN) {
-      setTimeout(() => {
-        if (next === pin1) savePin(next);
-        else {
-          setError(tr('xtLosPINsNoCoincidenIntentaloDeNuevo'));
-          setPin1('');
-          setPin2('');
-          setStep('create');
-        }
-      }, 200);
+    } else {
+      if (k === '⌫') { setPin2(p => p.slice(0, -1)); return; }
+      if (pin2.length >= PIN_LEN) return;
+      const next = pin2 + k;
+      setPin2(next);
+      if (next.length === PIN_LEN) {
+        setTimeout(async () => {
+          if (next === pin1) {
+            // El PIN debe quedar registrado en el servidor: sin él no se
+            // pueden autorizar pagos ni retiros.
+            try {
+              await authAPI.setupPin(pin1, hasPin ? currentPin : undefined);
+            } catch (e: any) {
+              setError(e?.message || tr('xtErrorAlConfigurarPIN'));
+              setPin1('');
+              setPin2('');
+              setStep('create');
+              return;
+            }
+            await walletPIN.save(pin1);
+            reset();
+            onDone();
+          } else {
+            setError(tr('xtLosPINsNoCoincidenIntentaloDeNuevo'));
+            setPin1('');
+            setPin2('');
+            setStep('create');
+          }
+        }, 200);
+      }
     }
   };
-
-  const title = step === 'current'
-    ? tr('xtCambiarPINDePago')
-    : step === 'confirm' ? 'Confirmar PIN' : 'Crear PIN de pago';
-  const subtitle = step === 'current'
-    ? tr('xtIntroduceTuPIN')
-    : step === 'confirm'
-      ? tr('xtIntroduceElPINDeNuevoParaConfirmar')
-      : hasPin
-        ? tr('xtCreaUnPINDe6DigitosParaProtegerTusTransferencias')
-        : tr('xtEligeUnPINDe6DigitosParaProtegerTusPagos');
-  const dotsValue = step === 'current' ? typedCurrent : step === 'create' ? pin1 : pin2;
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
@@ -214,8 +148,16 @@ export function SetupPINModal({ visible, onDone, onCancel }: Props) {
           <View style={s.handle} />
           <View style={s.header}>
             <View style={{ flex: 1 }}>
-              <Text style={s.title}>{title}</Text>
-              <Text style={s.subtitle}>{subtitle}</Text>
+              <Text style={s.title}>
+                {step === 'current' ? 'PIN actual' : step === 'create' ? 'Crear PIN de pago' : 'Confirmar PIN'}
+              </Text>
+              <Text style={s.subtitle}>
+                {step === 'current'
+                  ? 'Ya tienes un PIN. Escríbelo para poder cambiarlo.'
+                  : step === 'create'
+                    ? tr('xtEligeUnPINDe6DigitosParaProtegerTusPagos')
+                    : tr('xtIntroduceElPINDeNuevoParaConfirmar')}
+              </Text>
             </View>
             <TouchableOpacity style={s.closeBtn} onPress={handleClose}>
               <Text style={s.closeBtnText}>✕</Text>
@@ -224,15 +166,9 @@ export function SetupPINModal({ visible, onDone, onCancel }: Props) {
           <LinearGradient colors={['#1a73e8', '#0d47a1']} style={s.iconWrap}>
             <Text style={{ fontSize: 26 }}>🔒</Text>
           </LinearGradient>
-          {step === 'checking' || busy ? (
-            <View style={s.dots}>
-              <ActivityIndicator color="#1a73e8" />
-            </View>
-          ) : (
-            <PinDots value={dotsValue} />
-          )}
+          <PinDots value={step === 'current' ? currentPin : step === 'create' ? pin1 : pin2} />
           {error ? <Text style={s.error}>{error}</Text> : null}
-          <NumPad onPress={handlePress} disabled={busy || step === 'checking'} />
+          <NumPad onPress={handlePress} />
         </Pressable>
       </Pressable>
     </Modal>
@@ -263,10 +199,7 @@ const s = StyleSheet.create({
     width: 56, height: 56, borderRadius: 28, alignSelf: 'center',
     alignItems: 'center', justifyContent: 'center', marginTop: 12,
   },
-  dots: {
-    flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
-    gap: 16, marginVertical: 24, minHeight: 20,
-  },
+  dots: { flexDirection: 'row', justifyContent: 'center', gap: 16, marginVertical: 24 },
   dot: { width: 16, height: 16, borderRadius: 8, borderWidth: 2 },
   dotFilled: { backgroundColor: '#1a73e8', borderColor: '#1a73e8' },
   dotEmpty: { backgroundColor: 'transparent', borderColor: '#d1d5db' },

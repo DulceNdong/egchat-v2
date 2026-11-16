@@ -12,8 +12,8 @@ import { toast } from '../Toast';
 import { FinancialModuleShell } from './FinancialModuleUI';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
 import { PayMethodPicker, ServiceOptionRow } from './PublicModuleUI';
+import { usePinGate } from '../wallet/usePinGate';
 import { useTranslation } from '../../context/LanguageContext';
-import { usePaymentPin } from '../../context/PaymentPinContext';
 import { t as tr } from '../../translations';
 
 interface Props { visible: boolean; onClose: () => void; }
@@ -24,7 +24,6 @@ const ACCENT = '#C62828';
 
 export const CorreosModal: React.FC<Props> = ({ visible, onClose }) => {
   const { t } = useTranslation();
-  const { runWithPin } = usePaymentPin();
   const [screen, setScreen] = useState<Screen>('home');
   const [tarifas, setTarifas] = useState<Tarifa[]>([]);
   const [selected, setSelected] = useState<Tarifa | null>(null);
@@ -33,6 +32,7 @@ export const CorreosModal: React.FC<Props> = ({ visible, onClose }) => {
   const [balance, setBalance] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const { request: requestPin, elements: pinElements } = usePinGate((msg) => { setError(msg); toast.error(msg); });
 
   useEffect(() => {
     if (visible) { loadTarifas(); cargarSaldo(); return; }
@@ -67,35 +67,30 @@ export const CorreosModal: React.FC<Props> = ({ visible, onClose }) => {
   const price = selected ? Number(selected.amount) : 0;
   const canSubmit = !!(form.sender && form.dest && form.payMethod);
 
-  const submit = async () => {
+  const submit = () => {
     if (!selected || !canSubmit) return;
-    setLoading(true); setError('');
-    try {
-      const data = await runWithPin(
-        pin => serviciosAPI.enviarPaquete({
+    const tarifa = selected;
+    void requestPin(async (pin) => {
+      setLoading(true); setError('');
+      try {
+        const data = await serviciosAPI.enviarPaquete({
           destinatario: form.dest,
           peso: Number(form.peso) || undefined,
-          tipo: selected.variant,
-        }, pin),
-        tr('xtIntroduceTuPIN'),
-      );
-      if (!data) return;
-      // El numero de seguimiento y lo cobrado los decide el servidor.
-      setRecibo({
-        tracking: data.tracking,
-        tarifa: Number(data.tarifa),
-        balance: Number(data.balance),
-        estimado: data.estimado || '',
-      });
-      setBalance(Number(data.balance));
-      setScreen('success');
-    } catch (e: any) {
-      const msg = e?.message || 'No se pudo registrar el envío.';
-      setError(msg);
-      toast.error(msg);
-    } finally {
-      setLoading(false);
-    }
+          tipo: tarifa.variant,
+        }, pin);
+        // El numero de seguimiento y lo cobrado los decide el servidor.
+        setRecibo({
+          tracking: data.tracking,
+          tarifa: Number(data.tarifa),
+          balance: Number(data.balance),
+          estimado: data.estimado || '',
+        });
+        setBalance(Number(data.balance));
+        setScreen('success');
+      } finally {
+        setLoading(false);
+      }
+    });
   };
 
   const fixedTop = screen === 'home' ? (
@@ -109,6 +104,7 @@ export const CorreosModal: React.FC<Props> = ({ visible, onClose }) => {
   ) : undefined;
 
   return (
+    <>
     <FinancialModuleShell visible={visible} title={screen === 'home' ? t('mail') : selected?.variant || t('svcShipment')} onBack={back} onClose={onClose} fixedTop={fixedTop} onRefresh={screen === 'home' ? loadTarifas : undefined}>
       {screen === 'home' && (
         <View>
@@ -164,6 +160,8 @@ export const CorreosModal: React.FC<Props> = ({ visible, onClose }) => {
         </View>
       )}
     </FinancialModuleShell>
+    {pinElements}
+    </>
   );
 };
 

@@ -7,12 +7,12 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router';
 import { MIcon } from '../src/components/ui/MIcon';
 import { getToken, getApiBase, walletAPI } from '../src/api';
+import { usePinGate } from '../src/components/wallet/usePinGate';
 import { toast } from '../src/components/Toast';
 import { Colors, Typography, Spacing, BorderRadius, FontSize, FontWeight, Shadow } from '../src/theme';
 import { useThemeContext } from '../src/theme/ThemeContext';
 import { DarkColors } from '../src/theme/darkMode';
 import { useTranslation } from '../src/context/LanguageContext';
-import { usePaymentPin } from '../src/context/PaymentPinContext';
 
 interface Supermarket {
   id: string;
@@ -90,8 +90,8 @@ async function createOrder(
   items: CartItem[],
   address: string,
   externalId: string,
-  t: (key: string) => string,
   pin: string,
+  t: (key: string) => string,
 ): Promise<any> {
   const BASE = getApiBase();
   const token = await getToken();
@@ -113,10 +113,7 @@ async function createOrder(
   });
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
-    // El estado viaja en el error para que el PIN rechazado se pueda reintentar.
-    const e = new Error(error.message || t('svcOrderError')) as Error & { status?: number };
-    e.status = res.status;
-    throw e;
+    throw new Error(error.message || t('svcOrderError'));
   }
   return res.json();
 }
@@ -137,9 +134,9 @@ export default function SupermercadosScreen() {
   const [balance, setBalance] = useState(0);
   const [search, setSearch] = useState('');
   const [externalId, setExternalId] = useState('');
+  const { request: requestPin, elements: pinElements } = usePinGate((msg) => toast.error(msg));
 
   const { t } = useTranslation();
-  const { runWithPin } = usePaymentPin();
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
   const insets = useSafeAreaInsets();
@@ -232,7 +229,7 @@ export default function SupermercadosScreen() {
     setCart([]);
   };
 
-  const handleCheckout = async () => {
+  const handleCheckout = () => {
     if (!selectedSupermarket || cart.length === 0) return;
     if (!address.trim()) {
       toast.error(t('svcEnterAddress'));
@@ -250,33 +247,33 @@ export default function SupermercadosScreen() {
       return;
     }
 
-    setOrdering(true);
-    try {
-      const result = await runWithPin(
-        pin => createOrder(selectedSupermarket.id, cart, address.trim(), externalId, t, pin),
-        t('xtIntroduceTuPIN'),
-      );
-      if (!result) return;
-      // El cargo real lo fija service_products; si la tabla cambió mientras el
-      // carrito estaba abierto, el usuario ve lo que realmente salió del monedero.
-      const cobrado = Number(result.total ?? cartTotal);
-      const trasCargo = Number(result.balance ?? balance);
-      if (Number.isFinite(trasCargo)) setBalance(trasCargo);
-      setShowCheckout(false);
-      setShowCart(false);
-      clearCart();
-      setAddress('');
-      setExternalId('');
-      toast.success(`${t('svcOrderConfirmed')} · ${cobrado.toLocaleString()} XAF`);
-      Alert.alert(
-        t('svcOrderConfirmed'),
-        `${t('total')}: ${cobrado.toLocaleString()} XAF\n${t('walletBalance')}: ${Number.isFinite(trasCargo) ? trasCargo.toLocaleString() : balance.toLocaleString()} XAF`
-      );
-    } catch (error: any) {
-      toast.error(error.message || t('svcOrderError'));
-    } finally {
-      setOrdering(false);
-    }
+    const tienda = selectedSupermarket;
+    const lineas = cart;
+    const totalCarrito = cartTotal;
+    const ref = externalId;
+    void requestPin(async (pin) => {
+      setOrdering(true);
+      try {
+        const result = await createOrder(tienda.id, lineas, address.trim(), ref, pin, t);
+        // El cargo real lo fija service_products; si la tabla cambió mientras el
+        // carrito estaba abierto, el usuario ve lo que realmente salió del monedero.
+        const cobrado = Number(result.total ?? totalCarrito);
+        const trasCargo = Number(result.balance ?? balance);
+        if (Number.isFinite(trasCargo)) setBalance(trasCargo);
+        setShowCheckout(false);
+        setShowCart(false);
+        clearCart();
+        setAddress('');
+        setExternalId('');
+        toast.success(`${t('svcOrderConfirmed')} · ${cobrado.toLocaleString()} XAF`);
+        Alert.alert(
+          t('svcOrderConfirmed'),
+          `${t('total')}: ${cobrado.toLocaleString()} XAF\n${t('walletBalance')}: ${Number.isFinite(trasCargo) ? trasCargo.toLocaleString() : balance.toLocaleString()} XAF`
+        );
+      } finally {
+        setOrdering(false);
+      }
+    });
   };
 
   if (loading) {
@@ -587,6 +584,7 @@ export default function SupermercadosScreen() {
           </TouchableOpacity>
         </SafeAreaView>
       </Modal>
+      {pinElements}
     </SafeAreaView>
   );
 }

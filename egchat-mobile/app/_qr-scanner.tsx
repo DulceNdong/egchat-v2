@@ -15,6 +15,8 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router } from 'expo-router';
 import Svg, { Path, Line, Circle, Polyline, Rect } from 'react-native-svg';
 import { walletAPI, authAPI } from '../src/api';
+import { PinInputModal } from '../src/components/ui/PinInputModal';
+import { SetupPINModal } from '../src/components/wallet/SetupPINModal';
 import { parseEgchatPayQr } from '../src/utils/walletQr';
 import { Colors } from '../src/theme';
 import { t as tr } from '../src/translations';
@@ -36,12 +38,6 @@ const IcCheck = () => (
 const IcSend = () => (
   <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
     <Line x1="22" y1="2" x2="11" y2="13"/><Polyline points="22 2 15 22 11 13 2 9 22 2"/>
-  </Svg>
-);
-const IcShield = () => (
-  <Svg width={32} height={32} viewBox="0 0 24 24" fill="none" stroke="#00C8A0" strokeWidth={1.5} strokeLinecap="round">
-    <Path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-    <Polyline points="9 12 11 14 15 10"/>
   </Svg>
 );
 const IcWallet = () => (
@@ -183,101 +179,6 @@ function AmountModal({ visible, payData, onConfirm, onCancel }: {
 }
 
 // ══════════════════════════════════════════════════════════════════
-// MODAL PIN / CÓDIGO DE VALIDACIÓN
-// ══════════════════════════════════════════════════════════════════
-function PinModal({ visible, onConfirm, onCancel, loading }: {
-  visible: boolean;
-  onConfirm: (pin: string) => void;
-  onCancel: () => void;
-  loading: boolean;
-}) {
-  const [pin, setPin] = useState('');
-  const insets = useSafeAreaInsets();
-  const inputRef = useRef<TextInput>(null);
-
-  useEffect(() => {
-    if (visible) { setPin(''); setTimeout(() => inputRef.current?.focus(), 300); }
-  }, [visible]);
-
-  const digits = pin.split('').slice(0, 4);
-
-  return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <View style={pm.overlay}>
-          <View style={[pm.card, { paddingBottom: insets.bottom + 24 }]}>
-            {/* Icono */}
-            <View style={pm.iconWrap}>
-              <IcShield />
-            </View>
-
-            <Text style={pm.title}>{tr('xtIntroduceTuPIN')}</Text>
-            <Text style={pm.sub}>{tr('qrsPinSub')}</Text>
-
-            {/* Puntos del PIN */}
-            <TouchableOpacity style={pm.dotsRow} onPress={() => inputRef.current?.focus()} activeOpacity={1}>
-              {[0, 1, 2, 3].map(i => (
-                <View key={i} style={[pm.dot, digits[i] !== undefined && pm.dotFilled]}>
-                  {digits[i] !== undefined && <View style={pm.dotInner} />}
-                </View>
-              ))}
-            </TouchableOpacity>
-
-            {/* Input oculto */}
-            <TextInput
-              ref={inputRef}
-              style={pm.hiddenInput}
-              value={pin}
-              onChangeText={v => setPin(v.replace(/\D/g, '').slice(0, 4))}
-              keyboardType="number-pad"
-              maxLength={4}
-              secureTextEntry
-              caretHidden
-              onSubmitEditing={() => pin.length === 4 && onConfirm(pin)}
-            />
-
-            {/* Teclado numérico */}
-            <View style={pm.numPad}>
-              {['1','2','3','4','5','6','7','8','9','','0','⌫'].map((k, i) => (
-                <TouchableOpacity
-                  key={i}
-                  style={[pm.numKey, !k && pm.numKeyEmpty]}
-                  onPress={() => {
-                    if (!k) return;
-                    if (k === '⌫') { setPin(p => p.slice(0, -1)); return; }
-                    if (pin.length < 4) setPin(p => p + k);
-                  }}
-                  activeOpacity={k ? 0.7 : 1}
-                  disabled={!k && k !== '⌫'}
-                >
-                  <Text style={pm.numKeyTxt}>{k}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* Confirmar */}
-            <TouchableOpacity
-              style={[pm.confirmBtn, (pin.length < 4 || loading) && pm.confirmBtnDisabled]}
-              onPress={() => pin.length === 4 && onConfirm(pin)}
-              disabled={pin.length < 4 || loading}
-            >
-              {loading
-                ? <ActivityIndicator color="#fff" size="small" />
-                : <Text style={pm.confirmBtnTxt}>{tr('djhConfirmPayout')}</Text>
-              }
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={onCancel} style={{ marginTop: 12 }}>
-              <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>{tr('cancel')}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
-  );
-}
-
-// ══════════════════════════════════════════════════════════════════
 // MODAL ÉXITO
 // ══════════════════════════════════════════════════════════════════
 function SuccessModal({ visible, amount, recipientName, onDone }: {
@@ -326,6 +227,9 @@ export default function QRScannerScreen() {
   const [showPin,    setShowPin]    = useState(false);
   const [showSuccess,setShowSuccess]= useState(false);
   const [pinLoading, setPinLoading] = useState(false);
+  const [pinError,   setPinError]   = useState('');
+  const [showSetupPin, setShowSetupPin] = useState(false);
+  const [hasPin,     setHasPin]     = useState(true);
   const [paidAmount, setPaidAmount] = useState(0);
   const [pendingAmt, setPendingAmt] = useState(0);
   const [pendingCon, setPendingCon] = useState('');
@@ -351,16 +255,25 @@ export default function QRScannerScreen() {
     setShowAmount(true);
   }, [scanned]);
 
-  const handleAmountConfirm = (amount: number, concept: string) => {
+  const handleAmountConfirm = async (amount: number, concept: string) => {
     setPendingAmt(amount);
     setPendingCon(concept);
     setShowAmount(false);
-    setShowPin(true);
+    setPinError('');
+    let configured = true;
+    try {
+      const r: any = await authAPI.hasPinConfigured();
+      configured = Boolean(r?.hasPin);
+    } catch {}
+    setHasPin(configured);
+    if (configured) setShowPin(true);
+    else setShowSetupPin(true);
   };
 
   const handlePinConfirm = async (pin: string) => {
     if (!payData) return;
     setPinLoading(true);
+    setPinError('');
     try {
       // Validar PIN y ejecutar transferencia
       await walletAPI.transfer(payData.userId, pendingAmt, pendingCon || tr('xtPagoQR'), pin);
@@ -368,8 +281,7 @@ export default function QRScannerScreen() {
       setShowPin(false);
       setShowSuccess(true);
     } catch (e: any) {
-      Alert.alert(tr('error'), e?.message || 'PIN incorrecto o saldo insuficiente');
-      setPinLoading(false);
+      setPinError(e?.message || 'PIN incorrecto o saldo insuficiente');
     } finally {
       setPinLoading(false);
     }
@@ -378,6 +290,7 @@ export default function QRScannerScreen() {
   const reset = () => {
     setScanned(false); setPayData(null);
     setShowAmount(false); setShowPin(false); setShowSuccess(false);
+    setShowSetupPin(false); setPinError('');
     setPendingAmt(0); setPendingCon('');
   };
 
@@ -471,11 +384,20 @@ export default function QRScannerScreen() {
         onConfirm={handleAmountConfirm}
         onCancel={reset}
       />
-      <PinModal
+      <PinInputModal
         visible={showPin}
-        onConfirm={handlePinConfirm}
-        onCancel={() => { setShowPin(false); setShowAmount(true); }}
+        onClose={() => { if (!pinLoading) { setShowPin(false); setPinError(''); setShowAmount(true); } }}
+        onSuccess={handlePinConfirm}
+        title={tr('xtIntroduceTuPIN')}
+        subtitle={tr('qrsPinSub')}
         loading={pinLoading}
+        error={pinError}
+      />
+      <SetupPINModal
+        visible={showSetupPin}
+        hasPin={hasPin}
+        onDone={() => { setShowSetupPin(false); setHasPin(true); setShowPin(true); }}
+        onCancel={() => { setShowSetupPin(false); setShowAmount(true); }}
       />
       <SuccessModal
         visible={showSuccess}
@@ -557,32 +479,6 @@ const am = StyleSheet.create({
   payBtnTxt:     { color: '#fff', fontSize: 16, fontWeight: '800' },
   cancelBtn:     { alignItems: 'center', paddingVertical: 10 },
   cancelTxt:     { color: 'rgba(255,255,255,0.4)', fontSize: 14 },
-});
-
-// ── PinModal styles ───────────────────────────────────────────────
-const pm = StyleSheet.create({
-  overlay:       { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', alignItems: 'center', justifyContent: 'flex-end' },
-  card:          { width: '100%', backgroundColor: '#111118', borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 28, paddingTop: 32, alignItems: 'center' },
-
-  iconWrap:      { width: 64, height: 64, borderRadius: 32, borderWidth: 1, borderColor: 'rgba(0,200,160,0.3)', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  title:         { color: '#fff', fontSize: 20, fontWeight: '800', marginBottom: 6 },
-  sub:           { color: 'rgba(255,255,255,0.4)', fontSize: 13, textAlign: 'center', marginBottom: 28, lineHeight: 19 },
-
-  dotsRow:       { flexDirection: 'row', gap: 16, marginBottom: 28 },
-  dot:           { width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
-  dotFilled:     { borderColor: ACCENT, backgroundColor: 'rgba(0,200,160,0.15)' },
-  dotInner:      { width: 8, height: 8, borderRadius: 4, backgroundColor: ACCENT },
-
-  hiddenInput:   { position: 'absolute', opacity: 0, width: 1, height: 1 },
-
-  numPad:        { flexDirection: 'row', flexWrap: 'wrap', width: '100%', marginBottom: 24, gap: 0 },
-  numKey:        { width: '33.33%', height: 64, alignItems: 'center', justifyContent: 'center' },
-  numKeyEmpty:   { opacity: 0 },
-  numKeyTxt:     { color: '#fff', fontSize: 24, fontWeight: '300' },
-
-  confirmBtn:    { width: '100%', backgroundColor: ACCENT, paddingVertical: 16, borderRadius: 16, alignItems: 'center' },
-  confirmBtnDisabled: { opacity: 0.3 },
-  confirmBtnTxt: { color: '#fff', fontSize: 16, fontWeight: '800' },
 });
 
 // ── SuccessModal styles ───────────────────────────────────────────

@@ -31,6 +31,13 @@ export default function SeguridadCuentaScreen() {
   const [biometricType, setBiometricType] = useState(tr('setBiometrics'));
   // PIN
   const [showSetupPIN, setShowSetupPIN] = useState(false);
+  const [hasPin, setHasPin] = useState(false);
+
+  useEffect(() => {
+    authAPI.hasPinConfigured()
+      .then(r => setHasPin(!!r?.hasPin))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -201,7 +208,8 @@ export default function SeguridadCuentaScreen() {
     </SettingsLayout>
     <SetupPINModal
       visible={showSetupPIN}
-      onDone={() => { setShowSetupPIN(false); toast.success(tr('xtPINDePagosConfigurado')); }}
+      hasPin={hasPin}
+      onDone={() => { setShowSetupPIN(false); setHasPin(true); toast.success(tr('xtPINDePagosConfigurado')); }}
       onCancel={() => setShowSetupPIN(false)}
     />
   </> );

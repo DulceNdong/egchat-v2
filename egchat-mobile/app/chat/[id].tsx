@@ -2482,6 +2482,7 @@ function ChatScreenInner() {
         onVideoCall={() => goToCall('video')}
         onGroupCall={() => goToCall('audio')}
         onMenuPress={() => setDrawerVisible(true)}
+        hideMenu={isGroup}
       />
 
       {/* Sprint 1.4 — barra de ubicación en vivo */}
@@ -2949,6 +2950,13 @@ function ChatScreenInner() {
           onAvatarUpdated={(url) => setChat((prev: any) => prev ? { ...prev, avatar_url: url } : prev)}
           onAudioCall={() => { setShowGroupInfo(false); goToCall('audio'); }}
           onVideoCall={() => { setShowGroupInfo(false); goToCall('video'); }}
+          isMuted={isMuted}
+          onToggleMute={toggleMute}
+          onSearch={() => { setShowGroupInfo(false); setShowChatSearch(true); setChatSearchQuery(''); }}
+          onStarred={() => { setShowGroupInfo(false); setShowStarredModal(true); }}
+          onMedia={() => { setShowGroupInfo(false); setShowMediaGallery(true); }}
+          onExportChat={exportChat}
+          onClearChat={() => setMessages([])}
         />
       )}
 

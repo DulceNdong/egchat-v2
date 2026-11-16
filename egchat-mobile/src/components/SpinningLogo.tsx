@@ -8,7 +8,9 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const LOGO = require('../../assets/logo-transparent.png');
+// Emblema sobre plato blanco opaco: sin el degradado detrás, el logo se lee
+// nítido a 36-100 px (antes el fondo translúcido lo lavaba).
+const LOGO = require('../../assets/logo-plate.png');
 
 // ── Singleton: valor y animación fuera del componente ─────────────
 const SPIN_DURATION = 6000;

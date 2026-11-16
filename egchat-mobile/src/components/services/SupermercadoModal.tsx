@@ -10,7 +10,7 @@ import {
 import { FinancialModuleShell, FilterChips } from './FinancialModuleUI';
 import { SearchField } from './PublicModuleUI';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
-import { usePaymentPin } from '../../context/PaymentPinContext';
+import { usePinGate } from '../wallet/usePinGate';
 import { t as tr } from '../../translations';
 
 type Screen = 'home' | 'cities' | 'stores' | 'products' | 'cart' | 'checkout' | 'success' | 'history';
@@ -19,7 +19,6 @@ type SuperOrder = { id: string; store: string; total: number; items: number; cre
 interface Props { visible: boolean; onClose: () => void; }
 
 export const SupermercadoModal: React.FC<Props> = ({ visible, onClose }) => {
-  const { runWithPin } = usePaymentPin();
   const [screen, setScreen] = useState<Screen>('home');
   const [cityId, setCityId] = useState<string | null>(null);
   const [store, setStore] = useState<Supermarket | null>(null);
@@ -36,6 +35,7 @@ export const SupermercadoModal: React.FC<Props> = ({ visible, onClose }) => {
   const [externalId, setExternalId] = useState('');
   const [recibo, setRecibo] = useState<{ total: number; balance: number | null; eta: string } | null>(null);
   const [orderHistory, setOrderHistory] = useState<SuperOrder[]>([]);
+  const { request: requestPin, elements: pinElements } = usePinGate((msg) => toast.error(msg));
 
   useEffect(() => {
     if (!visible) {
@@ -118,40 +118,40 @@ export const SupermercadoModal: React.FC<Props> = ({ visible, onClose }) => {
     }
   };
 
-  const placeOrder = async () => {
+  const placeOrder = () => {
     if (!store || !cart.length || !address.trim() || !phone.trim() || !name.trim()) return;
-    setLoading(true);
-    try {
-      const res = await runWithPin(
-        pin => superAPI.createOrder({
-          supermarketId: store.id,
+    const tienda = store;
+    const items = cart.map(i => ({ product_id: i.product.id, qty: i.qty }));
+    const ref = externalId;
+    const cuenta = cartCount;
+    void requestPin(async (pin) => {
+      setLoading(true);
+      try {
+        const res = await superAPI.createOrder({
+          supermarketId: tienda.id,
           address: address.trim(),
-          external_id: externalId,
+          external_id: ref,
           // Solo producto y cantidad: el importe lo lee el servidor de la tabla.
-          items: cart.map(i => ({ product_id: i.product.id, qty: i.qty })),
-        }, pin),
-        tr('xtIntroduceTuPIN'),
-      );
-      if (!res) return;
-      setRecibo({
-        total: Number(res.total),
-        balance: res.balance == null ? null : Number(res.balance),
-        eta: res.eta || '30-45 min',
-      });
-      setOrderHistory(prev => [{
-        id: res.orderId,
-        store: store.nombre,
-        total: Number(res.total),
-        items: cartCount,
-        createdAt: new Date().toISOString(),
-      }, ...prev.filter(o => o.id !== res.orderId)]);
-      setCart([]);
-      setScreen('success');
-    } catch (e: any) {
-      toast.error(e?.message || 'No se pudo completar el pedido.');
-    } finally {
-      setLoading(false);
-    }
+          items,
+        }, pin);
+        setRecibo({
+          total: Number(res.total),
+          balance: res.balance == null ? null : Number(res.balance),
+          eta: res.eta || '30-45 min',
+        });
+        setOrderHistory(prev => [{
+          id: res.orderId,
+          store: tienda.nombre,
+          total: Number(res.total),
+          items: cuenta,
+          createdAt: new Date().toISOString(),
+        }, ...prev.filter(o => o.id !== res.orderId)]);
+        setCart([]);
+        setScreen('success');
+      } finally {
+        setLoading(false);
+      }
+    });
   };
 
   const refresh = () => {
@@ -193,6 +193,7 @@ export const SupermercadoModal: React.FC<Props> = ({ visible, onClose }) => {
   ) : null;
 
   return (
+    <>
     <FinancialModuleShell
       visible={visible}
       title={title}
@@ -394,6 +395,8 @@ export const SupermercadoModal: React.FC<Props> = ({ visible, onClose }) => {
         </View>
       )}
     </FinancialModuleShell>
+    {pinElements}
+    </>
   );
 };
 

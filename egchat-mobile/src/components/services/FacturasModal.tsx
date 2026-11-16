@@ -11,13 +11,13 @@ import { toast } from '../Toast';
 import { FinancialModuleShell, SummaryCard, FilterChips, StatusPill } from './FinancialModuleUI';
 import { PrimaryButton } from './ServiceModuleUI';
 import { PayMethodPicker } from './PublicModuleUI';
-import { usePaymentPin } from '../../context/PaymentPinContext';
+import { usePinGate } from '../wallet/usePinGate';
 import { t as tr } from '../../translations';
 
 type FScreen = 'home' | 'detail' | 'pay' | 'success';
 type FilterId = 'todas' | 'pendiente' | 'vencida' | 'pagada';
 
-const PROVIDERS: Record<string, { name: string; icon: string; color: string; pay: (id: string, pin?: string) => Promise<any> }> = {
+const PROVIDERS: Record<string, { name: string; icon: string; color: string; pay: (id: string, pin: string) => Promise<any> }> = {
   segesa: { name: 'SEGESA', icon: '⚡', color: '#1A3A6B', pay: (id, pin) => serviciosAPI.pagarElectricidad(id, pin) },
   snge: { name: 'SNGE', icon: '💧', color: '#0A4A8A', pay: (id, pin) => serviciosAPI.pagarAgua(id, pin) },
   dgi: { name: 'DGI', icon: '🏛️', color: '#1B3A6B', pay: (id, pin) => serviciosAPI.pagarDGI(id, pin) },
@@ -47,7 +47,6 @@ interface Props {
 }
 
 export const FacturasModal: React.FC<Props> = ({ visible, onClose }) => {
-  const { runWithPin } = usePaymentPin();
   const [screen, setScreen] = useState<FScreen>('home');
   const [bills, setBills] = useState<BillFactura[]>([]);
   const [selected, setSelected] = useState<BillFactura | null>(null);
@@ -57,6 +56,9 @@ export const FacturasModal: React.FC<Props> = ({ visible, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
   const [recibo, setRecibo] = useState<{ importe: number; balance: number } | null>(null);
+  const { request: requestPin, elements: pinElements } = usePinGate(
+    (msg) => toast.error(msg || tr('xtErrorAlProcesarPago')),
+  );
 
   useEffect(() => {
     if (visible) {
@@ -97,28 +99,25 @@ export const FacturasModal: React.FC<Props> = ({ visible, onClose }) => {
     else setScreen('home');
   };
 
-  const payBill = async () => {
+  const payBill = () => {
     if (!selected || !payMethod) {
       toast.error(tr('xtSeleccionaMetodoDePago'));
       return;
     }
-    setLoading(true);
-    try {
-      const res = await runWithPin(
-        pin => prov(selected.provider).pay(selected.id, pin),
-        tr('xtIntroduceTuPIN'),
-      );
-      if (!res) return;
-      setRecibo({ importe: Number(res.importe), balance: Number(res.balance) });
-      setBalance(Number(res.balance));
-      setBills(p => p.map(b => b.id === selected.id ? { ...b, status: 'paid', paid_at: new Date().toISOString() } : b));
-      setScreen('success');
-      toast.success(tr('xtPagoCompletado'));
-    } catch (e: any) {
-      toast.error(e?.message || tr('xtErrorAlProcesarPago'));
-    } finally {
-      setLoading(false);
-    }
+    const bill = selected;
+    void requestPin(async (pin) => {
+      setLoading(true);
+      try {
+        const res = await prov(bill.provider).pay(bill.id, pin);
+        setRecibo({ importe: Number(res.importe), balance: Number(res.balance) });
+        setBalance(Number(res.balance));
+        setBills(p => p.map(b => b.id === bill.id ? { ...b, status: 'paid', paid_at: new Date().toISOString() } : b));
+        setScreen('success');
+        toast.success(tr('xtPagoCompletado'));
+      } finally {
+        setLoading(false);
+      }
+    });
   };
 
   const fixedTop = screen === 'home' ? (
@@ -145,6 +144,7 @@ export const FacturasModal: React.FC<Props> = ({ visible, onClose }) => {
   };
 
   return (
+    <>
     <FinancialModuleShell
       visible={visible}
       title={titles[screen]}
@@ -244,6 +244,8 @@ export const FacturasModal: React.FC<Props> = ({ visible, onClose }) => {
         </View>
       )}
     </FinancialModuleShell>
+    {pinElements}
+    </>
   );
 };
 

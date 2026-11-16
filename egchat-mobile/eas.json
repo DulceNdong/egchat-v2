@@ -115,7 +115,7 @@
     "testflight": {
       "distribution": "store",
       "channel": "testflight",
-      "node": "20.18.0",
+      "node": "22.18.0",
       "android": {
         "buildType": "apk",
         "gradleCommand": ":app:assembleRelease -PreactNativeArchitectures=arm64-v8a",
@@ -144,7 +144,7 @@
         "autoIncrement": true,
         "resourceClass": "m-medium",
         "buildConfiguration": "Release",
-        "image": "macos-sequoia-15.3-xcode-16.2",
+        "image": "macos-sequoia-15.6-xcode-26.0",
         "cocoapods": "1.17.0"
       }
     },

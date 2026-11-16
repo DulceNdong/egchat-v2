@@ -7,7 +7,7 @@ import { segurosAPI, walletAPI } from '../../api';
 import { toast } from '../Toast';
 import { FinancialModuleShell } from './FinancialModuleUI';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
-import { usePaymentPin } from '../../context/PaymentPinContext';
+import { usePinGate } from '../wallet/usePinGate';
 import { t as tr } from '../../translations';
 
 type SgScreen = 'home' | 'contratar' | 'exitos' | 'polizas' | 'siniestro';
@@ -66,7 +66,6 @@ const marcaDe = (id: string, name: string) => MARCA[id] || {
 };
 
 export const SegurosModal: React.FC<Props> = ({ visible, onClose }) => {
-  const { runWithPin } = usePaymentPin();
   const [screen, setScreen] = useState<SgScreen>('home');
   const [ofertas, setOfertas] = useState<Oferta[]>([]);
   const [companias, setCompanias] = useState<{ id: string; name: string }[]>([]);
@@ -79,6 +78,7 @@ export const SegurosModal: React.FC<Props> = ({ visible, onClose }) => {
   const [polizas, setPolizas] = useState<any[]>([]);
   const [siniestro, setSiniestro] = useState<{ poliza: any; amount: string; notes: string } | null>(null);
   const [balance, setBalance] = useState(0);
+  const { request: requestPin, elements: pinElements } = usePinGate((msg) => toast.error(msg));
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
@@ -171,7 +171,7 @@ export const SegurosModal: React.FC<Props> = ({ visible, onClose }) => {
     setScreen('contratar');
   };
 
-  const contratar = async () => {
+  const contratar = () => {
     if (!selected || sending) return;
     if (balance < selected.price) {
       Alert.alert(
@@ -181,34 +181,31 @@ export const SegurosModal: React.FC<Props> = ({ visible, onClose }) => {
       );
       return;
     }
-    setSending(true);
-    try {
-      const res = await runWithPin(
-        pin => segurosAPI.contratar({
-          companyId: selected.companyId,
-          producto: selected.variant,
+    const oferta = selected;
+    void requestPin(async (pin) => {
+      setSending(true);
+      try {
+        const res = await segurosAPI.contratar({
+          companyId: oferta.companyId,
+          producto: oferta.variant,
           datos: { ...form },
           external_id: externalId,
-        }, pin),
-        tr('xtIntroduceTuPIN'),
-      );
-      if (!res) return;
-      const prima = Number(res.premium ?? selected.price);
-      const tras = res.balance == null ? null : Number(res.balance);
-      if (tras != null && Number.isFinite(tras)) setBalance(tras);
-      setRecibo({
-        poliza: String(res.policyId || res.solicitudId || ''),
-        prima,
-        balance: tras,
-        caduca: res.expires_at ? String(res.expires_at).slice(0, 10) : '',
-      });
-      setExternalId('');
-      setScreen('exitos');
-    } catch (e: any) {
-      toast.error(e?.message || 'No se pudo emitir la poliza.');
-    } finally {
-      setSending(false);
-    }
+        }, pin);
+        const prima = Number(res.premium ?? oferta.price);
+        const tras = res.balance == null ? null : Number(res.balance);
+        if (tras != null && Number.isFinite(tras)) setBalance(tras);
+        setRecibo({
+          poliza: String(res.policyId || res.solicitudId || ''),
+          prima,
+          balance: tras,
+          caduca: res.expires_at ? String(res.expires_at).slice(0, 10) : '',
+        });
+        setExternalId('');
+        setScreen('exitos');
+      } finally {
+        setSending(false);
+      }
+    });
   };
 
   const abrirSiniestro = async () => {
@@ -232,6 +229,7 @@ export const SegurosModal: React.FC<Props> = ({ visible, onClose }) => {
   };
 
   return (
+    <>
     <FinancialModuleShell
       visible={visible}
       title={titles[screen]}
@@ -416,6 +414,8 @@ export const SegurosModal: React.FC<Props> = ({ visible, onClose }) => {
         </View>
       )}
     </FinancialModuleShell>
+    {pinElements}
+    </>
   );
 };
 

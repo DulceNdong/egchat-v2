@@ -12,8 +12,8 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import Svg, { Path, Line, Circle } from 'react-native-svg';
 import { apiFetch } from '../src/api';
+import { usePinGate } from '../src/components/wallet/usePinGate';
 import { useTranslation } from '../src/context/LanguageContext';
-import { usePaymentPin } from '../src/context/PaymentPinContext';
 
 const LOCALES: Record<string, string> = { es: 'es-ES', fr: 'fr-FR', en: 'en-GB', pt: 'pt-PT' };
 
@@ -46,7 +46,6 @@ interface DjangueInfo {
 
 export default function DjangueSecretaryScreen() {
   const { language, t } = useTranslation();
-  const { runWithPin } = usePaymentPin();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [data, setData] = useState<DjangueInfo | null>(null);
@@ -57,6 +56,7 @@ export default function DjangueSecretaryScreen() {
   const [showAddMember, setShowAddMember] = useState(false);
   const [phoneToAdd, setPhoneToAdd] = useState('');
   const [addingMember, setAddingMember] = useState(false);
+  const { request: requestPin, elements: pinElements } = usePinGate((msg) => Alert.alert(t('error'), msg));
 
   useFocusEffect(
     useCallback(() => {
@@ -467,21 +467,16 @@ export default function DjangueSecretaryScreen() {
                     { text: t('cancel'), style: 'cancel' },
                     {
                       text: t('djhConfirmPayout'),
-                      onPress: async () => {
-                        try {
-                          const pago = await runWithPin(
-                            pin => apiFetch(`/api/djangue/${id}/manual-payout`, {
-                              method: 'POST',
-                              body: JSON.stringify({ pin }),
-                            }),
-                            t('xtIntroduceTuPIN'),
-                          );
-                          if (!pago) return;
+                      onPress: () => {
+                        void requestPin(async (pin) => {
+                          await apiFetch(`/api/djangue/${id}/manual-payout`, {
+                            method: 'POST',
+                            body: JSON.stringify({ pin }),
+                            headers: { 'Content-Type': 'application/json' },
+                          });
                           Alert.alert(t('djhPayoutDoneTitle'), `${t('djhPayoutTransferredPrefix')} ${name}`);
                           load(true);
-                        } catch (e: any) {
-                          Alert.alert(t('error'), e.message || t('djhPayoutError'));
-                        }
+                        });
                       },
                     },
                   ]
@@ -607,6 +602,7 @@ export default function DjangueSecretaryScreen() {
         }
       />
       )}
+      {pinElements}
     </SafeAreaView>
   );
 }

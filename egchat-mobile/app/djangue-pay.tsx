@@ -3,7 +3,6 @@
  * Descuenta del monedero personal y acredita al monedero del djangue.
  */
 import React, { useState, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View, Text, TouchableOpacity, StyleSheet,
   ActivityIndicator, Alert,
@@ -12,8 +11,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import Svg, { Path, Line, Circle } from 'react-native-svg';
-import { apiFetch } from '../src/api';
-import { usePaymentPin } from '../src/context/PaymentPinContext';
+import { apiFetch, getToken, authAPI } from '../src/api';
+import { PinInputModal } from '../src/components/ui/PinInputModal';
+import { SetupPINModal } from '../src/components/wallet/SetupPINModal';
 import { t as tr } from '../src/translations';
 
 const fmtAmount = (n: number, currency = 'XAF') =>
@@ -35,14 +35,17 @@ interface WalletInfo {
 
 export default function DjanguePayScreen() {
   const insets = useSafeAreaInsets();
-  const { runWithPin } = usePaymentPin();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [group, setGroup]   = useState<DjangueInfo | null>(null);
   const [wallet, setWallet] = useState<WalletInfo | null>(null);
   const [loading, setLoading]   = useState(true);
-  const [paying, setPaying]     = useState(false);
   const [paid, setPaid]         = useState(false);
   const [error, setError]       = useState('');
+  const [showPin, setShowPin]           = useState(false);
+  const [pinLoading, setPinLoading]     = useState(false);
+  const [pinError, setPinError]         = useState('');
+  const [showSetupPin, setShowSetupPin] = useState(false);
+  const [hasPin, setHasPin]             = useState(true);
 
   useEffect(() => {
     const load = async () => {
@@ -53,6 +56,9 @@ export default function DjanguePayScreen() {
         ]);
         setGroup(detail);
         setWallet(walletData);
+        await authAPI.hasPinConfigured()
+          .then(r => setHasPin(!!r?.hasPin))
+          .catch(() => setHasPin(true));
       } catch (e: any) {
         setError(e.message);
       } finally {
@@ -62,8 +68,33 @@ export default function DjanguePayScreen() {
     load();
   }, [id]);
 
+  const submitPayment = async (pin: string) => {
+    setPinLoading(true);
+    setPinError('');
+    try {
+      const result = await apiFetch(`/api/djangue/${id}/pay`, {
+        method: 'POST',
+        body: JSON.stringify({ pin }),
+      });
+      setShowPin(false);
+      setPaid(true);
+      setWallet(prev => prev ? { ...prev, balance: result.new_balance } : prev);
+      if (result.all_paid) {
+        Alert.alert(
+          tr('djhAllPaidTitle'),
+          result.message,
+          [{ text: tr('djhViewDjangue'), onPress: () => router.back() }],
+        );
+      }
+    } catch (e: any) {
+      setPinError(e?.message || 'PIN incorrecto');
+    } finally {
+      setPinLoading(false);
+    }
+  };
+
   const handlePay = async () => {
-    const token = await AsyncStorage.getItem('token');
+    const token = await getToken();
     if (!token) return Alert.alert(tr('djhNotAuthTitle'), 'Debes iniciar sesión.');
     if (!group || !wallet) return;
     if (wallet.balance < group.quota_amount) {
@@ -78,42 +109,10 @@ export default function DjanguePayScreen() {
       return;
     }
 
-    Alert.alert(
-      tr('djhConfirmPayout'),
-      `¿Pagar ${fmtAmount(group.quota_amount, group.currency)} para el turno ${group.current_turn} del djangue "${group.name}"?`,
-      [
-        { text: tr('cancel'), style: 'cancel' },
-        {
-          text: tr('djhConfirmPayout'),
-          onPress: async () => {
-            setPaying(true);
-            try {
-              const result = await runWithPin(
-                pin => apiFetch(`/api/djangue/${id}/pay`, {
-                  method: 'POST',
-                  body: JSON.stringify({ pin }),
-                }),
-                tr('xtIntroduceTuPIN'),
-              );
-              if (!result) return;
-              setPaid(true);
-              setWallet(prev => prev ? { ...prev, balance: result.new_balance } : prev);
-              if (result.all_paid) {
-                Alert.alert(
-                  tr('djhAllPaidTitle'),
-                  result.message,
-                  [{ text: tr('djhViewDjangue'), onPress: () => router.back() }],
-                );
-              }
-            } catch (e: any) {
-              Alert.alert(tr('djhPayError'), e.message);
-            } finally {
-              setPaying(false);
-            }
-          },
-        },
-      ],
-    );
+    // Ninguna salida de dinero sin el PIN propio del usuario.
+    if (!hasPin) { setShowSetupPin(true); return; }
+    setPinError('');
+    setShowPin(true);
   };
 
   if (loading) return (
@@ -221,17 +220,13 @@ export default function DjanguePayScreen() {
             {/* Botón pagar */}
             <TouchableOpacity
               onPress={handlePay}
-              disabled={paying || !hasFunds}
+              disabled={!hasFunds}
               activeOpacity={0.85}
-              style={[s.payBtn, (!hasFunds || paying) && { opacity: 0.5 }]}
+              style={[s.payBtn, !hasFunds && { opacity: 0.5 }]}
             >
-              {paying ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={s.payBtnTxt}>
-                  {hasFunds ? `💳 Confirmar — ${fmtAmount(group.quota_amount, group.currency)}` : tr('svcInsufficientBalance')}
-                </Text>
-              )}
+              <Text style={s.payBtnTxt}>
+                {hasFunds ? `💳 Confirmar — ${fmtAmount(group.quota_amount, group.currency)}` : tr('svcInsufficientBalance')}
+              </Text>
             </TouchableOpacity>
 
             <Text style={s.disclaimer}>
@@ -240,6 +235,22 @@ export default function DjanguePayScreen() {
           </>
         )}
       </View>
+
+      <PinInputModal
+        visible={showPin}
+        onClose={() => { if (!pinLoading) { setShowPin(false); setPinError(''); } }}
+        onSuccess={submitPayment}
+        title="PIN de seguridad"
+        subtitle="Escribe tu PIN para pagar la cuota del djangue."
+        loading={pinLoading}
+        error={pinError}
+      />
+      <SetupPINModal
+        visible={showSetupPin}
+        hasPin={false}
+        onDone={() => { setShowSetupPin(false); setHasPin(true); setShowPin(true); }}
+        onCancel={() => setShowSetupPin(false)}
+      />
     </SafeAreaView>
   );
 }

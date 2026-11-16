@@ -13,7 +13,7 @@ import {
 import { FinancialModuleShell, FilterChips, SegmentTabs } from './FinancialModuleUI';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
 import { SearchField } from './PublicModuleUI';
-import { usePaymentPin } from '../../context/PaymentPinContext';
+import { usePinGate } from '../wallet/usePinGate';
 import { t as tr } from '../../translations';
 
 type SaludTab = 'hospitales' | 'farmacias' | 'cita' | 'urgencias';
@@ -38,7 +38,6 @@ const openRoute = (lat?: number, lng?: number, name?: string) => {
 };
 
 export const SaludModal: React.FC<Props> = ({ visible, onClose }) => {
-  const { runWithPin } = usePaymentPin();
   const [tab, setTab] = useState<SaludTab>('hospitales');
   const [cityFilter, setCityFilter] = useState('Malabo');
   const [search, setSearch] = useState('');
@@ -60,6 +59,7 @@ export const SaludModal: React.FC<Props> = ({ visible, onClose }) => {
   const [medCart, setMedCart] = useState<MedLinea[]>([]);
   const [medPlacing, setMedPlacing] = useState(false);
   const [medRecibo, setMedRecibo] = useState<{ orderId: string; total: number; balance: number | null; eta: string } | null>(null);
+  const { request: requestPin, elements: pinElements } = usePinGate((msg) => toast.error(msg));
   const [deliveryForm, setDeliveryForm] = useState({ name: '', phone: '', address: '', notes: '' });
   const [pharmCity, setPharmCity] = useState('Malabo');
   const [pharmBarrio, setPharmBarrio] = useState('Todos');
@@ -160,34 +160,32 @@ export const SaludModal: React.FC<Props> = ({ visible, onClose }) => {
     });
   };
 
-  const confirmarMeds = async () => {
+  const confirmarMeds = () => {
     if (!deliveryForm.name || !deliveryForm.phone || !deliveryForm.address || !medCart.length) return;
-    setMedPlacing(true);
-    try {
-      const res = await runWithPin(
-        pin => saludAPI.orderMeds({
+    const lineas = medCart.map(i => ({ product_id: i.id, qty: i.qty }));
+    const dir = deliveryForm.address;
+    void requestPin(async (pin) => {
+      setMedPlacing(true);
+      try {
+        const res = await saludAPI.orderMeds({
           farmaciaId: selectedPharm || '1',
-          direccion: deliveryForm.address,
+          direccion: dir,
           external_id: `MED-${Date.now()}`,
           // Solo producto y cantidad; el importe lo pone la tabla.
-          items: medCart.map(i => ({ product_id: i.id, qty: i.qty })),
-        }, pin),
-        tr('xtIntroduceTuPIN'),
-      );
-      if (!res) return;
-      setMedRecibo({
-        orderId: res.orderId,
-        total: Number(res.total),
-        balance: res.balance == null ? null : Number(res.balance),
-        eta: res.eta || '20-30 min',
-      });
-      if (res.balance != null) setBalance(Number(res.balance));
-      setMedScreen('ok');
-    } catch (e: any) {
-      toast.error(e?.message || 'No se pudo completar el pedido de medicamentos.');
-    } finally {
-      setMedPlacing(false);
-    }
+          items: lineas,
+        }, pin);
+        setMedRecibo({
+          orderId: res.orderId,
+          total: Number(res.total),
+          balance: res.balance == null ? null : Number(res.balance),
+          eta: res.eta || '20-30 min',
+        });
+        if (res.balance != null) setBalance(Number(res.balance));
+        setMedScreen('ok');
+      } finally {
+        setMedPlacing(false);
+      }
+    });
   };
 
   const refresh = () => {
@@ -528,6 +526,7 @@ export const SaludModal: React.FC<Props> = ({ visible, onClose }) => {
           </Pressable>
         </Pressable>
       </Modal>
+      {pinElements}
     </>
   );
 };

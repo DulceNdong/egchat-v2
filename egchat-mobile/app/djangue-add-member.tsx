@@ -3,7 +3,6 @@
  * Solo responsable o secretario pueden agregar miembros.
  */
 import React, { useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
@@ -13,7 +12,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import Svg, { Path, Line, Circle } from 'react-native-svg';
-import { apiFetch } from '../src/api';
+import { apiFetch, getToken } from '../src/api';
 import { t as tr } from '../src/translations';
 
 const initials = (name: string) =>
@@ -56,7 +55,7 @@ export default function DjangueAddMemberScreen() {
   };
 
   const handleAdd = async () => {
-    const token = await AsyncStorage.getItem('token');
+    const token = await getToken();
     if (!token) return Alert.alert(tr('djhNotAuthTitle'), 'Debes iniciar sesión.');
     if (!phone.trim()) return Alert.alert(tr('djhPhoneRequiredTitle'), 'Ingresa el teléfono del integrante.');
     setLoading(true);

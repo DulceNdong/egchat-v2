@@ -1,7 +1,7 @@
 // useSounds.ts — Sistema de sonidos EGCHAT con audio real (expo-av)
 import { Audio, InterruptionModeIOS } from 'expo-av';
 import { Asset } from 'expo-asset';
-import { Directory, File, Paths } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -101,29 +101,60 @@ export const installIosPushSound = async (): Promise<void> => {
     const module = s.messageTone === 'none' ? SILENT_ASSET : getMessageAsset(s.messageTone);
     const [asset] = await Asset.loadAsync([module]);
     const sourceUri = asset.localUri ?? asset.uri;
+    if (!sourceUri) return;
 
-    const soundsDir = new Directory(Paths.cache.parentDirectory, 'Sounds');
-    if (!soundsDir.exists) soundsDir.create({ intermediates: true, idempotent: true });
+    // cacheDirectory = <container>/Library/Caches/
+    // Su carpeta padre = <container>/Library/
+    // Library/Sounds/ es el directorio que iOS usa para sonidos de push personalizados.
+    const cacheDir = FileSystem.cacheDirectory ?? '';
+    // Quitar el segmento "Caches/" final para llegar a Library/
+    const libraryDir = cacheDir.endsWith('Caches/')
+      ? cacheDir.slice(0, -'Caches/'.length)
+      : cacheDir.replace(/[^/]+\/?$/, '');
+    const soundsDir = `${libraryDir}Sounds/`;
+    const targetUri = `${soundsDir}${IOS_PUSH_SOUND_FILE}`;
 
-    const target = new File(soundsDir, IOS_PUSH_SOUND_FILE);
-    if (target.exists) target.delete();
-    new File(sourceUri).copy(target);
-  } catch {}
+    const dirInfo = await FileSystem.getInfoAsync(soundsDir);
+    if (!dirInfo.exists) {
+      await FileSystem.makeDirectoryAsync(soundsDir, { intermediates: true });
+    }
+
+    const targetInfo = await FileSystem.getInfoAsync(targetUri);
+    if (targetInfo.exists) {
+      await FileSystem.deleteAsync(targetUri, { idempotent: true });
+    }
+
+    await FileSystem.copyAsync({ from: sourceUri, to: targetUri });
+  } catch (e) {
+    console.warn('[installIosPushSound] error:', e);
+  }
 };
 
 // ── Audio mode ────────────────────────────────────────────────────
+let _audioModeReady = false;
 const setupAudioMode = async () => {
   if (Platform.OS === 'web') return;
-  try {
+  // Después de un reinicio por OTA el bridge nativo puede no estar listo.
+  // Esperar 500 ms antes del primer intento y reintentar una vez si falla.
+  const trySetup = async () => {
     await Audio.setAudioModeAsync({
       allowsRecordingIOS: false,
-      playsInSilentModeIOS: true,    // Sonar también con el modo silencio activado
+      playsInSilentModeIOS: true,
       interruptionModeIOS: InterruptionModeIOS.DoNotMix,
       shouldDuckAndroid: true,
       playThroughEarpieceAndroid: false,
       staysActiveInBackground: true,
     });
-  } catch {}
+  };
+  if (_audioModeReady) return;
+  try {
+    await trySetup();
+    _audioModeReady = true;
+  } catch {
+    // Reintento diferido: el bridge puede no estar listo tras un reinicio de OTA
+    await new Promise(r => setTimeout(r, 800));
+    try { await trySetup(); _audioModeReady = true; } catch {}
+  }
 };
 
 // ── Cache de sonidos cargados ─────────────────────────────────────
@@ -226,26 +257,27 @@ export const previewNotificationTone = async (toneId?: string) => {
 // ── Llamadas ──────────────────────────────────────────────────────
 let ringtoneSound: Audio.Sound | null = null;
 let ringtoneInterval: ReturnType<typeof setInterval> | null = null;
-// Guard para evitar solapamiento de createAsync en el intervalo
-let ringtoneIsCreating = false;
-// Token de sesión: si cambia mientras createAsync está en vuelo, el resultado se descarta
+// Token de sesión: si cambia durante la preparación o createAsync, se cancela el inicio
 let ringtoneSessionToken = 0;
 
 export const startRingtone = async () => {
-  await stopRingtone();
   if (Platform.OS === 'web') return;
-  // Incrementar token para esta nueva sesión de ringtone
-  const myToken = ++ringtoneSessionToken;
+  const stopping = stopRingtone();
+  const myToken = ringtoneSessionToken;
+  await stopping;
+  if (ringtoneSessionToken !== myToken) return;
   try {
     const s = await getSoundSettings();
-    if (s.ringtone === 'none') return;
+    if (ringtoneSessionToken !== myToken || s.ringtone === 'none') return;
 
     // Solo vibración — sin audio
     if (s.ringtone === 'vibrate_only') {
       const vibLoop = async () => {
+        if (ringtoneSessionToken !== myToken) return;
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
       };
       await vibLoop();
+      if (ringtoneSessionToken !== myToken) return;
       ringtoneInterval = setInterval(vibLoop, 1500);
       return;
     }
@@ -257,42 +289,42 @@ export const startRingtone = async () => {
       shouldDuckAndroid: false,
       playThroughEarpieceAndroid: false,
     });
+    if (ringtoneSessionToken !== myToken) return;
 
     const asset = getRingtoneAsset(s.ringtone);
+    // El guard pertenece a esta sesión; una creación vieja no puede liberar el de otra.
+    let isCreating = false;
 
     const play = async () => {
-      // Evitar llamadas concurrentes a createAsync
-      if (ringtoneIsCreating) return;
-      // Si ya fue cancelado (stopRingtone fue llamado), no reproducir
-      if (ringtoneSessionToken !== myToken) return;
-      ringtoneIsCreating = true;
-      let newSound: Audio.Sound | null = null;
+      if (isCreating || ringtoneSessionToken !== myToken) return;
+      isCreating = true;
       try {
         if (s.vibrationEnabled) {
           await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+          if (ringtoneSessionToken !== myToken) return;
         }
-        if (ringtoneSound) {
-          await ringtoneSound.unloadAsync().catch(() => {});
-          ringtoneSound = null;
+        // Separar la referencia antes de esperar para no tocar otra sesión al terminar.
+        const previousSound = ringtoneSound;
+        ringtoneSound = null;
+        if (previousSound) {
+          await previousSound.unloadAsync().catch(() => {});
         }
+        if (ringtoneSessionToken !== myToken) return;
         const { sound } = await Audio.Sound.createAsync(
           asset,
           { shouldPlay: true, volume: s.volume, isLooping: false }
         );
-        newSound = sound;
+        // createAsync no es cancelable: liberar sólo su resultado si la sesión cambió.
+        if (ringtoneSessionToken !== myToken) {
+          await sound.stopAsync().catch(() => {});
+          await sound.unloadAsync().catch(() => {});
+        } else {
+          ringtoneSound = sound;
+        }
       } catch (e) {
         if (__DEV__) console.warn('[useSounds] startRingtone play error:', e);
       } finally {
-        ringtoneIsCreating = false;
-      }
-      // Si el token cambió mientras createAsync estaba en vuelo, descartar el nuevo sonido
-      if (newSound) {
-        if (ringtoneSessionToken !== myToken) {
-          await newSound.stopAsync().catch(() => {});
-          await newSound.unloadAsync().catch(() => {});
-        } else {
-          ringtoneSound = newSound;
-        }
+        isCreating = false;
       }
     };
 
@@ -349,18 +381,18 @@ export const previewRingtone = async (toneId?: string) => {
 };
 
 export const stopRingtone = async () => {
-  // Invalidar cualquier createAsync en vuelo
-  ringtoneSessionToken++;
+  // Invalidar también los inicios que aún esperan la limpieza de la sesión anterior.
+  const myToken = ++ringtoneSessionToken;
   if (ringtoneInterval) { clearInterval(ringtoneInterval); ringtoneInterval = null; }
-  ringtoneIsCreating = false;
+  const sound = ringtoneSound;
+  ringtoneSound = null;
   try {
-    if (ringtoneSound) {
-      await ringtoneSound.stopAsync().catch(() => {});
-      await ringtoneSound.unloadAsync().catch(() => {});
-      ringtoneSound = null;
+    if (sound) {
+      await sound.stopAsync().catch(() => {});
+      await sound.unloadAsync().catch(() => {});
     }
-    // Restaurar modo audio normal
-    if (Platform.OS !== 'web') {
+    // No restaurar el modo de audio de una sesión más reciente.
+    if (ringtoneSessionToken === myToken && Platform.OS !== 'web') {
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
         playsInSilentModeIOS: false,
@@ -391,9 +423,10 @@ let dialingSound: Audio.Sound | null = null;
 let dialingSessionToken = 0;
 
 export const startDialingTone = async () => {
-  await stopDialingTone();
-  if (Platform.OS === 'web') return;
-  const myToken = ++dialingSessionToken;
+  const stopping = stopDialingTone();
+  const myToken = dialingSessionToken;
+  await stopping;
+  if (dialingSessionToken !== myToken || Platform.OS === 'web') return;
   try {
     await Audio.setAudioModeAsync({
       allowsRecordingIOS: false,
@@ -401,6 +434,7 @@ export const startDialingTone = async () => {
       shouldDuckAndroid: true,
       playThroughEarpieceAndroid: false,
     });
+    if (dialingSessionToken !== myToken) return;
     const { sound } = await Audio.Sound.createAsync(
       require('../../assets/classic.wav'),
       { shouldPlay: true, volume: 0.6, isLooping: true },
@@ -419,11 +453,12 @@ export const startDialingTone = async () => {
 
 export const stopDialingTone = async () => {
   dialingSessionToken++;
+  const sound = dialingSound;
+  dialingSound = null;
   try {
-    if (dialingSound) {
-      await dialingSound.stopAsync().catch(() => {});
-      await dialingSound.unloadAsync().catch(() => {});
-      dialingSound = null;
+    if (sound) {
+      await sound.stopAsync().catch(() => {});
+      await sound.unloadAsync().catch(() => {});
     }
   } catch {}
 };

@@ -7,7 +7,7 @@ import { IMPUESTOS_OPTIONS } from '../../data/serviciosPublicos';
 import { FinancialModuleShell } from './FinancialModuleUI';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
 import { PayMethodPicker, ServiceOptionRow, FacturaResultCard } from './PublicModuleUI';
-import { usePaymentPin } from '../../context/PaymentPinContext';
+import { usePinGate } from '../wallet/usePinGate';
 import { t as tr } from '../../translations';
 
 interface Props { visible: boolean; onClose: () => void; }
@@ -17,7 +17,6 @@ type Screen = 'home' | 'form' | 'success';
 const ACCENT = '#1B3A6B';
 
 export const ImpuestosModal: React.FC<Props> = ({ visible, onClose }) => {
-  const { runWithPin } = usePaymentPin();
   const [screen, setScreen] = useState<Screen>('home');
   const [selected, setSelected] = useState<typeof IMPUESTOS_OPTIONS[0] | null>(null);
   const [nif, setNif] = useState('');
@@ -29,6 +28,7 @@ export const ImpuestosModal: React.FC<Props> = ({ visible, onClose }) => {
   const [error, setError] = useState('');
   const [balance, setBalance] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+  const { request: requestPin, elements: pinElements } = usePinGate(setError);
 
   useEffect(() => {
     if (visible) { cargarSaldo(); return; }
@@ -63,21 +63,17 @@ export const ImpuestosModal: React.FC<Props> = ({ visible, onClose }) => {
     } finally { setLoading(false); }
   };
 
-  const pagar = async () => {
+  const pagar = () => {
     if (!seleccion || !payMethod) return;
-    setLoading(true); setError('');
-    try {
-      const res = await runWithPin(
-        pin => serviciosAPI.pagarDGI(seleccion.id, pin),
-        tr('xtIntroduceTuPIN'),
-      );
-      if (!res) return;
-      setRecibo({ importe: Number(res.importe), balance: Number(res.balance) });
-      setBalance(Number(res.balance));
-      setScreen('success');
-    } catch (e: any) {
-      setError(e?.message || 'No se pudo completar el pago.');
-    } finally { setLoading(false); }
+    void requestPin(async (pin) => {
+      setLoading(true); setError('');
+      try {
+        const res = await serviciosAPI.pagarDGI(seleccion.id, pin);
+        setRecibo({ importe: Number(res.importe), balance: Number(res.balance) });
+        setBalance(Number(res.balance));
+        setScreen('success');
+      } finally { setLoading(false); }
+    });
   };
 
   const fixedTop = screen === 'home' ? (
@@ -91,6 +87,7 @@ export const ImpuestosModal: React.FC<Props> = ({ visible, onClose }) => {
   ) : undefined;
 
   return (
+    <>
     <FinancialModuleShell visible={visible} title={screen === 'home' ? 'Impuestos' : selected?.label || 'Pago DGI'} onBack={back} onClose={onClose} fixedTop={fixedTop}>
       {screen === 'home' && (
         <View>
@@ -175,6 +172,8 @@ export const ImpuestosModal: React.FC<Props> = ({ visible, onClose }) => {
         </View>
       )}
     </FinancialModuleShell>
+    {pinElements}
+    </>
   );
 };
 

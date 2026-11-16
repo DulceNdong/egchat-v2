@@ -139,7 +139,7 @@ export function EGChatHeader({
 
         {/* ── Logo + nombre ─────────────────────────────── */}
         <View style={s.brand}>
-          <SpinningLogo size={rowH} />
+          <SpinningLogo size={rowH} style={{ transform: [{ scale: 0.765 }] }} />
           <NeonBrandText />
         </View>
 

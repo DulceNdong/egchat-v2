@@ -6,12 +6,12 @@ import { Colors, Typography, Spacing, BorderRadius, FontSize, FontWeight, Shadow
 import { useThemeContext } from '../src/theme/ThemeContext';
 import { DarkColors } from '../src/theme/darkMode';
 import { useTranslation } from '../src/context/LanguageContext';
-import { usePaymentPin } from '../src/context/PaymentPinContext';
 import { segurosAPI, serviciosAPI, walletAPI, BillFactura, Tarifa } from '../src/api';
 import { toast } from '../src/components/Toast';
 import { SegurosModal } from '../src/components/services/SegurosModal';
 import { SaludModal } from '../src/components/services/SaludModal';
 import { CorreosModal } from '../src/components/services/CorreosModal';
+import { usePinGate } from '../src/components/wallet/usePinGate';
 
 const TABS = [
   { id: 'salud', icon: '🏥', labelKey: 'svcTabSalud' },
@@ -45,6 +45,7 @@ export default function SegurosSaludScreen() {
   const [deuda, setDeuda] = useState<BillFactura[] | null>(null);
   const [taxLoading, setTaxLoading] = useState(false);
   const [payingId, setPayingId] = useState('');
+  const { request: requestPin, elements: pinElements } = usePinGate((msg) => toast.error(msg));
   const [primas, setPrimas] = useState<Prima[]>([]);
   const [primasError, setPrimasError] = useState('');
   const [correos, setCorreos] = useState<Tarifa[]>([]);
@@ -53,7 +54,6 @@ export default function SegurosSaludScreen() {
   const [modal, setModal] = useState<null | 'seguros' | 'salud' | 'correos'>(null);
   const { isDark } = useThemeContext();
   const { t } = useTranslation();
-  const { runWithPin } = usePaymentPin();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
   const insets = useSafeAreaInsets();
 
@@ -132,22 +132,18 @@ export default function SegurosSaludScreen() {
         { text: t('cancel'), style: 'cancel' },
         {
           text: t('pay'),
-          onPress: async () => {
-            setPayingId(factura.id);
-            try {
-              const res = await runWithPin(
-                pin => serviciosAPI.pagarDGI(factura.id, pin),
-                t('xtIntroduceTuPIN'),
-              );
-              if (!res) return;
-              if (res.balance != null) setBalance(Number(res.balance));
-              toast.success(res.message || 'Impuesto pagado.');
-              await consultarDGI();
-            } catch (e: any) {
-              toast.error(e?.message || 'No se pudo pagar la factura.');
-            } finally {
-              setPayingId('');
-            }
+          onPress: () => {
+            void requestPin(async (pin) => {
+              setPayingId(factura.id);
+              try {
+                const res = await serviciosAPI.pagarDGI(factura.id, pin);
+                if (res.balance != null) setBalance(Number(res.balance));
+                toast.success(res.message || 'Impuesto pagado.');
+                await consultarDGI();
+              } finally {
+                setPayingId('');
+              }
+            });
           },
         },
       ]
@@ -311,6 +307,7 @@ export default function SegurosSaludScreen() {
       <SegurosModal visible={modal === 'seguros'} onClose={() => { setModal(null); loadPrimas(); }} />
       <SaludModal visible={modal === 'salud'} onClose={() => setModal(null)} />
       <CorreosModal visible={modal === 'correos'} onClose={() => { setModal(null); loadCorreos(); }} />
+      {pinElements}
     </SafeAreaView>
   );
 }

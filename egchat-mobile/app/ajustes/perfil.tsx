@@ -357,7 +357,9 @@ export default function PerfilScreen() {
       getCfgString(CFG.bio, ''),
       getCfgString(CFG.gender, 'No especificado'),
       getSoundSettings(),
-      walletPIN.syncWithServer(),
+      // La verdad del PIN está en el servidor: el hash local es por dispositivo
+      // y una instalación nueva mostraría "Sin PIN" aunque el servidor lo tenga.
+      authAPI.hasPinConfigured().then(r => !!r?.hasPin).catch(() => walletPIN.isSet()),
     ]);
     setBio(bioVal);
     setGender(genderVal);
@@ -449,14 +451,13 @@ export default function PerfilScreen() {
       setUser(prev => prev ? { ...prev, banner_url: uri } : prev);
       // Subir a Supabase Storage (mismo bucket que avatares)
       const supabaseUrl = await uploadAvatarToSupabase(currentUserId + '_banner', uri);
-      if (supabaseUrl) {
-        await authAPI.updateProfile({ banner_url: supabaseUrl });
-        setUser(prev => prev ? { ...prev, banner_url: supabaseUrl } : prev);
-        emitProfileUpdated({ banner_url: supabaseUrl });
-        toast.success(t('setCoverUpdated'));
-      }
-    } catch {
-      toast.error(t('setCoverUpdateError'));
+      if (!supabaseUrl) throw new Error(t('setCoverUpdateError'));
+      await authAPI.updateProfile({ banner_url: supabaseUrl });
+      setUser(prev => prev ? { ...prev, banner_url: supabaseUrl } : prev);
+      emitProfileUpdated({ banner_url: supabaseUrl });
+      toast.success(t('setCoverUpdated'));
+    } catch (e: unknown) {
+      toast.error(e instanceof Error && e.message ? e.message : t('setCoverUpdateError'));
     } finally {
       setUploadingBanner(false);
     }
@@ -687,6 +688,7 @@ export default function PerfilScreen() {
       />
       <SetupPINModal
         visible={showSetupPIN}
+        hasPin={pinConfigured}
         onDone={() => { setShowSetupPIN(false); setPinConfigured(true); /* PIN configurado silenciosamente */ }}
         onCancel={() => setShowSetupPIN(false)}
       />

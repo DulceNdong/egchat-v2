@@ -8,7 +8,7 @@ import { PrimaryButton } from './ServiceModuleUI';
 import {
   UtilityProviderBanner, IconFormField, PayMethodPicker, FacturaResultCard, ServiceOptionRow,
 } from './PublicModuleUI';
-import { usePaymentPin } from '../../context/PaymentPinContext';
+import { usePinGate } from '../wallet/usePinGate';
 import { t as tr } from '../../translations';
 
 interface Props {
@@ -20,7 +20,6 @@ interface Props {
 type Screen = 'main' | 'confirm' | 'success';
 
 export const UtilityBillModal: React.FC<Props> = ({ visible, onClose, variant }) => {
-  const { runWithPin } = usePaymentPin();
   const cfg = UTILITY_CONFIG[variant];
   const [screen, setScreen] = useState<Screen>('main');
   const [clientType, setClientType] = useState('Residencial');
@@ -33,6 +32,7 @@ export const UtilityBillModal: React.FC<Props> = ({ visible, onClose, variant })
   const [payMethod, setPayMethod] = useState('');
   const [loading, setLoading] = useState(false);
   const [balance, setBalance] = useState<number | null>(null);
+  const { request: requestPin, elements: pinElements } = usePinGate(setError);
 
   const activoStep = screen === 'success' ? 3 : screen === 'confirm' ? 2 : seleccion ? (payMethod ? 2 : 1) : 0;
 
@@ -76,23 +76,19 @@ export const UtilityBillModal: React.FC<Props> = ({ visible, onClose, variant })
     } finally { setLoading(false); }
   };
 
-  const pagar = async () => {
+  const pagar = () => {
     if (!seleccion || !payMethod) return;
-    setLoading(true); setError('');
-    try {
-      const res = await runWithPin(
-        pin => variant === 'elec'
-          ? serviciosAPI.pagarElectricidad(seleccion.id, pin)
-          : serviciosAPI.pagarAgua(seleccion.id, pin),
-        tr('xtIntroduceTuPIN'),
-      );
-      if (!res) return;
-      setRecibo({ importe: Number(res.importe), balance: Number(res.balance) });
-      setBalance(Number(res.balance));
-      setScreen('success');
-    } catch (e: any) {
-      setError(e?.message || 'No se pudo completar el pago.');
-    } finally { setLoading(false); }
+    void requestPin(async (pin) => {
+      setLoading(true); setError('');
+      try {
+        const res = variant === 'elec'
+          ? await serviciosAPI.pagarElectricidad(seleccion.id, pin)
+          : await serviciosAPI.pagarAgua(seleccion.id, pin);
+        setRecibo({ importe: Number(res.importe), balance: Number(res.balance) });
+        setBalance(Number(res.balance));
+        setScreen('success');
+      } finally { setLoading(false); }
+    });
   };
 
   const back = () => {
@@ -119,6 +115,7 @@ export const UtilityBillModal: React.FC<Props> = ({ visible, onClose, variant })
   ) : undefined;
 
   return (
+    <>
     <FinancialModuleShell
       visible={visible}
       title={titles[screen]}
@@ -233,6 +230,8 @@ export const UtilityBillModal: React.FC<Props> = ({ visible, onClose, variant })
         </View>
       )}
     </FinancialModuleShell>
+    {pinElements}
+    </>
   );
 };
 
