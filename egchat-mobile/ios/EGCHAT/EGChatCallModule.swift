@@ -180,9 +180,12 @@ final class EGChatCallCoordinator: NSObject, CXProviderDelegate {
     configureAudioSession()
     isCallActive = true
     action.fulfill()
-    // Si JavaScript no está escuchando, la aceptación se queda solo en CallKit:
-    // el llamante nunca se entera. Guardarla permite reenviarla al arrancar el JS.
-    if let callId = activeCallId, !hasListener {
+    // Guardar SIEMPRE la aceptación antes de emitir el evento. `hasListener`
+    // solo indica que React Native se registró alguna vez, no que JS siga
+    // ejecutándose: iOS puede suspenderlo justo al pulsar Aceptar. Si en esa
+    // ventana se manda solo el evento, se pierde y el llamante continúa
+    // timbrando. El consumidor JS borra esta marca de forma idempotente.
+    if let callId = activeCallId {
       UserDefaults.standard.set(
         ["callId": callId, "ts": Date().timeIntervalSince1970 * 1000],
         forKey: Self.pendingAnswerKey

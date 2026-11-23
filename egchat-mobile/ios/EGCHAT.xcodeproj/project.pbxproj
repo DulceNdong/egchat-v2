@@ -21,6 +21,8 @@
 		736E322A640E45E28BE379C1 /* EGChatCallModule.m in Sources */ = {isa = PBXBuildFile; fileRef = A622FE3ACA8E4F2DB0CB7521 /* EGChatCallModule.m */; };
 		8413409E11FC4B408EEFF192 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 0A58EE00037F4357819A176A /* GoogleService-Info.plist */; };
 		A297E56F38FC5A61231AEC64 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 625739905654388E78BF1322 /* PrivacyInfo.xcprivacy */; };
+		B1C2D3E4F5A647089012345601 /* EGChatShareModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A647089012345603 /* EGChatShareModule.swift */; };
+		B1C2D3E4F5A647089012345602 /* EGChatShareModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A647089012345604 /* EGChatShareModule.m */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		BE90B74D73F94F62BEC4285B /* EGChatAudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 344803E986E6425F87659E64 /* EGChatAudioRecorder.swift */; };
 		C54014DB717510CA940D31D1 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 21A87F51FEC2C48444811384 /* Foundation.framework */; };
@@ -69,7 +71,7 @@
 		13B07F961A680F5B00A75B9A /* EGCHAT.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EGCHAT.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = EGCHAT/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = EGCHAT/Info.plist; sourceTree = "<group>"; };
-		21A87F51FEC2C48444811384 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		21A87F51FEC2C48444811384 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		251C4366C3A3445392B61F4E /* notification.wav */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = notification.wav; path = EGCHAT/notification.wav; sourceTree = "<group>"; };
 		344803E986E6425F87659E64 /* EGChatAudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EGChatAudioRecorder.swift; path = EGCHAT/EGChatAudioRecorder.swift; sourceTree = "<group>"; };
 		49A6E7570079405EA57B2576 /* EGChatPushKitModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EGChatPushKitModule.swift; path = EGCHAT/EGChatPushKitModule.swift; sourceTree = "<group>"; };
@@ -81,6 +83,8 @@
 		70A762600B54447AADF4DE79 /* EGChatPushKitModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = EGChatPushKitModule.m; path = EGCHAT/EGChatPushKitModule.m; sourceTree = "<group>"; };
 		A622FE3ACA8E4F2DB0CB7521 /* EGChatCallModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = EGChatCallModule.m; path = EGCHAT/EGChatCallModule.m; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = EGCHAT/SplashScreen.storyboard; sourceTree = "<group>"; };
+		B1C2D3E4F5A647089012345603 /* EGChatShareModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EGChatShareModule.swift; path = EGCHAT/EGChatShareModule.swift; sourceTree = "<group>"; };
+		B1C2D3E4F5A647089012345604 /* EGChatShareModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = EGChatShareModule.m; path = EGCHAT/EGChatShareModule.m; sourceTree = "<group>"; };
 		B2FB890C9872DD1D851B9D50 /* Pods-EGCHAT.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-EGCHAT.release.xcconfig"; path = "Target Support Files/Pods-EGCHAT/Pods-EGCHAT.release.xcconfig"; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
 		C4C1C5A1A4AC5A9370B76CE4 /* ShareViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
@@ -135,8 +139,10 @@
 				F11748412D0307B40044C1D9 /* AppDelegate.swift */,
 				49A6E7570079405EA57B2576 /* EGChatPushKitModule.swift */,
 				6D218F7CC8754DCDB1992163 /* EGChatCallModule.swift */,
+				B1C2D3E4F5A647089012345603 /* EGChatShareModule.swift */,
 				344803E986E6425F87659E64 /* EGChatAudioRecorder.swift */,
 				A622FE3ACA8E4F2DB0CB7521 /* EGChatCallModule.m */,
+				B1C2D3E4F5A647089012345604 /* EGChatShareModule.m */,
 				70A762600B54447AADF4DE79 /* EGChatPushKitModule.m */,
 				6C00E7E19E344F2D8B8CA2D2 /* EGChatAudioRecorder.m */,
 				F11748442D0722820044C1D9 /* EGCHAT-Bridging-Header.h */,
@@ -528,8 +534,10 @@
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
 				184FC9CF104D4465AA02FC3F /* EGChatPushKitModule.swift in Sources */,
 				336F7B662AC94E8DA63CD4B8 /* EGChatCallModule.swift in Sources */,
+				B1C2D3E4F5A647089012345601 /* EGChatShareModule.swift in Sources */,
 				BE90B74D73F94F62BEC4285B /* EGChatAudioRecorder.swift in Sources */,
 				736E322A640E45E28BE379C1 /* EGChatCallModule.m in Sources */,
+				B1C2D3E4F5A647089012345602 /* EGChatShareModule.m in Sources */,
 				20A4592FC88046D398F9618E /* EGChatPushKitModule.m in Sources */,
 				3AC9145E7BFA467696AD2899 /* EGChatAudioRecorder.m in Sources */,
 				CC2B351A0B6AA91F0EB1A0B3 /* ExpoModulesProvider.swift in Sources */,
@@ -571,14 +579,14 @@
 
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
-			DEVELOPMENT_TEAM = XU6YD7ZJ2K;
-				isa = XCBuildConfiguration;
+			isa = XCBuildConfiguration;
 			baseConfigurationReference = E05584B8ED7C5C282B705C98 /* Pods-EGCHAT.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = EGCHAT/EGCHAT.entitlements;
-				CURRENT_PROJECT_VERSION = 132;
+				CURRENT_PROJECT_VERSION = 162;
+				DEVELOPMENT_TEAM = XU6YD7ZJ2K;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
@@ -608,14 +616,14 @@
 			name = Debug;
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
-			DEVELOPMENT_TEAM = XU6YD7ZJ2K;
-				isa = XCBuildConfiguration;
+			isa = XCBuildConfiguration;
 			baseConfigurationReference = B2FB890C9872DD1D851B9D50 /* Pods-EGCHAT.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = EGCHAT/EGCHAT.entitlements;
-				CURRENT_PROJECT_VERSION = 132;
+				CURRENT_PROJECT_VERSION = 162;
+				DEVELOPMENT_TEAM = XU6YD7ZJ2K;
 				INFOPLIST_FILE = EGCHAT/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -644,8 +652,8 @@
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_ENTITLEMENTS = EGChatShare/EGChatShareRelease.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-    DEVELOPMENT_TEAM = XU6YD7ZJ2K;
-				CURRENT_PROJECT_VERSION = 132;
+				CURRENT_PROJECT_VERSION = 162;
+				DEVELOPMENT_TEAM = XU6YD7ZJ2K;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = EGChatShare/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = EGChatShare;
@@ -667,8 +675,7 @@
 			name = Debug;
 		};
 		83CBBA201A601CBA00E9B192 /* Debug */ = {
-			DEVELOPMENT_TEAM = XU6YD7ZJ2K;
-				isa = XCBuildConfiguration;
+			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
@@ -697,6 +704,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				COPY_PHASE_STRIP = NO;
+				DEVELOPMENT_TEAM = XU6YD7ZJ2K;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
@@ -731,8 +739,7 @@
 			name = Debug;
 		};
 		83CBBA211A601CBA00E9B192 /* Release */ = {
-			DEVELOPMENT_TEAM = XU6YD7ZJ2K;
-				isa = XCBuildConfiguration;
+			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
@@ -761,6 +768,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				COPY_PHASE_STRIP = YES;
+				DEVELOPMENT_TEAM = XU6YD7ZJ2K;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
@@ -792,8 +800,8 @@
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_ENTITLEMENTS = EGChatShare/EGChatShareRelease.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-    DEVELOPMENT_TEAM = XU6YD7ZJ2K;
-				CURRENT_PROJECT_VERSION = 132;
+				CURRENT_PROJECT_VERSION = 162;
+				DEVELOPMENT_TEAM = XU6YD7ZJ2K;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = EGChatShare/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = EGChatShare;
@@ -820,8 +828,8 @@
 			buildSettings = {
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_STYLE = Automatic;
-    DEVELOPMENT_TEAM = XU6YD7ZJ2K;
-				CURRENT_PROJECT_VERSION = 132;
+				CURRENT_PROJECT_VERSION = 162;
+				DEVELOPMENT_TEAM = XU6YD7ZJ2K;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = EGChatNotifService/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = EGChatNotifService;
@@ -848,8 +856,8 @@
 			buildSettings = {
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_STYLE = Automatic;
-    DEVELOPMENT_TEAM = XU6YD7ZJ2K;
-				CURRENT_PROJECT_VERSION = 132;
+				CURRENT_PROJECT_VERSION = 162;
+				DEVELOPMENT_TEAM = XU6YD7ZJ2K;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = EGChatNotifService/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = EGChatNotifService;

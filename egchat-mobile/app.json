@@ -28,31 +28,17 @@
           "fetch",
           "remote-notification",
           "voip",
-          "processing",
-          "audio",
-          "fetch",
-          "remote-notification",
-          "voip",
-          "processing",
-          "audio",
-          "fetch",
-          "remote-notification",
-          "voip",
-          "processing",
-          "audio",
-          "fetch",
-          "remote-notification",
-          "voip",
           "processing"
         ],
         "BGTaskSchedulerPermittedIdentifiers": [
-          "com.jallzstores.egchat.refresh",
-          "com.jallzstores.egchat.refresh",
-          "com.jallzstores.egchat.refresh",
           "com.jallzstores.egchat.refresh"
         ],
         "NSSupportsLiveActivities": true,
         "NSSupportsLiveActivitiesFrequentUpdates": true,
+        "NSUserActivityTypes": [
+          "$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route",
+          "INSendMessageIntent"
+        ],
         "NSCameraUsageDescription": "EGCHAT necesita la cámara para el streaming en vivo.",
         "NSMicrophoneUsageDescription": "EGCHAT necesita el micrófono para el streaming en vivo.",
         "NSPhotoLibraryUsageDescription": "EGCHAT necesita acceso a tus fotos y videos para enviarlos en el chat.",
@@ -64,18 +50,15 @@
         "NSLocalNetworkUsageDescription": "EGCHAT necesita acceder a la red local para conectar con el servidor de desarrollo en tu Mac.",
         "NSFaceIDUsageDescription": "EGCHAT usa Face ID para verificar tu identidad al acceder a datos protegidos.",
         "NSBonjourServices": [
-          "_expo._tcp",
-          "_expo._tcp",
-          "_expo._tcp",
           "_expo._tcp"
         ],
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "146"
+      "buildNumber": "165"
     },
     "android": {
       "package": "com.egchat.app",
-      "versionCode": 132,
+      "versionCode": 134,
       "permissions": [
         "CAMERA",
         "RECORD_AUDIO",
@@ -84,6 +67,9 @@
         "VIBRATE",
         "USE_FULL_SCREEN_INTENT",
         "POST_NOTIFICATIONS",
+        "WAKE_LOCK",
+        "FOREGROUND_SERVICE_MICROPHONE",
+        "FOREGROUND_SERVICE_CAMERA",
         "READ_CONTACTS",
         "READ_EXTERNAL_STORAGE",
         "READ_MEDIA_IMAGES",
@@ -149,7 +135,8 @@
         "expo-task-manager",
         {}
       ],
-      "./plugins/withNotificationServiceExtension.js"
+      "./plugins/withNotificationServiceExtension.js",
+      "./plugins/withAndroidNativeParity.js"
     ],
     "platforms": [
       "ios",

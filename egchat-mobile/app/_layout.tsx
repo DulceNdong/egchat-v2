@@ -15,12 +15,36 @@ if ((Text as any).defaultProps == null) (Text as any).defaultProps = {};
 if ((TextInput as any).defaultProps == null) (TextInput as any).defaultProps = {};
 (TextInput as any).defaultProps.allowFontScaling = false;
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// ── Red de seguridad: un error de JS no debe cerrar la app ───────
+// En release, React Native cierra la app ante una excepción no capturada.
+// Aquí se registra el fallo (para diagnóstico) y se evita el cierre.
+type GlobalErrorUtils = {
+  getGlobalHandler?: () => (e: unknown, isFatal?: boolean) => void;
+  setGlobalHandler?: (h: (e: unknown, isFatal?: boolean) => void) => void;
+};
+const errorUtils: GlobalErrorUtils | undefined = (global as any).ErrorUtils;
+if (errorUtils?.setGlobalHandler) {
+  const previousHandler = errorUtils.getGlobalHandler?.();
+  errorUtils.setGlobalHandler((error: unknown, isFatal?: boolean) => {
+    const err = error as { message?: string; stack?: string };
+    console.warn('[EGCHAT] error no capturado', isFatal, err?.message);
+    AsyncStorage.setItem('egchat_last_js_error', JSON.stringify({
+      message: err?.message || String(error),
+      stack: err?.stack || '',
+      fatal: !!isFatal,
+      at: new Date().toISOString(),
+    })).catch(() => {});
+    if (!isFatal && previousHandler) previousHandler(error, isFatal);
+  });
+}
+
 import * as NavigationBar from 'expo-navigation-bar';
 import { Audio } from 'expo-av';
 import * as Notifications from 'expo-notifications';
 import * as Linking from 'expo-linking';
 import { authAPI, clearToken, setUnauthorizedHandler, startKeepAlive, getToken, walletAPI } from '../src/api';
-import { registerForPushNotifications, setupNotificationListeners, clearBadge, consumePendingCall } from '../src/notifications';
+import { registerForPushNotifications, setupNotificationListeners, getDjangueNotificationRoute, clearBadge, consumePendingCall, applyNotificationAction } from '../src/notifications';
 import { Colors, ThemeProvider, useThemeContext } from '../src/theme';
 import { LanguageProvider, useLanguage } from '../src/context/LanguageContext';
 import { FontProvider } from '../src/context/FontContext';
@@ -28,7 +52,11 @@ import { ActiveCallProvider } from '../src/context/ActiveCallContext';
 import { PaymentPinProvider } from '../src/context/PaymentPinContext';
 import { walletPIN } from '../src/services/walletPin';
 import { FloatingCallBar } from '../src/components/call/FloatingCallBar';
+import { FloatingLiaButton } from '../src/components/FloatingLiaButton';
+import { FloatingHomeButton } from '../src/components/FloatingHomeButton';
+import { LegalConsentGate } from '../src/components/legal/LegalConsentGate';
 import { useChatStream } from '../src/hooks/useChatStream';
+import { emitRealtime } from '../src/realtimeBus';
 import { ToastContainer } from '../src/components/Toast';
 import { OfflineBanner } from '../src/components/ui';
 import { UpdateBanner } from '../src/components/UpdateBanner';
@@ -84,13 +112,10 @@ function handleDeepLink(url: string | null) {
   try {
     const parsed = Linking.parse(url);
 
-    // Share Extension: egchat-share://open → abrir selector de chat con contenido pendiente
-    if (parsed.scheme === 'egchat-share') {
-      // El contenido ya fue guardado en App Group por la Share Extension.
-      // Navegar al selector de chat — ShareExtension.getSharedContent() lo leerá allí.
-      setTimeout(() => router.push('/share-picker' as any), 400);
-      return;
-    }
+    // Share Extension: egchat-share://open
+    // El contenido ya está en el App Group; el efecto de "compartir" lo consume
+    // y decide destino (chat elegido en la extensión → chat, si no → selector).
+    if (parsed.scheme === 'egchat-share') return;
 
     const path = parsed.path || '';
     if (path.startsWith('qr-login/')) {
@@ -264,6 +289,9 @@ export default function RootLayout() {
   const pushTokenCleanup = useRef<(() => void) | null>(null);
   const pushCallCleanup  = useRef<(() => void) | null>(null);
   const presenceCleanup = useRef<(() => void) | null>(null);
+  // Reintentar registro al volver a primer plano: un token puede rotar mientras
+  // la aplicación está cerrada y dejar ese teléfono sin notificaciones.
+  const lastPushRegistrationAt = useRef(0);
   // Ref que se establece inmediatamente al autenticar (sin el delay de 15s)
   // para que el AppState listener pueda procesar llamadas pendientes al instante
   const userIdRef = useRef<string | null>(null);
@@ -290,6 +318,28 @@ export default function RootLayout() {
     return () => sub.remove();
   }, []);
 
+  // Mantener todos los dispositivos del usuario registrados. No se solicita
+  // permiso de nuevo si ya fue concedido; solo se reenvía el token vigente.
+  useEffect(() => {
+    if (!globalUserId || Platform.OS === 'web') return;
+
+    const registerCurrentPushToken = () => {
+      const now = Date.now();
+      // Evita llamadas repetidas al alternar rápidamente entre apps.
+      if (now - lastPushRegistrationAt.current < 60_000) return;
+      lastPushRegistrationAt.current = now;
+      registerForPushNotifications().catch(error =>
+        console.warn('[Push] No se pudo renovar el registro del dispositivo:', error)
+      );
+    };
+
+    registerCurrentPushToken();
+    const subscription = AppState.addEventListener('change', state => {
+      if (state === 'active') registerCurrentPushToken();
+    });
+    return () => subscription.remove();
+  }, [globalUserId]);
+
   // ── Reenviar el answer que no llegó al servidor ──────────────────────
   // iOS suspende la app justo después de contestar en CallKit; si el POST del
   // answer se perdió, el llamante sigue sonando aunque aquí la llamada esté
@@ -305,7 +355,14 @@ export default function RootLayout() {
         const answered = await NativeCallKit.consumePendingAnsweredCall();
         if (!answered || !mounted) return;
         const session = callManager.session;
-        if (session && session.callId === answered) return;
+        // La marca nativa se conserva incluso cuando el listener JS existía:
+        // iOS puede haberlo suspendido entre pulsar "Aceptar" y recibir el
+        // evento. Si la sesión ya está en memoria, reintentar acceptCall es
+        // seguro e idempotente y garantiza que llegue POST /api/call/answer.
+        if (session && session.callId === answered) {
+          await callManager.acceptCall();
+          return;
+        }
         if (await callManager.adoptIncomingCall(answered)) await callManager.acceptCall();
       } catch { /* la llamada ya caducó o no hay sesión que recuperar */ }
     };
@@ -326,6 +383,44 @@ export default function RootLayout() {
     }, 4000);
     return () => { mounted = false; sub.remove(); clearInterval(retry); };
   }, []);
+
+  // ── Compartir desde otras apps (iOS y Android) ──────────────────────────
+  // Al arrancar, al volver al primer plano o al recibir la señal nativa, se
+  // consume el contenido: si la extensión ya trae chat destino se abre ese
+  // chat; si no, el selector. El contenido queda en AsyncStorage para que la
+  // pantalla destino lo envíe.
+  useEffect(() => {
+    if (Platform.OS === 'web' || !globalUserId) return;
+    let mounted = true;
+    let routing = false;
+
+    const routeSharedContent = async () => {
+      if (routing) return;
+      routing = true;
+      try {
+        const { ShareExtension } = await import('../src/native/ShareExtension');
+        const content = await ShareExtension.getSharedContent();
+        if (!mounted || !content) return;
+        await AsyncStorage.setItem('egchat_pending_share', JSON.stringify(content));
+        const targetChatId = (content as any).targetChatId;
+        if (targetChatId) {
+          router.push(`/chat/${targetChatId}` as any);
+        } else {
+          router.push('/share-picker' as any);
+        }
+      } catch { /* módulo no disponible en este build */ }
+      finally { routing = false; }
+    };
+
+    routeSharedContent();
+    const { ShareExtension } = require('../src/native/ShareExtension');
+    const unsub = ShareExtension.onShared(() => { routeSharedContent(); });
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') routeSharedContent();
+    });
+
+    return () => { mounted = false; unsub(); sub.remove(); };
+  }, [globalUserId]);
 
   // ── Llamadas pendientes cuando la app vuelve del background (Android) ──
   // Cuando el usuario acepta desde la notificación con la app en background
@@ -452,6 +547,13 @@ export default function RootLayout() {
   // SSE — solo conecta cuando hay userId
   useChatStream(globalUserId, useCallback((event: any) => {
     if (!globalUserId) return;
+
+    // Eventos de MiTaxi (posición, cambio de estado, cancelación, viaje nuevo):
+    // se reparten en local a las pantallas del taxi que estén abiertas.
+    if (event.type === 'taxi_ride') {
+      emitRealtime(event);
+      return;
+    }
 
     // Nuevo mensaje → añadir notificación a la campanita
     if (event.type === 'new_message' && event.message && event.message.sender_id !== globalUserId) {
@@ -1114,12 +1216,18 @@ export default function RootLayout() {
                 }
 
                 notifCleanup.current = setupNotificationListeners(
-                  (chatIdOrDeepLink) => {
-                    if (chatIdOrDeepLink.startsWith('__djangue__')) {
+                  (chatIdOrDeepLink, djangueData, messageId) => {
+                    const destination = djangueData && getDjangueNotificationRoute(djangueData);
+                    if (destination) {
+                      router.push(destination as any);
+                    } else if (chatIdOrDeepLink.startsWith('__djangue__')) {
                       const groupId = chatIdOrDeepLink.replace('__djangue__', '');
                       router.push({ pathname: '/djangue-detail', params: { id: groupId } } as any);
-                    } else {
-                      router.push(`/chat/${chatIdOrDeepLink}` as any);
+                    } else if (chatIdOrDeepLink) {
+                      router.push({
+                        pathname: '/chat/[id]',
+                        params: { id: chatIdOrDeepLink, ...(messageId ? { messageId } : {}) },
+                      } as any);
                     }
                   },
                   (callData) => {
@@ -1144,7 +1252,19 @@ export default function RootLayout() {
                 if (lastResp) {
                   const data = lastResp.notification.request.content.data as any;
                   // Esperar a que el router esté completamente montado
-                  const navigateFromNotif = () => {
+                  let quickActionApplied = false;
+                  const navigateFromNotif = async () => {
+                    if (quickActionApplied) return;
+                    // Acción rápida (Responder / Marcar leído / Rechazar) con la
+                    // app cerrada: se aplica una sola vez y no navega al chat.
+                    if (await applyNotificationAction(
+                      lastResp.actionIdentifier,
+                      data,
+                      (lastResp as any).userText,
+                    )) {
+                      quickActionApplied = true;
+                      return;
+                    }
                     if (data?.notificationType === 'incoming_call' && data?.callId) {
                       handleIncomingCall({
                         callId:       data.callId,
@@ -1156,7 +1276,8 @@ export default function RootLayout() {
                     } else if (data?.chatId) {
                       router.push(`/chat/${data.chatId}` as any);
                     } else if (data?.type === 'djangue_notification' && data?.groupId) {
-                      router.push({ pathname: '/djangue-detail', params: { id: data.groupId } } as any);
+                      const destination = getDjangueNotificationRoute(data);
+                      router.push((destination || { pathname: '/djangue-detail', params: { id: data.groupId } }) as any);
                     } else if (data?.type === 'reaction' && data?.chatId) {
                       router.push(`/chat/${data.chatId}` as any);
                     }
@@ -1293,6 +1414,7 @@ export default function RootLayout() {
               <Stack.Screen name="servicios-diarios" options={{ presentation: 'fullScreenModal' }} />
               <Stack.Screen name="seguros-salud" options={{ presentation: 'fullScreenModal' }} />
               <Stack.Screen name="mitaxi" options={{ presentation: 'fullScreenModal' }} />
+              <Stack.Screen name="taxi-driver" options={{ presentation: 'fullScreenModal' }} />
               <Stack.Screen name="new-chat" options={{ presentation: 'fullScreenModal' }} />
               <Stack.Screen name="welcome" options={{ animation: 'fade' }} />
               <Stack.Screen name="ajustes" />
@@ -1320,9 +1442,12 @@ export default function RootLayout() {
               </View>
             )}
             <ToastContainer />
+            <LegalConsentGate enabled={!checking} />
             <OfflineBanner />
             <UpdateBanner />
             <FloatingCallBar />
+            <FloatingLiaButton />
+            <FloatingHomeButton />
             {/* ── Overlay llamada entrante (app abierta) ── */}
             {incomingCall && (
               <IncomingCallOverlay
