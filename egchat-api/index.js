@@ -8353,7 +8353,11 @@ const getApnsVoipJwt = () => {
   if (!keyP8.includes('BEGIN PRIVATE KEY')) return null;
 
   try {
-    _apnsVoipJwt = jwt.sign({ iss: teamId, iat: now }, keyP8, {
+    // APNs rechaza el proveedor completo si su reloj ve un `iat` futuro. Dejar
+    // un pequeño margen no reduce la validez del JWT (Apple admite hasta una
+    // hora) y evita que un desfase de reloj de Render corte todas las llamadas.
+    const issuedAt = now - 60;
+    _apnsVoipJwt = jwt.sign({ iss: teamId, iat: issuedAt }, keyP8, {
       algorithm: 'ES256',
       header: { alg: 'ES256', kid: keyId },
     });
@@ -9380,8 +9384,13 @@ const sendPushToUser = async (userId, payload) => {
         ...(isCall ? { ttl: 120, expiration: Math.floor(Date.now() / 1000) + 120 } : {}),
       }));
 
-      for (let i = 0; i < expoMessages.length; i += 100) {
-        const batch = expoMessages.slice(i, i + 100);
+      // Expo no admite en la misma petición tokens de distintos experience IDs.
+      // Durante la migración de EGCHAT quedaron tokens de proyectos previos, y
+      // al agruparlos se rechazaba *todo* el lote, incluso el token correcto.
+      // Se mandan por separado: Expo identifica cada proyecto y los tokens
+      // inválidos ya no impiden que el resto reciba su aviso.
+      for (const message of expoMessages) {
+        const batch = [message];
         try {
           const expoRes = await fetch('https://exp.host/--/api/v2/push/send', {
             method: 'POST',
