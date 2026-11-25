@@ -626,6 +626,12 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
     const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) return res.status(401).json({ message: 'Credenciales incorrectas' });
 
+    // Después de comprobar la contraseña, no antes: si se rechazara antes del
+    // bcrypt el 401 diría «esta sí existe», y el borrado es lógico, no público.
+    if (user.deleted_at) {
+      return res.status(401).json({ message: 'Esta cuenta fue eliminada' });
+    }
+
     // Actualizar último acceso (ignorar si la columna no existe)
     try {
       await supabase.from('users').update({ last_login: new Date().toISOString() }).eq('id', user.id);
@@ -792,6 +798,325 @@ app.put('/api/auth/profile', auth, async (req, res) => {
       .single();
     if (error) throw error;
     res.json(user);
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// ════════════════════════════════════════════════════════════════════
+// AJUSTES — preferencias de privacidad, sesiones por dispositivo y
+// borrado de cuenta. Las llamadas ya existen en la app (Ajustes →
+// Privacidad, Ajustes → Chat y Ajustes → Dispositivos); lo que faltaba
+// era el otro lado del mostrador.
+// ════════════════════════════════════════════════════════════════════
+
+const PREFERENCIAS_DEFAULT = {
+  last_seen_visibility: 'todos',
+  photo_visibility: 'todos',
+  status_visibility: 'todos',
+  read_receipts_enabled: true,
+};
+
+// Los tres valores que ofrece la pantalla. Se filtran aquí porque la columna es
+// texto libre: un valor inventado por otra clienta se leería después como si
+// fuera una preferencia legítima y la app no sabría dibujarlo.
+const VISIBILIDADES_ACEPTADAS = ['todos', 'contactos', 'nadie'];
+
+const leerPreferencias = async (userId) => {
+  const { data } = await supabase
+    .from('user_preferences')
+    .select('last_seen_visibility, photo_visibility, status_visibility, read_receipts_enabled')
+    .eq('user_id', userId)
+    .maybeSingle();
+  return { ...PREFERENCIAS_DEFAULT, ...(data || {}) };
+};
+
+// Escribe solo las claves que trae la petición. Upsert con las cuatro siempre
+// aplastaría contra el default la preferencia que el otro dispositivo no tocó.
+const guardarPreferencias = async (userId, cambios) => {
+  const fila = { user_id: userId, updated_at: new Date().toISOString() };
+  for (const campo of ['last_seen_visibility', 'photo_visibility', 'status_visibility']) {
+    if (cambios[campo] !== undefined) {
+      const valor = String(cambios[campo]);
+      if (!VISIBILIDADES_ACEPTADAS.includes(valor)) {
+        return { invalid: campo };
+      }
+      fila[campo] = valor;
+    }
+  }
+  if (cambios.read_receipts_enabled !== undefined) {
+    fila.read_receipts_enabled = Boolean(cambios.read_receipts_enabled);
+  }
+  if (Object.keys(fila).length <= 2) return { nothing: true };
+  const { error } = await supabase
+    .from('user_preferences')
+    .upsert(fila, { onConflict: 'user_id' });
+  if (error) throw error;
+  return { fila };
+};
+
+app.get('/api/auth/privacy', auth, async (req, res) => {
+  try {
+    if (isLocalUserId(req.user.id)) return res.json(PREFERENCIAS_DEFAULT);
+    res.json(await leerPreferencias(req.user.id));
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// PATCH admite una o las cuatro claves: la pantalla de Privacidad manda una por
+// una cada vez que el usuario toca un selector.
+app.patch('/api/auth/privacy', auth, async (req, res) => {
+  try {
+    if (isLocalUserId(req.user.id)) {
+      return res.json({ ok: true, ...PREFERENCIAS_DEFAULT, ...(req.body || {}) });
+    }
+    const r = await guardarPreferencias(req.user.id, req.body || {});
+    if (r.invalid) {
+      return res.status(400).json({
+        message: `${r.invalid} debe ser todos, contactos o nadie`,
+      });
+    }
+    res.json({ ok: true, ...(await leerPreferencias(req.user.id)) });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// La pantalla de Chat manda esta ruta aparte, no dentro de /privacy.
+app.patch('/api/auth/read-receipts', auth, async (req, res) => {
+  try {
+    const enabled = Boolean(req.body?.read_receipts_enabled);
+    if (isLocalUserId(req.user.id)) return res.json({ ok: true, read_receipts_enabled: enabled });
+    const { error } = await supabase
+      .from('user_preferences')
+      .upsert({
+        user_id: req.user.id,
+        read_receipts_enabled: enabled,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' });
+    if (error) throw error;
+    res.json({ ok: true, read_receipts_enabled: enabled });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// ── Sesiones de dispositivo ──────────────────────────────────────
+// Un renglon por (usuario, dispositivo). El id del dispositivo lo fija la app en
+// SecureStore y no se regenera, así que reinstalar la app abre sesión nueva en
+// vez de reclamar la vieja.
+
+const sesionPublica = (s) => ({
+  id: s.id,
+  deviceId: s.device_id,
+  deviceName: s.device_name || '',
+  deviceType: s.device_type || 'web',
+  platform: s.platform || '',
+  lastSeen: s.last_seen,
+  createdAt: s.created_at,
+});
+
+app.post('/api/auth/sessions/register', auth, async (req, res) => {
+  try {
+    const deviceId = String(req.body?.deviceId || '').trim();
+    if (!deviceId) return res.status(400).json({ message: 'deviceId requerido' });
+    if (isLocalUserId(req.user.id)) return res.json({ ok: true, local: true });
+
+    const ip = String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '')
+      .split(',')[0].trim();
+    const { error } = await supabase
+      .from('device_sessions')
+      .upsert({
+        user_id: req.user.id,
+        device_id: deviceId,
+        device_name: req.body?.deviceName || null,
+        device_type: req.body?.deviceType || null,
+        platform: req.body?.platform || null,
+        ip,
+        last_seen: new Date().toISOString(),
+        revoked_at: null,
+      }, { onConflict: 'user_id,device_id' });
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// El latido no trae nombre de dispositivo: se envían solo las columnas que
+// cambian para no pisar con null la ficha que escribió el registro.
+app.post('/api/auth/sessions/heartbeat', auth, async (req, res) => {
+  try {
+    const deviceId = String(req.body?.deviceId || '').trim();
+    if (!deviceId) return res.status(400).json({ message: 'deviceId requerido' });
+    if (isLocalUserId(req.user.id)) return res.json({ ok: true, local: true });
+    const { error } = await supabase
+      .from('device_sessions')
+      .upsert({
+        user_id: req.user.id,
+        device_id: deviceId,
+        last_seen: new Date().toISOString(),
+      }, { onConflict: 'user_id,device_id' });
+    if (error) throw error;
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+app.get('/api/auth/sessions', auth, async (req, res) => {
+  try {
+    if (isLocalUserId(req.user.id)) return res.json([]);
+    const { data, error } = await supabase
+      .from('device_sessions')
+      .select('*')
+      .eq('user_id', req.user.id)
+      .is('revoked_at', null)
+      .order('last_seen', { ascending: false });
+    if (error) throw error;
+    res.json((data || []).map(sesionPublica));
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// Declarada ANTES de /sessions/:sessionId: si no, Express casa
+// 'all-except-current' con el parámetro y la revocación múltiple se convierte en
+// un 404 por el orden de las rutas.
+app.delete('/api/auth/sessions/all-except-current', auth, async (req, res) => {
+  try {
+    const deviceId = String(req.body?.deviceId || req.query.deviceId || '').trim();
+    if (!deviceId) return res.status(400).json({ message: 'deviceId requerido' });
+    if (isLocalUserId(req.user.id)) return res.json({ ok: true, revoked: 0 });
+
+    const { data: otras, error: errorLista } = await supabase
+      .from('device_sessions')
+      .select('id, device_id')
+      .eq('user_id', req.user.id)
+      .neq('device_id', deviceId)
+      .is('revoked_at', null);
+    if (errorLista) throw errorLista;
+
+    const ids = (otras || []).map(s => s.id);
+    if (ids.length) {
+      const { error } = await supabase
+        .from('device_sessions')
+        .update({ revoked_at: new Date().toISOString() })
+        .in('id', ids);
+      if (error) throw error;
+      (otras || []).forEach(s => {
+        emitToUser(req.user.id, { type: 'session_revoked', deviceId: s.device_id });
+      });
+    }
+    res.json({ ok: true, revoked: ids.length });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+app.delete('/api/auth/sessions/:sessionId', auth, async (req, res) => {
+  try {
+    if (isLocalUserId(req.user.id)) return res.json({ ok: true });
+    const { data: sesion, error: errorBusca } = await supabase
+      .from('device_sessions')
+      .select('id, device_id, user_id')
+      .eq('id', req.params.sessionId)
+      .eq('user_id', req.user.id)
+      .maybeSingle();
+    if (errorBusca) throw errorBusca;
+    if (!sesion) return res.status(404).json({ message: 'Sesión no encontrada' });
+
+    const { error } = await supabase
+      .from('device_sessions')
+      .update({ revoked_at: new Date().toISOString() })
+      .eq('id', sesion.id);
+    if (error) throw error;
+
+    // El token firma 30 días y el middleware no lee la base, así que lo único
+    // que corta la sesión remota al instante es este aviso por SSE: el cliente
+    // lo escucha en _layout y hace logout.
+    emitToUser(req.user.id, { type: 'session_revoked', deviceId: sesion.device_id });
+    res.json({ ok: true, message: 'Sesión cerrada' });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// ── Exportación de datos ─────────────────────────────────────────
+// Se encola, no se genera en la petición: una cuenta con historial tarda más de
+// lo que aguanta una conexión HTTP y el resultado es un archivo, no un JSON.
+app.post('/api/auth/request-data-export', auth, async (req, res) => {
+  try {
+    if (isLocalUserId(req.user.id)) {
+      return res.json({ ok: true, status: 'requested', local: true });
+    }
+    const { data: pendiente } = await supabase
+      .from('data_export_requests')
+      .select('id, requested_at')
+      .eq('user_id', req.user.id)
+      .eq('status', 'requested')
+      .order('requested_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (pendiente) {
+      return res.json({ ok: true, id: pendiente.id, status: 'requested', ya_pendiente: true });
+    }
+    const { data, error } = await supabase
+      .from('data_export_requests')
+      .insert({ user_id: req.user.id, status: 'requested' })
+      .select('id, status, requested_at')
+      .single();
+    if (error) throw error;
+    res.json({ ok: true, id: data.id, status: 'requested' });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// ── Borrado de cuenta ────────────────────────────────────────────
+// Es lógico, no físico. El libro mayor es inmutable y sus asientos apuntan a
+// users con clave foránea: borrar la fila rompería la contabilidad y borraría la
+// pista de auditoría de todos los movimientos de esa cuenta.
+app.delete('/api/auth/delete-account', auth, async (req, res) => {
+  try {
+    if (isLocalUserId(req.user.id)) {
+      return res.json({ ok: true, message: 'Cuenta eliminada' });
+    }
+
+    // El saldo es la guarda real: una cuenta con dinero no se cierra, porque el
+    // asiento que lo respalda se quedaría huérfano. Se lee la fila, no se crea
+    // monedero si no existe (getWallet lo alta).
+    const { data: wallet } = await supabase
+      .from('wallets').select('balance').eq('user_id', req.user.id).maybeSingle();
+    const saldo = Number(wallet?.balance || 0);
+    if (saldo !== 0) {
+      return res.status(409).json({
+        message: `Tu monedero tiene ${saldo} ${WALLET_CURRENCY}. Retira o transfiere el saldo antes de eliminar la cuenta.`,
+        balance: saldo,
+      });
+    }
+
+    const { error: errorUsuario } = await supabase
+      .from('users')
+      .update({ deleted_at: new Date().toISOString(), online_status: false })
+      .eq('id', req.user.id);
+    if (errorUsuario) throw errorUsuario;
+
+    const { data: sesiones } = await supabase
+      .from('device_sessions')
+      .select('device_id')
+      .eq('user_id', req.user.id)
+      .is('revoked_at', null);
+    if (sesiones?.length) {
+      await supabase
+        .from('device_sessions')
+        .update({ revoked_at: new Date().toISOString() })
+        .eq('user_id', req.user.id);
+    }
+    emitToUser(req.user.id, { type: 'session_revoked' });
+
+    res.json({ ok: true, message: 'Cuenta eliminada' });
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
@@ -1325,8 +1650,14 @@ app.post('/api/chats/:chatId/messages', auth, async (req, res) => {
         body: bodyText,
         icon: senderData?.avatar_url || '/favicon.svg',
         tag: `chat-${chatId}`,
-        url: '/',
+        // El cliente web y el móvil usan estos IDs para abrir el mensaje que
+        // originó la notificación, no solo la lista general de chats.
+        url: `/?chatId=${encodeURIComponent(chatId)}&messageId=${encodeURIComponent(message.id)}`,
         chatId,
+        messageId: message.id,
+        // Compatibilidad con consumidores que esperan nombres snake_case.
+        chat_id: chatId,
+        message_id: message.id,
         notificationType: 'message',
         // Datos para notificaciones ricas nativas
         senderName,
@@ -1689,18 +2020,46 @@ app.get('/api/chats/:chatId/participants', auth, async (req, res) => {
     const usersMap = {};
     (users || []).forEach(u => { usersMap[String(u.id)] = u; });
 
+    // La visibilidad de la última conexión es del dueño del dato, no del que
+    // mira. Se lee de una para todos los demás: 'nadie' borra la marca, y
+    // 'contactos' solo se la enseña a quien tiene a ese usuario en su agenda.
+    const otrosIds = (parts || [])
+      .map(p => String(p.user_id))
+      .filter(uid => uid !== String(req.user.id));
+    const visMap = {};
+    if (otrosIds.length) {
+      const { data: prefsRows } = await supabase
+        .from('user_preferences')
+        .select('user_id, last_seen_visibility')
+        .in('user_id', otrosIds);
+      (prefsRows || []).forEach(p => { visMap[String(p.user_id)] = p.last_seen_visibility; });
+    }
+
+    let misContactos = new Set();
+    if (Object.values(visMap).includes('contactos')) {
+      const { data: miaAgenda } = await supabase
+        .from('contacts')
+        .select('contact_user_id')
+        .eq('user_id', req.user.id);
+      misContactos = new Set((miaAgenda || []).map(c => String(c.contact_user_id)));
+    }
+
+    const yoId = String(req.user.id);
     const members = parts.map(p => {
       const uid = String(p.user_id);
       const u = usersMap[uid] || {};
+      const vis = visMap[uid] || 'todos';
+      const oculta = uid !== yoId
+        && (vis === 'nadie' || (vis === 'contactos' && !misContactos.has(uid)));
       return {
         id: uid,
         user_id: uid,
         full_name: u.full_name || '',
         phone: u.phone || '',
         avatar_url: u.avatar_url || '',
-        online_status: u.online_status || false,
-        last_seen: u.last_seen || null,
-        role: uid === String(req.user.id) ? 'admin' : 'member',
+        online_status: oculta ? false : (u.online_status || false),
+        last_seen: oculta ? null : (u.last_seen || null),
+        role: uid === yoId ? 'admin' : 'member',
       };
     });
 
@@ -1761,7 +2120,13 @@ const applyChatRead = async (chatId, userId, upToMessageId) => {
   const unreadMsgs = (unread || []).filter(m => m.status !== 'read');
   const messageIds = unreadMsgs.map(m => m.id);
 
-  if (messageIds.length > 0) {
+  // Con las confirmaciones de lectura apagadas, el lector sí consume sus mensajes
+  // (su badge se limpia y queda su posición en message_reads), pero no se lo
+  // dice a nadie: ni se toca status, que es lo que pinta el doble check azul al
+  // recargar, ni se emite el evento SSE.
+  const prefs = await leerPreferencias(userId);
+
+  if (messageIds.length > 0 && prefs.read_receipts_enabled) {
     const { error: statusError } = await supabase
       .from('messages')
       .update({ status: 'read' })
@@ -1794,14 +2159,16 @@ const applyChatRead = async (chatId, userId, upToMessageId) => {
     if (!bySender[key]) bySender[key] = [];
     bySender[key].push(m.id);
   });
-  Object.keys(bySender).forEach(senderId => {
-    emitToUser(senderId, {
-      type: 'read',
-      chatId,
-      readerId: String(userId),
-      messageIds: bySender[senderId],
+  if (prefs.read_receipts_enabled) {
+    Object.keys(bySender).forEach(senderId => {
+      emitToUser(senderId, {
+        type: 'read',
+        chatId,
+        readerId: String(userId),
+        messageIds: bySender[senderId],
+      });
     });
-  });
+  }
 
   return { messageIds };
 };
@@ -2067,51 +2434,60 @@ app.delete('/api/messages/:messageId', auth, async (req, res) => {
 // CONTACTOS - GESTIÁƒâ€œN COMPLETA
 // ════════════════════════════════════════════════════════════════════
 
-const phoneLookupCandidates = (phone = '') => {
-  const trimmed = String(phone || '').trim();
-  const digits = trimmed.replace(/\D/g, '');
-  const candidates = new Set([trimmed]);
-  if (digits) {
-    candidates.add(digits);
-    candidates.add(`+${digits}`);
-    if (digits.startsWith('240')) {
-      candidates.add(digits.slice(3));
-      candidates.add(`+${digits.slice(3)}`);
-    } else {
-      candidates.add(`240${digits}`);
-      candidates.add(`+240${digits}`);
-    }
-    if (digits.length > 9) {
-      const last9 = digits.slice(-9);
-      candidates.add(last9);
-      candidates.add(`240${last9}`);
-      candidates.add(`+240${last9}`);
-    }
+const PHONE_SYNC_MAX = 200;
+const PHONE_LOOKUP_CHUNK = 150;
+
+// Comparar sufijos confunde teléfonos de países distintos.
+const canonicalPhone = (phone = '') => {
+  if (typeof phone !== 'string') return null;
+  const value = phone.trim();
+  if (!value || !/^[+\d\s().-]{7,32}$/.test(value)) return null;
+  const compact = value.replace(/[\s().-]/g, '');
+  let e164;
+  if (compact.startsWith('+')) e164 = compact;
+  else if (compact.startsWith('00')) e164 = `+${compact.slice(2)}`;
+  else if (/^240[1-9]\d{8}$/.test(compact)) e164 = `+${compact}`;
+  else if (/^0?[1-9]\d{8}$/.test(compact)) e164 = `+240${compact.replace(/^0/, '')}`;
+  else return null;
+  return /^\+[1-9]\d{6,14}$/.test(e164) ? e164 : null;
+};
+
+// Formas equivalentes en las que pudo guardarse ese E.164 en users.phone.
+const storedPhoneVariants = (e164) => {
+  const digits = e164.slice(1);
+  const variants = new Set([e164, `00${digits}`]);
+  if (/^240[1-9]\d{8}$/.test(digits)) {
+    variants.add(digits);
+    variants.add(digits.slice(3));
+    variants.add(`0${digits.slice(3)}`);
   }
-  return Array.from(candidates).filter(Boolean);
+  return Array.from(variants);
+};
+
+const findUsersByPhones = async (phones) => {
+  const wanted = new Set(phones.map(p => canonicalPhone(p)).filter(Boolean));
+  if (wanted.size === 0) return [];
+  const variants = Array.from(new Set(Array.from(wanted).flatMap(storedPhoneVariants)));
+  const found = [];
+  for (let i = 0; i < variants.length; i += PHONE_LOOKUP_CHUNK) {
+    const chunk = variants.slice(i, i + PHONE_LOOKUP_CHUNK);
+    const columns = 'id, phone, full_name, avatar_url';
+    const { data, error } = await supabase
+      .from('users').select(columns).in('phone', chunk).is('deleted_at', null);
+    if (error) throw error;
+    (data || []).forEach(u => {
+      const canonical = canonicalPhone(u.phone);
+      if (canonical && wanted.has(canonical)) found.push({ ...u, canonical_phone: canonical });
+    });
+  }
+  return found;
 };
 
 async function findUserByPhone(phone) {
-  const candidates = phoneLookupCandidates(phone);
-  if (!candidates.length) return null;
-  const { data: exact } = await supabase
-    .from('users')
-    .select('id, phone, full_name, avatar_url')
-    .in('phone', candidates)
-    .limit(1);
-  if (exact?.[0]) return exact[0];
-
-  const digits = String(phone || '').replace(/\D/g, '');
-  const suffixes = [digits, digits.slice(-9), digits.slice(-8)].filter(v => v && v.length >= 6);
-  for (const suffix of suffixes) {
-    const { data } = await supabase
-      .from('users')
-      .select('id, phone, full_name, avatar_url')
-      .ilike('phone', `%${suffix}`)
-      .limit(1);
-    if (data?.[0]) return data[0];
-  }
-  return null;
+  const e164 = canonicalPhone(phone);
+  if (!e164) return null;
+  const rows = await findUsersByPhones([e164]);
+  return rows[0] || null;
 }
 
 // Obtener todos los contactos del usuario
@@ -2132,10 +2508,11 @@ app.get('/api/contacts', auth, async (req, res) => {
 
     // Obtener datos de usuarios por separado
     const userIds = contacts.map(c => c.contact_user_id).filter(Boolean);
-    const { data: users } = await supabase
+    const { data: users, error: usersError } = await supabase
       .from('users')
       .select('id, phone, full_name, avatar_url')
       .in('id', userIds);
+    if (usersError) throw usersError;
 
     const usersMap = (users || []).reduce((acc, u) => { acc[u.id] = u; return acc; }, {});
 
@@ -2158,20 +2535,68 @@ app.get('/api/contacts', auth, async (req, res) => {
   }
 });
 
+// El descubrimiento no crea contactos; el cliente solicita cada alta.
+app.post('/api/contacts/sync', auth, async (req, res) => {
+  try {
+    const raw = req.body?.phones;
+    if (!Array.isArray(raw)) {
+      return res.status(400).json({ message: 'phones debe ser una lista' });
+    }
+    if (raw.length > PHONE_SYNC_MAX) {
+      return res.status(400).json({ message: `Máximo ${PHONE_SYNC_MAX} teléfonos por petición` });
+    }
+    const canonical = raw.map(canonicalPhone);
+    if (canonical.some(p => !p)) {
+      return res.status(400).json({ message: 'Teléfono no válido' });
+    }
+    const phones = Array.from(new Set(canonical));
+    if (phones.length === 0 || isLocalUserId(req.user.id)) return res.json({ found: [] });
+
+    const rows = await findUsersByPhones(phones);
+    const seen = new Set();
+    const found = [];
+    for (const user of rows) {
+      const id = String(user.id);
+      if (id === String(req.user.id) || seen.has(id)) continue;
+      seen.add(id);
+      found.push({ user_id: id, phone: user.canonical_phone, full_name: user.full_name || '' });
+    }
+    res.json({ found });
+  } catch (e) {
+    console.error('Contacts sync error:', e);
+    res.status(500).json({ message: e.message });
+  }
+});
+
 // Agregar contacto
 app.post('/api/contacts', auth, async (req, res) => {
   try {
-    const { contact_user_id, nickname, phone } = req.body;
-    console.log('[ADD CONTACT] body:', { contact_user_id, phone, nickname, caller: req.user?.id });
-    let targetId = contact_user_id && contact_user_id.trim() ? contact_user_id.trim() : null;
+    const { contact_user_id, nickname, phone } = req.body || {};
+    const requestedId = typeof contact_user_id === 'string' && contact_user_id.trim()
+      ? contact_user_id.trim() : null;
+    const displayName = typeof nickname === 'string' && nickname.trim() ? nickname.trim() : null;
+    if ((contact_user_id != null && typeof contact_user_id !== 'string') ||
+        (nickname != null && (typeof nickname !== 'string' || nickname.length > 100)) ||
+        (phone != null && (typeof phone !== 'string' || (phone !== '' && !canonicalPhone(phone))))) {
+      return res.status(400).json({ message: 'Datos de contacto no válidos' });
+    }
+
+    if (requestedId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestedId)) {
+      return res.status(400).json({ message: 'ID de contacto no válido' });
+    }
+    if (!requestedId && !phone) {
+      return res.status(400).json({ message: 'ID de contacto o teléfono requerido' });
+    }
 
     if (isLocalUserId(req.user.id)) {
+      let targetId = requestedId;
       if (!targetId && phone) {
-        const target = getLocalAuthUser(phone, nickname || 'Usuario EGCHAT');
+        const target = getLocalAuthUser(phone, displayName || 'Usuario EGCHAT');
         targetId = target?.id;
       }
       const target = getLocalUserById(targetId);
-      if (!target || target.id === req.user.id) return res.status(404).json({ message: 'Usuario no encontrado con ese número' });
+      if (!target) return res.status(404).json({ message: 'Usuario no encontrado con ese número' });
+      if (target.id === req.user.id) return res.status(400).json({ message: 'No puedes añadirte a ti mismo' });
       return res.json({
         id: `contact-${target.id}`,
         contact_user_id: target.id,
@@ -2185,100 +2610,45 @@ app.post('/api/contacts', auth, async (req, res) => {
       });
     }
 
-    if (!targetId && phone) {
-      const targetUser = await findUserByPhone(phone);
-
-      console.log('[ADD CONTACT] phone search result:', targetUser);
-
-      if (!targetUser) {
-        return res.status(404).json({ message: 'Usuario no encontrado con ese número' });
-      }
-
-      targetId = targetUser.id;
-    }
-
-    if (!targetId) {
-      return res.status(400).json({ message: 'ID de contacto o teléfono requerido' });
-    }
-
-    console.log('[ADD CONTACT] targetId:', targetId);
-
-    // Verificar que el usuario a agregar existe
-    const { data: targetUser, error: userError } = await supabase
-      .from('users')
-      .select('id, phone, full_name')
-      .eq('id', targetId)
-      .single();
-
-    console.log('[ADD CONTACT] user by id:', targetUser?.id, 'error:', userError?.message);
-
-    if (userError || !targetUser) {
-      return res.status(404).json({ message: 'Usuario no encontrado' });
-    }
-
-    // Verificar que ya no sea contacto
-    const { data: existingContact } = await supabase
-      .from('contacts')
-      .select('id')
-      .eq('user_id', req.user.id)
-      .eq('contact_user_id', targetId)
-      .single();
-
-    if (existingContact) {
-      return res.status(409).json({ message: 'El usuario ya es tu contacto' });
-    }
-
-    // Agregar contacto
-    const insertData = {
-      user_id: req.user.id,
-      contact_user_id: targetId,
-      nickname: nickname || targetUser.full_name,
-      user_id_min: req.user.id < targetId ? req.user.id : targetId,
-      user_id_max: req.user.id < targetId ? targetId : req.user.id,
-    };
-    try {
-      const { data: contact, error } = await supabase
-        .from('contacts')
-        .insert(insertData)
-        .select('*')
-        .single();
-
+    let targetUser;
+    if (requestedId) {
+      const { data, error } = await supabase.from('users')
+        .select('id, phone, full_name, avatar_url').eq('id', requestedId)
+        .is('deleted_at', null).maybeSingle();
       if (error) throw error;
-
-      res.json({
-        id: contact.id,
-        contact_user_id: contact.contact_user_id,
-        name: contact.nickname || targetUser.full_name,
-        phone: targetUser.phone,
-        avatar_url: targetUser.avatar_url || '',
-        is_blocked: contact.is_blocked,
-        is_favorite: contact.is_favorite,
-        created_at: contact.created_at,
-        user: targetUser
-      });
-    } catch (insertErr) {
-      // Si falla por columnas extra no existentes, intentar sin user_id_min/max
-      if (insertErr.message?.includes('user_id_min') || insertErr.message?.includes('user_id_max')) {
-        const { data: contact, error } = await supabase
-          .from('contacts')
-          .insert({ user_id: req.user.id, contact_user_id: targetId, nickname: nickname || targetUser.full_name })
-          .select('*')
-          .single();
-        if (error) throw error;
-        return res.json({
-          id: contact.id,
-          contact_user_id: contact.contact_user_id,
-          name: contact.nickname || targetUser.full_name,
-          phone: targetUser.phone,
-          avatar_url: targetUser.avatar_url || '',
-          is_blocked: contact.is_blocked,
-          is_favorite: contact.is_favorite,
-          created_at: contact.created_at,
-          user: targetUser
-        });
-      }
-      throw insertErr;
+      targetUser = data;
+    } else {
+      targetUser = await findUserByPhone(phone);
     }
+    if (!targetUser) return res.status(404).json({ message: 'Usuario no encontrado con ese número' });
+    const targetId = targetUser.id;
+    if (String(targetId) === String(req.user.id)) {
+      return res.status(400).json({ message: 'No puedes añadirte a ti mismo' });
+    }
+
+    const readContact = () => supabase.from('contacts').select('*')
+      .eq('user_id', req.user.id).eq('contact_user_id', targetId).maybeSingle();
+    const formatContact = contact => ({
+      id: contact.id, contact_user_id: contact.contact_user_id,
+      name: contact.nickname || targetUser.full_name,
+      phone: targetUser.phone, avatar_url: targetUser.avatar_url || '',
+      is_blocked: contact.is_blocked, is_favorite: contact.is_favorite,
+      created_at: contact.created_at, user: targetUser,
+    });
+    const { data: existing, error: readError } = await readContact();
+    if (readError) throw readError;
+    if (existing) return res.json(formatContact(existing));
+
+    const { data: contact, error: insertError } = await supabase.from('contacts')
+      .insert({ user_id: req.user.id, contact_user_id: targetId, nickname: displayName || targetUser.full_name })
+      .select('*').single();
+    if (insertError?.code === '23505') {
+      const { data: concurrent, error } = await readContact();
+      if (error) throw error;
+      if (concurrent) return res.json(formatContact(concurrent));
+    }
+    if (insertError) throw insertError;
+    return res.json(formatContact(contact));
   } catch (e) {
     console.error('Add contact error:', e);
     res.status(500).json({ message: e.message });
@@ -2331,6 +2701,43 @@ app.post('/api/contacts/:contactId/unblock', auth, async (req, res) => {
     res.json({ message: 'Contacto desbloqueado exitosamente', contact });
   } catch (e) {
     console.error('Unblock contact error:', e);
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// Lista de bloqueados: la pide Ajustes → Privacidad. Devuelve el id de la fila
+// de `contacts` (no el del usuario) porque es el que la pantalla reenvía a
+// /contacts/:contactId/unblock, que busca por contacts.id.
+app.get('/api/contacts/blocked', auth, async (req, res) => {
+  try {
+    if (isLocalUserId(req.user.id)) return res.json([]);
+
+    const { data: contacts, error } = await supabase
+      .from('contacts')
+      .select('id, contact_user_id, nickname, phone, created_at')
+      .eq('user_id', req.user.id)
+      .eq('is_blocked', true)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    if (!contacts || contacts.length === 0) return res.json([]);
+
+    const userIds = contacts.map(c => c.contact_user_id).filter(Boolean);
+    const { data: users } = await supabase
+      .from('users')
+      .select('id, phone, full_name, avatar_url')
+      .in('id', userIds);
+    const usersMap = (users || []).reduce((acc, u) => { acc[u.id] = u; return acc; }, {});
+
+    res.json(contacts.map(c => ({
+      id: c.id,
+      contact_user_id: c.contact_user_id,
+      full_name: c.nickname || usersMap[c.contact_user_id]?.full_name || '',
+      phone: usersMap[c.contact_user_id]?.phone || c.phone || '',
+      avatar_url: usersMap[c.contact_user_id]?.avatar_url || '',
+      blocked_at: c.created_at,
+    })));
+  } catch (e) {
+    console.error('Get blocked contacts error:', e);
     res.status(500).json({ message: e.message });
   }
 });
@@ -5855,13 +6262,17 @@ app.post('/api/taxi/request', auth, walletLimiter, async (req, res) => {
   try {
     const { origin, dest, type } = req.body;
     if (!origin || !dest) return res.status(400).json({ message: 'origin y dest requeridos', code: 'VALIDATION_ERROR' });
-    const variant = ['moto', 'basic', 'premium'].includes(type) ? type : 'basic';
+    // Un tipo desconocido no puede caer a 'basic': cobraría la tarifa de taxi
+    // por un servicio que el usuario no pidió.
+    const variant = ['moto', 'basic', 'premium', 'tow', 'moving', 'package'].includes(type) ? type : null;
+    if (!variant) return res.status(400).json({ message: 'Tipo de servicio no válido', code: 'VALIDATION_ERROR' });
 
     const tarifa = await readTariff('taxi', variant);
     if (!tarifa) return res.status(502).json({ message: 'Tarifa de taxi no disponible', code: 'TARIFF_UNAVAILABLE' });
 
+    const VEHICLE_NAME = { moto: 'Moto Honda', basic: 'Toyota Corolla', premium: 'SUV Toyota', tow: 'Camión grúa', moving: 'Camión de mudanza', package: 'Moto de reparto' };
     const rideId = safeRef('RIDE');
-    const driver = { name: 'Carlos Mba', phone: '+240 222 555', rating: 4.8, plate: 'GE-1234', vehicle: variant === 'moto' ? 'Moto Honda' : 'Toyota Corolla' };
+    const driver = { name: 'Carlos Mba', phone: '+240 222 555', rating: 4.8, plate: 'GE-1234', vehicle: VEHICLE_NAME[variant] || 'Toyota Corolla' };
 
     // El viaje se escribe antes de cobrar: si no queda fila, no hay cargo.
     const { data: ride, error: rideError } = await supabase.from('taxi_rides').insert({
@@ -7081,7 +7492,13 @@ app.post('/api/lia/attach', auth, liaAttachHandler);
 app.post('/api/chats/:chatId/participants', auth, async (req, res) => {
   try {
     const { user_id } = req.body;
-    await supabase.from('chat_participants').upsert({ chat_id: req.params.chatId, user_id });
+    // Reañadir al que ya está no debe duplicar la fila: sin onConflict, PostgREST
+    // intenta el alta por clave primaria (id), que aqui no llega, y un reintentos
+    // meteria dos participantes distintos para la misma pareja.
+    const { error } = await supabase
+      .from('chat_participants')
+      .upsert({ chat_id: req.params.chatId, user_id }, { onConflict: 'chat_id,user_id' });
+    if (error) throw error;
     res.json({ message: 'Participante añadido' });
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
@@ -8370,7 +8787,7 @@ const getApnsVoipJwt = () => {
 };
 
 /** Un POST a APNs para un token device. Nunca rechaza: devuelve {ok, reason}. */
-const sendApnsVoip = (deviceToken, apnsJwt, payload) => new Promise((resolve) => {
+const sendApnsVoip = (deviceToken, apnsJwt, payload, pushType = 'voip') => new Promise((resolve) => {
   const host   = APNS_VOIP_HOSTS[process.env.APNS_ENV] || APNS_VOIP_HOSTS.production;
   const bundle = process.env.APNS_BUNDLE_ID || 'com.jallzstores.egchat';
   const client = http2.connect(`https://${host}`);
@@ -8392,10 +8809,10 @@ const sendApnsVoip = (deviceToken, apnsJwt, payload) => new Promise((resolve) =>
     ':path':            `/3/device/${deviceToken}`,
     ':authority':       host,
     'authorization':    `bearer ${apnsJwt}`,
-    'apns-push-type':   'voip',
-    'apns-topic':       `${bundle}.voip`,
+    'apns-push-type':   pushType,
+    'apns-topic':       pushType === 'voip' ? `${bundle}.voip` : bundle,
     'apns-priority':    '10',
-    'apns-expiration':  String(Math.floor(Date.now() / 1000) + 90),
+    'apns-expiration':  String(Math.floor(Date.now() / 1000) + (pushType === 'voip' ? 90 : payload.notificationType === 'incoming_call' ? 120 : 86400)),
     'content-type':     'application/json',
   });
 
@@ -9284,6 +9701,24 @@ app.get('/api/push/vapid-public-key', (req, res) => {
   res.json({ publicKey: VAPID_PUBLIC_KEY });
 });
 
+const isExpoPushToken = token => typeof token === 'string' && /^(ExponentPushToken|ExpoPushToken)\[[^\]]+\]$/.test(token);
+
+let firebaseMessaging = null;
+const getFirebaseMessaging = () => {
+  if (firebaseMessaging) return firebaseMessaging;
+  const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON || process.env.FIREBASE_SERVICE_ACCOUNT;
+  if (!raw) return null;
+  try {
+    const admin = require('firebase-admin');
+    if (!admin.apps.length) admin.initializeApp({ credential: admin.credential.cert(JSON.parse(raw)) });
+    firebaseMessaging = admin.messaging();
+    return firebaseMessaging;
+  } catch {
+    console.warn('[Push FCM] No se pudo inicializar Firebase');
+    return null;
+  }
+};
+
 // Función interna para enviar push a un usuario
 const sendPushToUser = async (userId, payload) => {
   try {
@@ -9319,18 +9754,17 @@ const sendPushToUser = async (userId, payload) => {
     }
 
     // ── Expo Push (app movil nativa — funciona con telefono hibernado) ────
-    const { data: expoSubs } = await supabase
+    const { data: expoSubs, error: tokenError } = await supabase
       .from('expo_push_tokens')
-      .select('token, token_type')
+      .select('token, token_type, device_id')
       .eq('user_id', userId)
       .in('token_type', ['expo', 'fcm', 'apns'])
       .neq('is_active', false);
 
-    // Se envían TODOS los tokens guardados, incluidos los APNs crudos (64 hex):
-    // exp.host los entrega con la clave APNs del proyecto, y muchos iPhone están
-    // registrados así. Filtrar solo por forma Expo dejó esos dispositivos sin
-    // ninguna notificación (2026-11-02).
-    const expoTokens = [...new Set((expoSubs || []).map(s => s.token).filter(Boolean))];
+    if (tokenError) throw tokenError;
+    const subscriptions = [...new Map((expoSubs || []).map(sub => [sub.token, sub])).values()];
+    const expoTokens = subscriptions.map(sub => sub.token).filter(isExpoPushToken);
+    const deliveredDevices = new Set();
 
     if (expoTokens.length > 0) {
       const expoMessages = expoTokens.map(token => ({
@@ -9343,8 +9777,9 @@ const sendPushToUser = async (userId, payload) => {
         badge: isCall ? 0 : Number(payload.badge ?? 1),
         channelId: isCall ? 'egchat-calls-v2' : 'egchat-messages',
         // En iOS el channelId no existe: la categoría con acciones (Aceptar /
-        // Rechazar) se registra desde la app con setNotificationCategoryAsync.
-        ...(isCall ? { categoryIdentifier: 'EGCHAT_CALL' } : {}),
+        // Rechazar en llamadas, Responder / Marcar leído en mensajes) se
+        // registra desde la app con setNotificationCategoryAsync.
+        categoryIdentifier: isCall ? 'EGCHAT_CALL' : 'EGCHAT_MESSAGE',
         priority: isCall ? 'high' : 'normal',
         // Campo EXACTO que acepta la API REST de Expo (no "_mutableContent"):
         // exp.host lo traduce a aps["mutable-content"]=1 y hace que iOS lance
@@ -9412,6 +9847,10 @@ const sendPushToUser = async (userId, payload) => {
           if (result.data) {
             const tickets = result.data
               .map((r, idx) => ({ r, token: batch[idx].to }));
+            for (const { r, token } of tickets) {
+              const deviceId = subscriptions.find(sub => sub.token === token)?.device_id;
+              if (r.status === 'ok' && deviceId) deliveredDevices.add(deviceId);
+            }
             const invalid = tickets
               .filter(({ r }) => r.status === 'error' && r.details?.error === 'DeviceNotRegistered');
             if (invalid.length > 0) {
@@ -9432,6 +9871,65 @@ const sendPushToUser = async (userId, payload) => {
         }
       }
     }
+
+    const nativeSubs = subscriptions.filter(sub => !isExpoPushToken(sub.token) &&
+      !(sub.device_id && deliveredDevices.has(sub.device_id)));
+    const data = {
+      ...payload,
+      notificationType: payload.notificationType || 'message',
+      senderName: payload.senderName || payload.callerName || '',
+      senderAvatar: payload.senderAvatar || payload.callerAvatar || payload.icon || '',
+      messageType: payload.messageType || 'text',
+      chatId: payload.chatId || '',
+    };
+    const apnsSubs = nativeSubs.filter(sub => /^[a-f0-9]{64}$/i.test(sub.token));
+    if (apnsSubs.length) {
+      const apnsJwt = getApnsVoipJwt();
+      if (!apnsJwt) console.warn('[Push APNs] Sin credenciales para entregar alertas');
+      else {
+        const apnsPayload = {
+          ...data,
+          aps: {
+            alert: { title: payload.title || 'EGChat', body: payload.body || (isCall ? 'Llamada entrante' : 'Nuevo mensaje') },
+            sound: isCall ? 'default' : 'egchat-message.wav',
+            badge: isCall ? 0 : Number(payload.badge ?? 1),
+            category: isCall ? 'EGCHAT_CALL' : 'EGCHAT_MESSAGE',
+            ...(!isCall ? { 'mutable-content': 1 } : {}),
+          },
+        };
+        if (Buffer.byteLength(JSON.stringify(apnsPayload)) > 4096 && isCall) delete apnsPayload.offer;
+        await Promise.allSettled(apnsSubs.map(async sub => {
+          const result = await sendApnsVoip(sub.token, apnsJwt, apnsPayload, 'alert');
+          if (!result.ok) console.warn(`[Push APNs] user=${userId} error=${result.reason}`);
+        }));
+      }
+    }
+    const fcmSubs = nativeSubs.filter(sub => sub.token_type === 'fcm' && !/^[a-f0-9]{64}$/i.test(sub.token));
+    if (fcmSubs.length) {
+      const messaging = getFirebaseMessaging();
+      if (!messaging) console.warn('[Push FCM] Sin credenciales para entregar notificaciones');
+      else {
+        const fcmData = Object.fromEntries(Object.entries(data)
+          .filter(([, value]) => value !== undefined && value !== null)
+          .map(([key, value]) => [key, typeof value === 'string' ? value : JSON.stringify(value)]));
+        await Promise.allSettled(fcmSubs.map(async sub => {
+          try {
+            await messaging.send({
+              token: sub.token,
+              data: fcmData,
+              ...(!isCall ? { notification: { title: payload.title || 'EGChat', body: payload.body || 'Nuevo mensaje' } } : {}),
+              android: {
+                priority: 'high',
+                ttl: isCall ? 120000 : 86400000,
+                ...(!isCall ? { notification: { channelId: 'egchat-messages', sound: 'notification', icon: 'notification_icon' } } : {}),
+              },
+            });
+          } catch (error) {
+            console.warn(`[Push FCM] user=${userId} error=${error.code || 'send_failed'}`);
+          }
+        }));
+      }
+    }
   } catch (e) {
     console.error('sendPushToUser error:', e.message);
   }
@@ -9446,16 +9944,20 @@ app.post('/api/push/register-expo-token', auth, async (req, res) => {
     const { expoPushToken, platform, tokenType } = req.body;
     const token = expoPushToken || req.body.token;
 
-    if (!token || token.length < 10) {
+    if (typeof token !== 'string' || token.length < 10 || token.length > 500) {
       return res.status(400).json({ message: 'Token inválido' });
     }
-
-    // Determinar tipo de token automáticamente si no se especifica
-    const isExpoToken = token.startsWith('ExponentPushToken');
+    const deviceId = req.body.deviceId;
+    if (deviceId != null && (typeof deviceId !== 'string' || deviceId.length > 200)) {
+      return res.status(400).json({ message: 'Dispositivo inválido' });
+    }
+    const isExpoToken = isExpoPushToken(token);
     const isHexAPNs = token.length === 64 && /^[0-9a-f]+$/i.test(token);
-    const type = tokenType || (isExpoToken ? 'expo' : isHexAPNs ? 'apns' : 'fcm');
-    // Tokens APNs nativos: guardar en DB pero no enviar directo a APNs.
-    // El ExponentPushToken iOS usa APNs via Expo internamente (correcto).
+    const type = isExpoToken ? 'expo' : tokenType || (isHexAPNs ? 'apns' : 'fcm');
+    if (!['expo', 'apns', 'fcm', 'voip'].includes(type) ||
+        (type === 'expo' && !isExpoToken) || (type === 'apns' && !isHexAPNs)) {
+      return res.status(400).json({ message: 'Tipo de token inválido' });
+    }
     console.log(`[Push] Registrando token tipo=${type} platform=${platform||'unknown'} user=${req.user.id}`);
 
     // Intentar via Edge Function primero (tiene soporte completo de tipos)
@@ -9479,6 +9981,18 @@ app.post('/api/push/register-expo-token', auth, async (req, res) => {
           }),
         });
         if (edgeRes.ok) {
+          // Aunque la Edge Function guardó el token nuevo, limpiar aquí los
+          // tokens Expo viejos del mismo usuario (de proyectos anteriores).
+          // Expo rechaza lotes con tokens de distintos experience IDs, así que
+          // un usuario no debe tener más de un token Expo activo a la vez.
+          if (type === 'expo') {
+            await supabase
+              .from('expo_push_tokens')
+              .delete()
+              .eq('user_id', req.user.id)
+              .eq('token_type', 'expo')
+              .neq('token', token);
+          }
           return res.json({ message: 'Token registrado', tokenType: type });
         }
       } catch (edgeErr) {
@@ -9486,15 +10000,30 @@ app.post('/api/push/register-expo-token', auth, async (req, res) => {
       }
     }
 
+    // Si el token es Expo, borrar todos los tokens Expo anteriores del mismo
+    // usuario antes de guardar el nuevo. Expo no admite en un mismo lote tokens
+    // de distintos experience IDs; al migrar de proyecto quedaron tokens viejos
+    // que hacían fallar el lote entero con PUSH_TOO_MANY_EXPERIENCE_IDS.
+    if (type === 'expo') {
+      await supabase
+        .from('expo_push_tokens')
+        .delete()
+        .eq('user_id', req.user.id)
+        .eq('token_type', 'expo')
+        .neq('token', token);
+    }
+
     // Fallback: upsert directo en Supabase (compatibilidad hacia atrás)
-    await supabase.from('expo_push_tokens').upsert({
+    const { error } = await supabase.from('expo_push_tokens').upsert({
       user_id:    req.user.id,
       token,
       token_type: type,
       platform:   platform || 'android',
+      ...(deviceId ? { device_id: deviceId } : {}),
       is_active:  true,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'token' });
+    if (error) throw error;
 
     res.json({ message: 'Token registrado', tokenType: type });
   } catch (e) {
